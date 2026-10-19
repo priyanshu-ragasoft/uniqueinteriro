@@ -3,20 +3,24 @@ import { connectDB } from '../backend/config/db.js'
 import { seedDefaultAdmin } from '../backend/controllers/authController.js'
 import { seedDefaultInquiries } from '../backend/controllers/inquiryController.js'
 import { seedDefaultBlogs } from '../backend/controllers/blogController.js'
+import mongoose from 'mongoose'
 
-let isInitialized = false
+let isSeeded = false
 
 export default async function handler(req, res) {
-  if (!isInitialized) {
-    try {
+  try {
+    if (mongoose.connection.readyState < 1) {
       await connectDB()
+    }
+    if (!isSeeded && mongoose.connection.readyState >= 1) {
       await seedDefaultAdmin()
       await seedDefaultInquiries()
       await seedDefaultBlogs()
-      isInitialized = true
-    } catch (err) {
-      console.error('[Vercel Serverless Init Error]:', err)
+      isSeeded = true
     }
+  } catch (err) {
+    console.error('[Vercel Serverless DB Error]:', err.message)
   }
+
   return app(req, res)
 }
