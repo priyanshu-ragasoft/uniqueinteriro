@@ -42,7 +42,16 @@ app.use('/api/auth', authRoutes)
 app.use('/api/inquiries', inquiryRoutes)
 app.use('/api/blogs', blogRoutes)
 
-// Healthcheck Route
+// Root & Healthcheck Routes
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ONLINE',
+    service: 'Unique Graphics Atelier API',
+    database: process.env.MONGO_URI ? 'CONFIGURED' : 'UNCONFIGURED',
+    timestamp: new Date().toISOString(),
+  })
+})
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ONLINE',
