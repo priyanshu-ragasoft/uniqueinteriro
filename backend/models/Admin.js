@@ -41,14 +41,13 @@ const AdminSchema = new mongoose.Schema(
   }
 )
 
-// Pre-save hook: Hash password before saving to DB
-AdminSchema.pre('save', async function (next) {
+// Pre-save hook: Hash password before saving to DB (Mongoose 8 async style)
+AdminSchema.pre('save', async function () {
   if (!this.isModified('password')) {
-    return next()
+    return
   }
   const salt = await bcrypt.genSalt(10)
   this.password = await bcrypt.hash(this.password, salt)
-  next()
 })
 
 // Instance method: Compare entered password with hashed password
