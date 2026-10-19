@@ -21,10 +21,15 @@ export const connectDB = async () => {
   }
 
   if (!cachedPromise) {
-    const mongoUri = process.env.MONGO_URI || ATLAS_URI
+    const rawUri = process.env.MONGO_URI
+    const mongoUri =
+      rawUri && !rawUri.includes('localhost') && !rawUri.includes('cryptospill')
+        ? rawUri
+        : ATLAS_URI
+
     cachedPromise = mongoose
       .connect(mongoUri, {
-        serverSelectionTimeoutMS: 8000,
+        serverSelectionTimeoutMS: 10000,
       })
       .then((conn) => {
         console.log(

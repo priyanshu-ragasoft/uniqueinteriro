@@ -53,10 +53,14 @@ app.get('/', (req, res) => {
 })
 
 app.get('/api/health', (req, res) => {
+  const uri = process.env.MONGO_URI || 'mongodb+srv://yadgirshazada789_db_user:1uyS7m1IYpJZhJyu@cluster0.j7sy7lk.mongodb.net/uniquegraphic?retryWrites=true&w=majority'
+  const maskedHost = uri.split('@')[1] || 'localhost'
   res.status(200).json({
     status: 'ONLINE',
     service: 'Unique Graphics Atelier API',
     database: process.env.MONGO_URI ? 'CONFIGURED' : 'UNCONFIGURED',
+    readyState: mongoose.connection.readyState,
+    targetHost: maskedHost,
     timestamp: new Date().toISOString(),
   })
 })
