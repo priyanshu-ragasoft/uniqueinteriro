@@ -19,11 +19,7 @@ const PORT = process.env.PORT || 5000
 // Middleware
 app.use(
   cors({
-    origin: [
-      process.env.CLIENT_URL || 'http://localhost:5173',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-    ],
+    origin: true,
     credentials: true,
   })
 )
@@ -98,7 +94,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({
     success: false,
     message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'production' ? null : err.message,
+    error: err.message,
+    stack: err.stack,
   })
 })
 
