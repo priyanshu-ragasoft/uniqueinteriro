@@ -37,6 +37,25 @@ app.use((req, res, next) => {
   next()
 })
 
+// Database connection middleware (ensures DB is connected on Vercel before queries run)
+app.use(async (req, res, next) => {
+  if (req.path === '/' || req.path === '/api/health') {
+    return next()
+  }
+
+  try {
+    await connectDB()
+    next()
+  } catch (err) {
+    console.error('[Database Middleware Error]:', err.message)
+    return res.status(500).json({
+      success: false,
+      message: 'MongoDB Connection Error on Serverless Instance',
+      error: err.message,
+    })
+  }
+})
+
 // Mount API Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/inquiries', inquiryRoutes)
