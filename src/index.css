@@ -1,0 +1,186 @@
+@import 'tailwindcss';
+
+html {
+  background-color: #111111;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background-color: #111111;
+  color: #ffffff;
+  font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100%;
+}
+
+@keyframes nav-panel {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.nav-panel {
+  animation: nav-panel 0.32s ease;
+}
+
+.nav-glass {
+  background-color: rgb(16 16 16 / 0.28);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+}
+
+.nav-glass-open {
+  background-color: rgb(10 10 10 / 0.45);
+}
+
+.hero-stage {
+  overflow: hidden;
+}
+
+.hero-clip {
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+
+.hero-clip.is-front {
+  opacity: 1;
+}
+
+.hero-fog {
+  pointer-events: none;
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  height: 34%;
+  overflow: hidden;
+  mask-image: linear-gradient(to top, rgb(0 0 0 / 55%) 0%, transparent 100%);
+}
+
+.fog-bank {
+  position: absolute;
+  top: 10%;
+  left: 0;
+  display: flex;
+  width: 200%;
+  height: 100%;
+  animation: fog-run 28s linear infinite;
+}
+
+.fog-tile {
+  position: relative;
+  width: 50%;
+  height: 100%;
+  flex: none;
+}
+
+.fog-blob {
+  position: absolute;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgb(255 255 255 / 55%) 0%, rgb(255 255 255 / 16%) 46%, transparent 72%);
+  filter: blur(22px);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Luxury Custom Scrollbar without native Windows arrows */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(227, 148, 63, 0.45) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(227, 148, 63, 0.35);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #e3943f;
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@keyframes hero-drift {
+  from {
+    transform: scale(1.08) translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: scale(1.18) translate3d(-3.5%, -2%, 0);
+  }
+}
+
+@keyframes logo-run {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.logo-run {
+  animation: logo-run 36s linear infinite;
+}
+
+@keyframes fog-run {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-panel,
+  .fog-bank {
+    animation: none;
+  }
+
+  .hero-clip {
+    transition: none;
+  }
+
+  .logo-run {
+    animation: none;
+  }
+}
