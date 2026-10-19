@@ -30,7 +30,7 @@ export default function PortfolioManager({ token }) {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/portfolio-pages')
+        const res = await fetch('/api/blogs/settings/portfolio-pages')
         const data = await res.json()
         if (data.success && data.data) {
           setConfig((prev) => ({
@@ -71,7 +71,7 @@ export default function PortfolioManager({ token }) {
     try {
       setStoredPortfolioConfig(config)
 
-      const res = await fetch('http://localhost:5000/api/blogs/settings/portfolio-pages', {
+      const res = await fetch('/api/blogs/settings/portfolio-pages', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

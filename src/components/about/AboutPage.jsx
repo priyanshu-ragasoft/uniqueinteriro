@@ -14,7 +14,7 @@ export default function AboutPage({ lang }) {
     // Fetch live settings from backend
     const fetchSettings = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/about-page')
+        const res = await fetch('/api/blogs/settings/about-page')
         const data = await res.json()
         if (data.success && data.data) {
           localStorage.setItem('ug_about_page_config', JSON.stringify(data.data))

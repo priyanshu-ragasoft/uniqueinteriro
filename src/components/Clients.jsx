@@ -97,7 +97,7 @@ export default function Clients({ lang = 'en' }) {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/brand-sections')
+        const res = await fetch('/api/blogs/settings/brand-sections')
         const data = await res.json()
         if (data.success && data.data?.clients) {
           setConfig(data.data.clients)

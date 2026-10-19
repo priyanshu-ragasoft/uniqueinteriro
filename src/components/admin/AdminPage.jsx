@@ -27,8 +27,7 @@ import manufacturingIcon from '../../assets/icons/manufacturing.png'
 import rewardIcon from '../../assets/icons/reward.png'
 import globeImage from '../../assets/hero/globe.png'
 
-
-const API_BASE_URL = 'http://localhost:5000/api'
+import { API_BASE_URL } from '../../config/api.js'
 
 const LUXURY_IMAGE_PRESETS = [
   { label: 'Desert Villa (Dubai)', url: '/architectural/dubai_villa.jpg' },

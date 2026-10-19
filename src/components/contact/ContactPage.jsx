@@ -20,7 +20,7 @@ export default function ContactPage({ lang }) {
     let isMounted = true
     const fetchConfig = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/contact-page')
+        const res = await fetch('/api/blogs/settings/contact-page')
         if (res.ok) {
           const data = await res.json()
           if (data?.success && data?.data && isMounted) {
@@ -75,7 +75,7 @@ export default function ContactPage({ lang }) {
     }
 
     try {
-      await fetch('http://localhost:5000/api/inquiries', {
+      await fetch('/api/inquiries', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -19,7 +19,7 @@ export default function ContactPageManager({ token }) {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/contact-page')
+        const res = await fetch('/api/blogs/settings/contact-page')
         const data = await res.json()
         if (data.success && data.data) {
           setConfig((prev) => ({ ...prev, ...data.data }))
@@ -47,7 +47,7 @@ export default function ContactPageManager({ token }) {
     try {
       setStoredContactConfig(config)
 
-      const res = await fetch('http://localhost:5000/api/blogs/settings/contact-page', {
+      const res = await fetch('/api/blogs/settings/contact-page', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

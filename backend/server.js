@@ -95,4 +95,11 @@ const startServer = async () => {
   }
 }
 
-startServer()
+// Export Express App & Server Starter
+export { app, startServer }
+export default app
+
+// If executed directly in standalone Node mode (local dev), start listener
+if (!process.env.VERCEL) {
+  startServer()
+}

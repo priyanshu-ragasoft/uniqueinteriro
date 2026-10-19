@@ -153,7 +153,7 @@ export default function Hero({ lang }) {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/hero')
+        const res = await fetch('/api/blogs/settings/hero')
         const data = await res.json()
         if (data.success && data.data) {
           setConfig(data.data)

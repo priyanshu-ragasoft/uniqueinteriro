@@ -17,7 +17,7 @@ export default function AboutPageManager({ token }) {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/about-page')
+        const res = await fetch('/api/blogs/settings/about-page')
         const data = await res.json()
         if (data.success && data.data) {
           setAboutConfig((prev) => ({
@@ -51,7 +51,7 @@ export default function AboutPageManager({ token }) {
       localStorage.setItem('ug_about_page_config', JSON.stringify(aboutConfig))
       window.dispatchEvent(new Event('ug_about_updated'))
 
-      const res = await fetch('http://localhost:5000/api/blogs/settings/about-page', {
+      const res = await fetch('/api/blogs/settings/about-page', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

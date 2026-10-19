@@ -31,7 +31,7 @@ export default function Closing({ lang }) {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/brand-sections')
+        const res = await fetch('/api/blogs/settings/brand-sections')
         const data = await res.json()
         if (data.success && data.data?.closing) {
           const merged = { ...DEFAULT_CLOSING_CONFIG, ...data.data.closing }

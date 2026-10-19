@@ -73,7 +73,7 @@ export default function CompletedProjects({ lang = 'en' }) {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/completed-projects')
+        const res = await fetch('/api/blogs/settings/completed-projects')
         const data = await res.json()
         if (data.success && data.data) {
           setConfig(data.data)

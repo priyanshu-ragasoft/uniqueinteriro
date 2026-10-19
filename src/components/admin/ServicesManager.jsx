@@ -17,7 +17,7 @@ export default function ServicesManager({ token }) {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/services-pages')
+        const res = await fetch('/api/blogs/settings/services-pages')
         const data = await res.json()
         if (data.success && data.data) {
           setConfig((prev) => ({
@@ -58,7 +58,7 @@ export default function ServicesManager({ token }) {
     try {
       setStoredServicesConfig(config)
 
-      const res = await fetch('http://localhost:5000/api/blogs/settings/services-pages', {
+      const res = await fetch('/api/blogs/settings/services-pages', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

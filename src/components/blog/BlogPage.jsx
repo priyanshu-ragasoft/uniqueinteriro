@@ -279,7 +279,7 @@ export default function BlogPage() {
   useEffect(() => {
     const fetchApiBlogs = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs?published=true')
+        const res = await fetch('/api/blogs?published=true')
         if (res.ok) {
           const json = await res.json()
           if (json.success && Array.isArray(json.data) && json.data.length > 0) {
@@ -294,7 +294,7 @@ export default function BlogPage() {
 
     const fetchBannerSettings = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/blogs/settings/banner')
+        const res = await fetch('/api/blogs/settings/banner')
         if (res.ok) {
           const json = await res.json()
           if (json.success && json.data) {
