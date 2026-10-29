@@ -72,7 +72,7 @@ app.use('/api/inquiries', inquiryRoutes)
 app.use('/api/blogs', blogRoutes)
 
 // Root & Healthcheck Routes
-app.get('/', (req, res) => {
+app.get(['/', ''], (req, res) => {
   res.status(200).json({
     status: 'ONLINE',
     service: 'Unique Graphics Atelier API',
