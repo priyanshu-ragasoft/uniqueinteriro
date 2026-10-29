@@ -13,6 +13,7 @@ import blogRoutes from './routes/blogRoutes.js'
 import { seedDefaultAdmin } from './controllers/authController.js'
 import { seedDefaultInquiries } from './controllers/inquiryController.js'
 import { seedDefaultBlogs, seedDefaultProjectsAndServices } from './controllers/blogController.js'
+import { serveStoredMedia } from './controllers/mediaController.js'
 
 // Load environment variables
 dotenv.config()
@@ -37,8 +38,9 @@ app.use(
 )
 app.use(
   '/website-assets',
-  express.static(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../website/website'))
+  express.static(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public/website-assets'))
 )
+app.use(serveStoredMedia)
 
 // Request logger for security auditing
 app.use((req, res, next) => {

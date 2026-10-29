@@ -4,6 +4,14 @@
   "installCommand": "npm install",
   "rewrites": [
     {
+      "source": "/website-assets/:path*",
+      "destination": "/api/index.js?asset=:path*"
+    },
+    {
+      "source": "/uploads/:path*",
+      "destination": "/api/index.js?upload=:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/index.js"
     },

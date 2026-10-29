@@ -1,0 +1,5 @@
+public/website-assets
+website
+node_modules
+backend/node_modules
+dist

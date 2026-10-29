@@ -28,3 +28,6 @@ dist-ssr
 scratch/
 public/website-assets
 website/
+
+.vercel
+.env*
