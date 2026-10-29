@@ -1,8 +1,8 @@
-import night from '../assets/more/267347_medium.mp4'
-import bedroom from '../assets/more/261682_medium.mp4'
-import snow from '../assets/more/261755_medium.mp4'
-import bath from '../assets/more/3967-175963622_medium.mp4'
-import plants from '../assets/more/1303-145340146_medium.mp4'
+const night = '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg'
+const bedroom = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
+const snow = '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
+const bath = '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4'
+const plants = '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4'
 import { menuPages } from './menuPages'
 import { projects } from './projects'
 

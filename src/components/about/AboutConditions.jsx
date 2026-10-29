@@ -33,7 +33,9 @@ export default function AboutConditions({ lang }) {
     return { title: c.title || '', text: c.text || '' }
   })
 
-  const mediaSrc = conditionsConfig.mediaUrl?.trim() || aboutReels.bath
+  const DEFAULT_CONDITIONS_IMAGE = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png'
+  const rawCondMedia = conditionsConfig.mediaUrl?.trim()
+  const mediaSrc = rawCondMedia || aboutReels.bath
   const isVideo = !mediaSrc.match(/\.(jpeg|jpg|png|gif|webp|svg)$/i)
 
   return (
@@ -64,7 +66,14 @@ export default function AboutConditions({ lang }) {
         {isVideo ? (
           <LoopVideo src={mediaSrc} className="h-[280px] w-full object-cover lg:h-full lg:min-h-[320px]" />
         ) : (
-          <img src={mediaSrc} alt="Conditions visual" className="h-[280px] w-full object-cover lg:h-full lg:min-h-[320px]" />
+          <img
+            src={mediaSrc}
+            alt="Conditions visual"
+            onError={(e) => {
+              e.currentTarget.src = DEFAULT_CONDITIONS_IMAGE
+            }}
+            className="h-[280px] w-full object-cover lg:h-full lg:min-h-[320px]"
+          />
         )}
       </div>
     </section>

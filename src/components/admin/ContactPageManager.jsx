@@ -4,8 +4,8 @@ import {
   getStoredContactConfig,
   setStoredContactConfig,
 } from '../../data/contactConfig'
-import reel from '../../assets/Contact/Nina_obrezano_8250f042fc.mp4'
-import frame from '../../assets/Contact/videoframe_15197.png'
+const reel = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
+const frame = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png'
 import LoopVideo from '../LoopVideo'
 import { FaWhatsapp } from 'react-icons/fa'
 
@@ -423,7 +423,7 @@ export default function ContactPageManager({ token }) {
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <span className="text-[11px] font-bold tracking-[0.2em] text-[#e3943f] uppercase flex items-center gap-2">
                 <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                Live Public Preview (/contacts)
+                Live preview
               </span>
               <span className="text-[10px] font-mono text-white/40 uppercase">Interactive</span>
             </div>
@@ -524,7 +524,7 @@ export default function ContactPageManager({ token }) {
               </div>
 
               <span className="text-[10.5px] text-white/40 italic block text-center mt-2">
-                * Real-time preview mirrors public /contacts page. Click "Save & Publish" to update live.
+                * This matches the public contact page. Save to publish it.
               </span>
             </div>
           </div>

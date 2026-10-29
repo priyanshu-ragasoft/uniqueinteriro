@@ -243,7 +243,7 @@ export default function AboutPageManager({ token }) {
               </span>
             </div>
             <p className="text-[11.5px] text-white/50">
-              Customize all sections of the <code className="text-[#e3943f]">/about</code> page with instant real-time live preview.
+              Every section of the about page, with a live preview.
             </p>
           </div>
         </div>
@@ -255,7 +255,7 @@ export default function AboutPageManager({ token }) {
             rel="noreferrer"
             className="rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2 text-[11.5px] font-semibold text-white/80 hover:bg-white/[0.08] hover:text-white transition-all flex items-center gap-1.5"
           >
-            <span>View /about</span>
+            <span>View page</span>
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
               <polyline points="15 3 21 3 21 9" />

@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { getStoredPortfolioConfig } from '../../data/portfolioConfig'
 import FilterDrawer from './FilterDrawer'
-import banner1 from '../../assets/commercial/commercialbanner.mp4'
-import banner2 from '../../assets/commercial/commercialbanner2.mp4'
-import banner3 from '../../assets/commercial/commerceialbannner3.mp4'
+const banner1 = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
+const banner2 = '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4'
+const banner3 = '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
 
 const defaultBannerVideos = [
   { id: 1, num: '01', title: 'Grand Commercial Architecture', src: banner1 },
@@ -29,11 +29,12 @@ export default function CommercialPage({ lang = 'en' }) {
   }, [])
 
   const heroConfig = portfolioData.heroes?.['commercial-design'] || {}
+  const isOld = (u) => !u || String(u).includes('/assets/commercial') || String(u).includes('commercialbanner')
   const bannerVideos = useMemo(() => {
     return [
-      { id: 1, num: '01', title: 'Grand Commercial Architecture', src: heroConfig.banner1 || banner1 },
-      { id: 2, num: '02', title: 'Luxury Hospitality & Lounges', src: heroConfig.banner2 || banner2 },
-      { id: 3, num: '03', title: 'Monumental Business Complexes', src: heroConfig.banner3 || banner3 },
+      { id: 1, num: '01', title: 'Grand Commercial Architecture', src: !isOld(heroConfig.banner1) ? heroConfig.banner1 : banner1 },
+      { id: 2, num: '02', title: 'Luxury Hospitality & Lounges', src: !isOld(heroConfig.banner2) ? heroConfig.banner2 : banner2 },
+      { id: 3, num: '03', title: 'Monumental Business Complexes', src: !isOld(heroConfig.banner3) ? heroConfig.banner3 : banner3 },
     ]
   }, [heroConfig.banner1, heroConfig.banner2, heroConfig.banner3])
 

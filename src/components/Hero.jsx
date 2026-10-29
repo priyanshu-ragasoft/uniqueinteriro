@@ -53,7 +53,7 @@ const DEFAULT_HERO_CONFIG = {
   buttonText: 'Discuss your project',
   buttonLink: '/contacts',
   mediaType: 'video', // 'video' | 'image'
-  mediaUrl: '/video/4.mp4',
+  mediaUrl: 'cycle:default',
 }
 
 function HeroMedia({ config }) {
@@ -65,18 +65,25 @@ function HeroMedia({ config }) {
   const refs = [first, second]
 
   // If configured as an image background
-  if (config?.mediaType === 'image') {
+  if (config?.mediaType === 'image' && config?.mediaUrl && !config.mediaUrl.startsWith('cycle:')) {
     return (
       <img
-        src={config.mediaUrl || '/hero.jpg'}
+        src={config.mediaUrl}
         alt={config.title || 'Unique Graphics Luxury Architecture'}
         className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 scale-[1.02]"
       />
     )
   }
 
-  // If a custom single video is configured
-  if (config?.mediaType === 'video' && config?.mediaUrl && !config.mediaUrl.startsWith('cycle:')) {
+  // If a custom single video is explicitly configured (and not cycle or heavy 900mb file)
+  if (
+    config?.mediaType === 'video' &&
+    config?.mediaUrl &&
+    !config.mediaUrl.startsWith('cycle:') &&
+    !config.mediaUrl.includes('GREEN%20WOOD.mp4') &&
+    !config.mediaUrl.includes('GREEN WOOD.mp4') &&
+    !config.mediaUrl.includes('/video/4.mp4') // treat default old path as cycle
+  ) {
     return (
       <video
         key={config.mediaUrl}
@@ -92,7 +99,7 @@ function HeroMedia({ config }) {
     )
   }
 
-  // Default multi-clip cycling fallback
+  // Default purana original multi-clip cycling banner
   useEffect(() => {
     if (reduced) return
     const video = first.current
@@ -127,7 +134,9 @@ function HeroMedia({ config }) {
     <video
       key={layer}
       ref={ref}
+      src={layer === 0 ? clips[0] : undefined}
       muted
+      autoPlay
       playsInline
       preload="auto"
       aria-hidden="true"
@@ -144,7 +153,13 @@ export default function Hero({ lang }) {
   const [config, setConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('ug_homepage_hero_config')
-      if (saved) return JSON.parse(saved)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (!parsed.mediaType || parsed.mediaType === 'video') {
+          parsed.mediaUrl = 'cycle:default'
+        }
+        return parsed
+      }
     } catch {}
     return DEFAULT_HERO_CONFIG
   })
@@ -156,8 +171,12 @@ export default function Hero({ lang }) {
         const res = await fetch('/api/blogs/settings/hero')
         const data = await res.json()
         if (data.success && data.data) {
-          setConfig(data.data)
-          localStorage.setItem('ug_homepage_hero_config', JSON.stringify(data.data))
+          const remote = { ...data.data }
+          if (!remote.mediaType || remote.mediaType === 'video') {
+            remote.mediaUrl = 'cycle:default'
+          }
+          setConfig(remote)
+          localStorage.setItem('ug_homepage_hero_config', JSON.stringify(remote))
         }
       } catch {}
     }

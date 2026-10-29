@@ -129,6 +129,8 @@ function PinIcon() {
 
 import { getStoredPortfolioConfig } from '../data/portfolioConfig'
 import { getStoredServicesConfig } from '../data/servicesConfig'
+import { categoryPath, getStoredServiceTree, menuCategories, setStoredServiceTree, subcategoryPath, SUBCATEGORY_MEDIA_MAP, sanitizeMediaUrl, slugify } from '../data/serviceTree'
+import { getStoredPortfolioTree, setStoredPortfolioTree } from '../data/portfolioTree'
 
 function MenuLinks({ items, onNavigate, onHover, activeId }) {
   const [portfolioNav, setPortfolioNav] = useState(() => getStoredPortfolioConfig().navCards)
@@ -169,6 +171,104 @@ function MenuLinks({ items, onNavigate, onHover, activeId }) {
         )
       })}
     </ul>
+  )
+}
+
+function hoverCard(item) {
+  const slug = slugify(item?.slug || item?.id || item?.name)
+  const cleanImage = sanitizeMediaUrl(item?.menuImage, slug)
+  return {
+    title: item?.name || '',
+    caption: item?.menuDescription || '',
+    image: cleanImage || SUBCATEGORY_MEDIA_MAP[slug] || '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
+    video: item?.menuVideo || '',
+  }
+}
+
+function ServiceMenu({ categories, onNavigate, activeSlug, onHover, nested }) {
+  const [openSlug, setOpenSlug] = useState('')
+  const openCategory = categories.find((item) => item.slug === openSlug && item.subcategories?.length)
+
+  const categoryList = (
+    <ul className="flex min-w-[210px] flex-col gap-3">
+      {categories.map((item) => {
+        const subs = item.subcategories || []
+        const open = openSlug === item.slug
+        return (
+          <li key={item.id}>
+            <div className="flex items-center gap-3">
+              <a
+                href={item.href || categoryPath(item)}
+                onClick={onNavigate}
+                onMouseEnter={() => {
+                  setOpenSlug(subs.length ? item.slug : '')
+                  onHover?.(hoverCard(item))
+                }}
+                className={`text-[13px] tracking-[0.16em] uppercase transition-colors hover:text-[#e3943f] ${activeSlug === item.name ? 'text-[#e3943f]' : 'text-white'}`}
+              >
+                {item.name}
+              </a>
+              {subs.length ? (
+                <button
+                  type="button"
+                  aria-label={`${item.name} pages`}
+                  className={`text-white/80 ${open ? 'text-[#e3943f]' : ''}`}
+                  onMouseEnter={() => {
+                    setOpenSlug(item.slug)
+                    onHover?.(hoverCard(item))
+                  }}
+                  onClick={() => setOpenSlug(open ? '' : item.slug)}
+                >
+                  <svg viewBox="0 0 8 12" aria-hidden="true" className={`size-2 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}>
+                    <path d="M1.4 1 L6.4 6 L1.4 11" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                  </svg>
+                </button>
+              ) : null}
+            </div>
+            {nested && subs.length && open ? (
+              <ul className="mt-3 ml-1 flex flex-col gap-2 border-l border-white/15 pl-4">
+                {subs.map((sub) => (
+                  <li key={sub.id}>
+                    <a
+                      href={sub.href || subcategoryPath(item, sub)}
+                      onClick={onNavigate}
+                      onMouseEnter={() => onHover?.(hoverCard(sub))}
+                      className="text-[13px] tracking-[0.12em] text-white/85 uppercase hover:text-[#e3943f]"
+                    >
+                      {sub.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
+  )
+
+  if (nested) return categoryList
+
+  return (
+    <div className="flex items-start gap-12">
+      {categoryList}
+      {openCategory ? (
+        <ul className="flex min-w-[180px] flex-col gap-3 border-l border-white/25 pl-10">
+          {openCategory.subcategories.map((sub) => (
+            <li key={sub.id}>
+              <a
+                href={sub.href || subcategoryPath(openCategory, sub)}
+                onClick={onNavigate}
+                onMouseEnter={() => onHover?.(hoverCard(sub))}
+                className={`text-[13px] tracking-[0.14em] uppercase transition-colors hover:text-[#e3943f] ${activeSlug === sub.name ? 'text-[#e3943f]' : 'text-white'}`}
+              >
+                {sub.name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   )
 }
 
@@ -239,12 +339,54 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [barHover, setBarHover] = useState(false)
   const [previewId, setPreviewId] = useState(null)
+  const [previewCard, setPreviewCard] = useState(null)
   const headerRef = useRef(null)
   const closeTimer = useRef(null)
   const scrollTimer = useRef(null)
   const scrolling = useRef(false)
   const text = copy.en
+  const [serviceTree, setServiceTree] = useState(() => getStoredServiceTree())
+  const [portfolioTree, setPortfolioTree] = useState(() => getStoredPortfolioTree())
+  const services = menuCategories(serviceTree)
+  const portfolioItems = menuCategories(portfolioTree)
   const activeMenu = openMenu ? menus[openMenu] : null
+
+  useEffect(() => {
+    const refresh = () => setServiceTree(getStoredServiceTree())
+    window.addEventListener('services-pages-config-changed', refresh)
+    fetch('/api/blogs/settings/services-pages')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data.data?.categories) && data.data.categories.length) {
+          const defaultTree = getStoredServiceTree()
+          const hasAstro = data.data.categories.some((c) => c.slug === 'astro-vastu' || c.id === 'astro-vastu')
+          let finalCategories = data.data.categories
+          if (!hasAstro) {
+            const astroCat = defaultTree.categories.find((c) => c.slug === 'astro-vastu')
+            if (astroCat) finalCategories = [...finalCategories, astroCat]
+          }
+          setStoredServiceTree({ categories: finalCategories })
+          setServiceTree(getStoredServiceTree())
+        }
+      })
+      .catch(() => {})
+    return () => window.removeEventListener('services-pages-config-changed', refresh)
+  }, [])
+
+  useEffect(() => {
+    const refresh = () => setPortfolioTree(getStoredPortfolioTree())
+    window.addEventListener('portfolio-pages-config-changed', refresh)
+    fetch('/api/blogs/settings/portfolio-pages')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data.data?.categories) && data.data.categories.length) {
+          setStoredPortfolioTree({ categories: data.data.categories })
+          setPortfolioTree(getStoredPortfolioTree())
+        }
+      })
+      .catch(() => {})
+    return () => window.removeEventListener('portfolio-pages-config-changed', refresh)
+  }, [])
 
   useEffect(() => {
     const onScroll = () => {
@@ -290,6 +432,11 @@ export default function Navbar() {
   const showMenu = (id) => {
     clearClose()
     setOpenMenu(id)
+    if (id === 'services' || id === 'portfolio') {
+      const firstCategory = (id === 'services' ? services : portfolioItems)[0]
+      setPreviewCard(firstCategory ? hoverCard(firstCategory) : null)
+      return
+    }
     const first = text[menus[id].links][0][0]
     setPreviewId(first)
   }
@@ -434,14 +581,27 @@ export default function Navbar() {
 
           {activeMenu && linksOpen ? (
             <div id={`${openMenu}-menu`} className="nav-panel hidden px-8 pt-8 pb-12 md:block lg:px-10">
-              <div className="mx-auto flex max-w-[760px] items-start justify-center gap-16 lg:gap-24">
-                <MenuLinks
-                  items={text[activeMenu.links]}
-                  onNavigate={closeAll}
-                  onHover={setPreviewId}
-                  activeId={previewId}
-                />
-                <MenuPreview id={previewId} fallback={activeMenu} />
+              <div className={`mx-auto flex items-start justify-center gap-12 lg:gap-16 ${openMenu === 'services' || openMenu === 'portfolio' ? 'max-w-[980px]' : 'max-w-[760px]'}`}>
+                {openMenu === 'services' || openMenu === 'portfolio' ? (
+                  <ServiceMenu
+                    categories={openMenu === 'services' ? services : portfolioItems}
+                    onNavigate={closeAll}
+                    onHover={setPreviewCard}
+                    activeSlug={previewCard?.title}
+                  />
+                ) : (
+                  <MenuLinks
+                    items={text[activeMenu.links]}
+                    onNavigate={closeAll}
+                    onHover={setPreviewId}
+                    activeId={previewId}
+                  />
+                )}
+                {(openMenu === 'services' || openMenu === 'portfolio') && previewCard ? (
+                  <PreviewCard image={previewCard.image} video={previewCard.video} title={previewCard.title} caption={previewCard.caption} focus="center" />
+                ) : (
+                  <MenuPreview id={previewId} fallback={activeMenu} />
+                )}
               </div>
             </div>
           ) : null}
@@ -487,7 +647,7 @@ export default function Navbar() {
             </button>
             {openMenu === 'portfolio' ? (
               <div className="-mt-2 pl-1">
-                <MenuLinks items={text.portfolioLinks} onNavigate={closeAll} onHover={setPreviewId} activeId={previewId} />
+                <ServiceMenu nested categories={portfolioItems} onNavigate={closeAll} onHover={setPreviewCard} activeSlug={previewCard?.title} />
               </div>
             ) : null}
             <a href="/contacts" className="text-[16px] tracking-[0.14em] text-[#e3943f] uppercase" onClick={closeAll}>
@@ -504,7 +664,7 @@ export default function Navbar() {
             </button>
             {openMenu === 'services' ? (
               <div className="-mt-2 pl-1">
-                <MenuLinks items={text.serviceLinks} onNavigate={closeAll} onHover={setPreviewId} activeId={previewId} />
+                <ServiceMenu nested categories={services} onNavigate={closeAll} onHover={setPreviewCard} activeSlug={previewCard?.title} />
               </div>
             ) : null}
             <a href="/career" className={mobileItem('/career')} onClick={closeAll}>

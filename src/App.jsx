@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import CompletedProjects from './components/CompletedProjects'
 import Clients from './components/Clients'
 import AboutPage from './components/about/AboutPage'
+import ServicePage from './components/services/ServicePage'
+import { getStoredPortfolioTree, setStoredPortfolioTree } from './data/portfolioTree'
 import CommercialPage from './components/commercial/CommercialPage'
 import InteriorPage from './components/interior/InteriorPage'
 import ArchitecturalPage from './components/architectural/ArchitecturalPage'
@@ -57,6 +59,7 @@ export default function App() {
   const route = routeFromPath(path)
   const projectId = route.page === 'project' ? route.id : ''
   const studioId = route.page === 'studio' ? route.id : ''
+  const serviceOpen = route.page === 'service'
   const aboutOpen = route.page === 'about'
   const contactOpen = route.page === 'contacts'
   const commercialOpen = route.page === 'commercial'
@@ -69,16 +72,18 @@ export default function App() {
   const noteId = route.page === 'career' ? route.page : ''
   const innerPage = Boolean(
     projectId ||
-      studioId ||
-      aboutOpen ||
-      contactOpen ||
-      commercialOpen ||
-      interiorOpen ||
-      architecturalOpen ||
-      allProjectsOpen ||
-      blogOpen ||
-      legalId ||
-      noteId
+    studioId ||
+    serviceOpen ||
+    route.page === 'portfolio-item' ||
+    aboutOpen ||
+    contactOpen ||
+    commercialOpen ||
+    interiorOpen ||
+    architecturalOpen ||
+    allProjectsOpen ||
+    blogOpen ||
+    legalId ||
+    noteId
   )
   useLenis()
 
@@ -130,6 +135,17 @@ export default function App() {
         <LegalPage id={legalId} />
       ) : noteId ? (
         <StudioNote id={noteId} />
+      ) : serviceOpen ? (
+        <ServicePage categorySlug={route.category} subcategorySlug={route.subcategory} />
+      ) : route.page === 'portfolio-item' ? (
+        <ServicePage
+          categorySlug={route.category}
+          subcategorySlug={route.subcategory}
+          readTree={getStoredPortfolioTree}
+          writeTree={setStoredPortfolioTree}
+          endpoint="/api/blogs/settings/portfolio-pages"
+          eventName="portfolio-pages-config-changed"
+        />
       ) : studioId ? (
         <StudioPage lang={lang} id={studioId} />
       ) : (

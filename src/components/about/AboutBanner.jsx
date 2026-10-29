@@ -6,6 +6,7 @@ export default function AboutBanner({ lang }) {
   const [bannerConfig, setBannerConfig] = useState(() => {
     return getStoredAboutConfig().banner
   })
+  const [mediaError, setMediaError] = useState(false)
   const video = useRef(null)
 
   useEffect(() => {
@@ -26,8 +27,15 @@ export default function AboutBanner({ lang }) {
     DEFAULT_ABOUT_PAGE_CONFIG.banner[lang] ??
     DEFAULT_ABOUT_PAGE_CONFIG.banner.en
 
-  const mediaSrc = bannerConfig.mediaUrl?.trim() || aboutReels.night
-  const isVideo = !mediaSrc.match(/\.(jpeg|jpg|png|gif|webp|svg)$/i)
+  const DEFAULT_BANNER_IMAGE = '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg'
+  const rawMedia = bannerConfig.mediaUrl?.trim()
+  const isBadMedia =
+    !rawMedia ||
+    rawMedia.includes('GREEN%20WOOD.mp4') ||
+    rawMedia.includes('GREEN WOOD.mp4')
+  const mediaSrc = isBadMedia ? DEFAULT_BANNER_IMAGE : rawMedia
+
+  const isVideo = !mediaError && !mediaSrc.match(/\.(jpeg|jpg|png|gif|webp|svg)$/i)
 
   useEffect(() => {
     const node = video.current
@@ -43,25 +51,31 @@ export default function AboutBanner({ lang }) {
           key={mediaSrc}
           ref={video}
           src={mediaSrc}
+          poster={DEFAULT_BANNER_IMAGE}
           muted
           loop
           playsInline
           autoPlay
+          preload="auto"
+          onError={() => setMediaError(true)}
           className="absolute inset-0 h-full w-full object-cover"
         />
       ) : (
         <img
-          src={mediaSrc}
-          alt={text.title}
+          src={mediaError ? DEFAULT_BANNER_IMAGE : mediaSrc}
+          alt={text.title || 'About Unique Graphics'}
+          onError={(e) => {
+            e.currentTarget.src = DEFAULT_BANNER_IMAGE
+          }}
           className="absolute inset-0 h-full w-full object-cover"
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/35" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/40" />
       <div className="relative flex min-h-svh flex-col justify-end px-5 pt-28 pb-16 sm:px-10 lg:px-16 lg:pb-20">
         <h1 className="text-[42px] leading-none font-medium tracking-[-0.03em] text-[#e3943f] uppercase sm:text-6xl">
           {text.title}
         </h1>
-        <p className="mt-4 max-w-[36ch] text-[18px] leading-relaxed text-white/90 sm:text-[20px]">{text.text}</p>
+        <p className="mt-4 max-w-[42ch] text-[18px] leading-relaxed text-white/90 sm:text-[20px]">{text.text}</p>
         <a
           href={text.buttonLink || '/contacts'}
           className="mt-8 inline-flex w-fit rounded-full bg-[#e3943f] px-8 py-3.5 text-[13px] font-medium tracking-[0.12em] text-black uppercase transition-transform hover:scale-105"

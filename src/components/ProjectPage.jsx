@@ -43,16 +43,46 @@ export default function ProjectPage({ lang, id }) {
       <h1 className="mt-3 max-w-[18ch] text-[44px] leading-[0.95] font-normal tracking-[-0.03em] sm:text-6xl lg:text-7xl">
         {text.title}
       </h1>
-      <video
-        key={project.id}
-        ref={video}
-        src={project.video}
-        muted
-        loop
-        playsInline
-        controls
-        className="mt-8 h-[58vh] min-h-[420px] w-full rounded-[28px] bg-black object-cover sm:h-[72vh]"
-      />
+      {project.video ? (
+        <video
+          key={project.id}
+          ref={video}
+          src={project.video}
+          muted
+          loop
+          playsInline
+          controls
+          className="mt-8 h-[58vh] min-h-[420px] w-full rounded-[28px] bg-black object-cover sm:h-[72vh]"
+        />
+      ) : project.image ? (
+        <img
+          key={project.id}
+          src={project.image}
+          alt={text.title}
+          className="mt-8 h-[58vh] min-h-[420px] w-full rounded-[28px] bg-black object-cover sm:h-[72vh]"
+        />
+      ) : null}
+
+      {/* Gallery Grid if project has multiple gallery images */}
+      {project.gallery && project.gallery.length > 1 && (
+        <div className="mt-12">
+          <h2 className="mb-6 text-[13px] tracking-[0.18em] text-[#e3943f] uppercase font-bold">
+            Project Visual Gallery ({project.gallery.length} Renders)
+          </h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {project.gallery.map((imgSrc, idx) => (
+              <div key={idx} className="group relative overflow-hidden rounded-2xl bg-[#181818] border border-white/5">
+                {imgSrc.endsWith('.mp4') ? (
+                  <video src={imgSrc} controls playsInline className="h-[280px] w-full object-cover" />
+                ) : (
+                  <img src={imgSrc} alt="" className="h-[280px] w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mt-12 grid gap-10 lg:grid-cols-[1.4fr_0.6fr] lg:gap-16">
         <div>
           <p className="max-w-[62ch] text-[20px] leading-relaxed text-[#f3f0ea] sm:text-[22px]">{text.summary}</p>

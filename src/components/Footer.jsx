@@ -1,29 +1,11 @@
-const featuredJournal = [
-  {
-    title: 'The Spatial Poetry of Monumental Villas',
-    category: 'Architecture',
-    image: '/architectural/dubai_villa.jpg',
-    readTime: '6 min read',
-  },
-  {
-    title: 'The Neo-Monaco Aesthetic: Liquid Bronze & Onyx',
-    category: 'Interior Design',
-    image: '/interior/monaco.jpg',
-    readTime: '5 min read',
-  },
-  {
-    title: 'Biophilic Grand Atriums in Hospitality',
-    category: 'Commercial',
-    image: '/commercial/atrium.jpg',
-    readTime: '7 min read',
-  },
-  {
-    title: 'Alpine Haute Living in Courchevel 1850',
-    category: 'Alpine Architecture',
-    image: '/architectural/courchevel_chalet.jpg',
-    readTime: '6 min read',
-  },
-]
+import { useEffect, useState } from 'react'
+function newestFirst(list) {
+  return [...list].sort((a, b) => {
+    const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime()
+    const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime()
+    return bTime - aTime
+  })
+}
 
 const copy = {
   en: {
@@ -57,7 +39,6 @@ const copy = {
       ['/contacts', '1. Fill out the form'],
       ['/contacts', '2. We contact you'],
       ['/contacts', '3. Receive a tailored offer'],
-      ['/blog', 'Studio Journal & Insights'],
     ],
     contactLink: 'Contact the studio',
     brand: 'Unique Graphics',
@@ -134,8 +115,74 @@ function ColumnLinks({ items }) {
 
 export default function Footer() {
   const text = copy.en
+  const [journal, setJournal] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/blogs?published=true')
+        if (!res.ok) return
+        const json = await res.json()
+        if (!json.success || !Array.isArray(json.data)) return
+        const live = newestFirst(json.data).filter((post) => post.published !== false).slice(0, 8)
+        if (!cancelled) setJournal(live)
+      } catch {}
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
+    <>
+      {journal.length > 0 && (
+      <section className="bg-black text-white">
+        <div className="mx-auto max-w-[1440px] px-6 pt-14 pb-12 sm:px-10">
+          <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2.5">
+              <span className="h-2 w-2 rounded-full bg-[#e3943f]" />
+              <h3 className="text-[11px] font-bold tracking-[0.2em] text-white/60 uppercase">
+                Studio Journal & Recent Publications
+              </h3>
+            </div>
+            <a
+              href="/blog"
+              className="group flex items-center gap-2 text-[12px] font-bold tracking-[0.12em] text-[#e3943f] uppercase hover:text-[#f4b56c]"
+            >
+              <span>Read All Articles</span>
+              <span className="transition-transform group-hover:translate-x-1">→</span>
+            </a>
+          </div>
+          <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4">
+            {journal.map((item) => (
+              <a
+                key={item.slug || item._id || item.title}
+                href="/blog"
+                className="group flex w-[82%] shrink-0 snap-start flex-col justify-between overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-3.5 transition-all duration-300 hover:border-[#e3943f]/60 hover:bg-white/[0.05] sm:w-auto sm:shrink"
+              >
+                <div>
+                  <div className="relative mb-3 h-[160px] w-full overflow-hidden rounded-lg">
+                    <img src={item.image || '/hero.jpg'} alt={item.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <span className="absolute top-2 left-2 rounded-md bg-black/70 px-2 py-0.5 text-[9px] font-bold tracking-wider text-[#e3943f] uppercase">
+                      {item.category}
+                    </span>
+                  </div>
+                  <h4 className="line-clamp-2 text-[14px] leading-snug font-medium text-white/90 group-hover:text-[#e3943f]">
+                    {item.title}
+                  </h4>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-white/[0.05] pt-2 text-[11px] text-white/40">
+                  <span>{item.readTime || ''}</span>
+                  <span className="font-semibold text-[#e3943f]">Explore →</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+      )}
     <footer className="bg-black text-white">
       {/* Main Grid Navigation */}
       <div className="mx-auto grid max-w-[1440px] gap-12 px-6 py-14 sm:px-10 lg:grid-cols-[0.8fr_1fr_1fr_1fr_1.1fr] lg:gap-8 lg:py-16">
@@ -191,71 +238,6 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Featured Studio Journal & Blog Section in Footer */}
-      <div className="border-t border-white/10 mx-auto max-w-[1440px] px-6 sm:px-10 pt-10 pb-12">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-          <div className="flex items-center gap-2.5">
-            <span className="h-2 w-2 rounded-full bg-[#e3943f]" />
-            <h3 className="text-[11px] font-bold tracking-[0.2em] uppercase text-white/60">
-              STUDIO JOURNAL & RECENT PUBLICATIONS
-            </h3>
-          </div>
-          <div className="flex items-center justify-between sm:justify-end gap-4">
-            <span className="sm:hidden text-[10.5px] font-mono tracking-wider text-[#e3943f] uppercase flex items-center gap-1">
-              Swipe <span>→</span>
-            </span>
-            <a
-              href="/blog"
-              className="group flex items-center gap-2 text-[12px] font-bold tracking-[0.12em] text-[#e3943f] uppercase hover:text-[#f4b56c] transition-colors"
-            >
-              <span>Read All Articles</span>
-              <svg
-                className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </a>
-          </div>
-        </div>
-
-        <div
-          data-lenis-prevent="true"
-          className="flex sm:grid overflow-x-auto sm:overflow-visible sm:grid-cols-2 lg:grid-cols-4 gap-4 pb-3 sm:pb-0 no-scrollbar snap-x snap-mandatory -mx-6 px-6 sm:mx-0 sm:px-0"
-        >
-          {featuredJournal.map((item) => (
-            <a
-              key={item.title}
-              href="/blog"
-              className="group flex flex-col justify-between overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-3.5 transition-all duration-300 hover:border-[#e3943f]/60 hover:bg-white/[0.05] shrink-0 w-[275px] sm:w-auto snap-start"
-            >
-              <div>
-                <div className="relative h-[130px] w-full overflow-hidden rounded-lg mb-3">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  <span className="absolute top-2 left-2 rounded-md bg-black/70 px-2 py-0.5 text-[9px] font-bold tracking-wider text-[#e3943f] uppercase">
-                    {item.category}
-                  </span>
-                </div>
-                <h4 className="text-[13px] font-medium leading-snug text-white/90 group-hover:text-[#e3943f] transition-colors line-clamp-2">
-                  {item.title}
-                </h4>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-[11px] text-white/40 pt-2 border-t border-white/[0.05]">
-                <span>{item.readTime}</span>
-                <span className="text-[#e3943f] font-semibold group-hover:underline">Explore →</span>
-              </div>
-            </a>
-          ))}
-        </div>
-      </div>
-
       {/* Copyright & Legal Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 px-6 py-4 sm:px-10">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] text-white/65">
@@ -265,15 +247,12 @@ export default function Footer() {
           <a href="/terms" className="hover:text-white">
             {text.terms}
           </a>
-          <a href="/blog" className="hover:text-[#e3943f] text-[#e3943f]/80">
-            Journal
-          </a>
-          <a href="/admin" className="hover:text-[#e3943f] text-white/40 transition-colors">
-            Portal
-          </a>
+         
+        
         </div>
         <p className="text-[13px] text-white/55">{text.rights}</p>
       </div>
     </footer>
+    </>
   )
 }

@@ -1,843 +1,566 @@
-import React, { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
-  SERVICES_LIST,
-  DEFAULT_SERVICES_CONFIG,
-  getStoredServicesConfig,
-  setStoredServicesConfig,
-} from '../../data/servicesConfig'
+  buildDefaultServiceTree,
+  emptyPage,
+  getStoredServiceTree,
+  normalizeTree,
+  setStoredServiceTree,
+  slugify,
+  validateServiceTree,
+} from '../../data/serviceTree'
 
-export default function ServicesManager({ token }) {
-  const [activeTab, setActiveTab] = useState('nav') // 'nav' | 'heroes' | 'stages' | 'turnkey' | 'cta'
-  const [selectedService, setSelectedService] = useState('all-services')
-  const [config, setConfig] = useState(() => getStoredServicesConfig())
+function uid(prefix) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+}
+
+function move(list, index, direction) {
+  const next = [...list]
+  const target = index + direction
+  if (target < 0 || target >= next.length) return list
+  const [item] = next.splice(index, 1)
+  next.splice(target, 0, item)
+  return next.map((entry, order) => ({ ...entry, order }))
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Could not read that file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function uploadMedia(file, token) {
+  const dataUrl = await fileToDataUrl(file)
+  const res = await fetch('/api/blogs/uploads', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token || localStorage.getItem('ug_admin_token') || ''}`,
+    },
+    body: JSON.stringify({ filename: file.name, dataUrl }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || !data.url) throw new Error(data.message || 'Upload failed')
+  return data.url
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-bold tracking-wider text-white/50 uppercase">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+const inputClass = 'w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-[13px] text-white outline-none transition-colors placeholder:text-white/25 focus:border-[#e3943f]'
+
+function isVideoSource(src) {
+  const value = String(src || '').toLowerCase()
+  return value.startsWith('data:video') || /\.(mp4|webm|ogg|mov)(\?|#|$)/.test(value)
+}
+
+function MediaThumb({ src }) {
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [src])
+  if (!src) return null
+  return (
+    <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black">
+      {failed ? (
+        <span className="px-2 text-center text-[10px] text-white/40">Preview unavailable</span>
+      ) : isVideoSource(src) ? (
+        <video src={src} muted playsInline preload="metadata" className="h-full w-full object-contain" onError={() => setFailed(true)} />
+      ) : (
+        <img src={src} alt="" className="h-full w-full object-contain" onError={() => setFailed(true)} />
+      )}
+    </div>
+  )
+}
+
+const fileClass = 'block w-full text-[12px] text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-[#e3943f] file:px-3 file:py-1.5 file:text-[11px] file:font-bold file:uppercase file:text-black'
+
+function BlockToggle({ checked, onChange }) {
+  return (
+    <label className="inline-flex items-center gap-2 text-[12px] text-white/70">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      Show this block
+    </label>
+  )
+}
+
+export default function ServicesManager({
+  token,
+  title = 'Services',
+  endpoint = '/api/blogs/settings/services-pages',
+  readTree = getStoredServiceTree,
+  writeTree = setStoredServiceTree,
+  resetTree = buildDefaultServiceTree,
+  checkTree = validateServiceTree,
+  normalize = normalizeTree,
+  urlFor = (categoryItem, sub) => (sub ? `/services/${categoryItem.slug}/${sub.slug}` : `/services/${categoryItem.slug}`),
+  packTree = (value) => value,
+  hoverNote = 'Only the small picture in the Services menu. The page banner is set below.',
+  intro = 'Menu name, subcategories, banner, and page text. One save publishes the live site.',
+}) {
+  const [tree, setTree] = useState(() => readTree())
+  const [categoryId, setCategoryId] = useState(() => readTree().categories[0]?.id || '')
+  const [subId, setSubId] = useState('')
   const [loading, setLoading] = useState(false)
-  const [saveStatus, setSaveStatus] = useState(null) // 'saved' | 'error' | null
+  const [status, setStatus] = useState(null)
+  const [error, setError] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const authToken = token || (typeof localStorage !== 'undefined' ? localStorage.getItem('ug_admin_token') : '')
 
-  // Fetch backend settings on mount
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch('/api/blogs/settings/services-pages')
-        const data = await res.json()
-        if (data.success && data.data) {
-          setConfig((prev) => ({
-            ...prev,
-            navCards: { ...prev.navCards, ...(data.data.navCards || {}) },
-            heroes: { ...prev.heroes, ...(data.data.heroes || {}) },
-            stages: { ...prev.stages, ...(data.data.stages || {}) },
-            turnkey: {
-              ...prev.turnkey,
-              ...(data.data.turnkey || {}),
-              pillars: Array.isArray(data.data.turnkey?.pillars) && data.data.turnkey.pillars.length > 0
-                ? data.data.turnkey.pillars
-                : prev.turnkey.pillars,
-            },
-            cta: { ...prev.cta, ...(data.data.cta || {}) },
-          }))
-          setStoredServicesConfig(data.data)
-        }
-      } catch (err) {
-        console.error('Failed to load services settings:', err)
-      }
-    }
-    fetchSettings()
-  }, [])
-
-  // Auto-dismiss status messages
-  useEffect(() => {
-    if (saveStatus) {
-      const timer = setTimeout(() => setSaveStatus(null), 3500)
-      return () => clearTimeout(timer)
-    }
-  }, [saveStatus])
-
-  // Save handler
-  const handleSave = async () => {
-    setLoading(true)
-    setSaveStatus(null)
+  const storeFile = async (file, apply) => {
+    if (!file) return
+    setUploading(true)
+    setError('')
+    setStatus(null)
     try {
-      setStoredServicesConfig(config)
+      const url = await uploadMedia(file, authToken)
+      apply(url)
+      setStatus('uploaded')
+    } catch (err) {
+      setError(err.message || 'Upload failed')
+      setStatus('error')
+    } finally {
+      setUploading(false)
+    }
+  }
 
-      const res = await fetch('/api/blogs/settings/services-pages', {
+  useEffect(() => {
+    fetch(endpoint)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data.data?.categories) && data.data.categories.length) {
+          const next = normalize({ categories: data.data.categories })
+          setTree(next)
+          writeTree(next)
+          setCategoryId((curr) => curr || next.categories[0]?.id || '')
+        }
+      })
+      .catch(() => {})
+  }, [endpoint, normalize])
+
+  useEffect(() => {
+    if (!status) return undefined
+    const timer = setTimeout(() => setStatus(null), 3500)
+      return () => clearTimeout(timer)
+  }, [status])
+
+  const categories = [...tree.categories].sort((a, b) => a.order - b.order)
+  const category = categories.find((item) => item.id === categoryId) || categories[0]
+  const subcategories = [...(category?.subcategories || [])].sort((a, b) => a.order - b.order)
+  const subcategory = subcategories.find((item) => item.id === subId) || null
+  const editing = subcategory || category
+  const page = emptyPage(editing?.page || {})
+
+  const patchCategory = (id, patch) => {
+    setTree((current) => ({
+      categories: current.categories.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    }))
+  }
+
+  const patchSub = (id, patch) => {
+    if (!category) return
+    patchCategory(category.id, {
+      subcategories: category.subcategories.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    })
+  }
+
+  const patchEditing = (patch) => {
+    if (subcategory) patchSub(subcategory.id, patch)
+    else if (category) patchCategory(category.id, patch)
+  }
+
+  const patchPage = (block, value) => {
+    patchEditing({ page: { ...page, [block]: value } })
+  }
+
+  const save = async () => {
+    const errors = checkTree(tree)
+    if (errors.length) {
+      setError(errors[0])
+      setStatus('error')
+      return
+    }
+    if (JSON.stringify(tree).includes('data:')) {
+      setError('A photo or video is still stored inside the page. Choose the file again so it uploads, then Save.')
+      setStatus('error')
+      return
+    }
+    setLoading(true)
+    setError('')
+    writeTree(tree)
+    try {
+      const res = await fetch(endpoint, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token || localStorage.getItem('token') || ''}`,
+          Authorization: `Bearer ${token || localStorage.getItem('ug_admin_token') || ''}`,
         },
-        body: JSON.stringify(config),
+        body: JSON.stringify(packTree(tree)),
       })
       const data = await res.json()
-      if (data.success) {
-        setSaveStatus('saved')
+      if (!res.ok || data.success === false) {
+        setError(data.message || 'Save failed')
+        setStatus('error')
       } else {
-        setSaveStatus('saved') // persisted in localStorage fallback
+        setStatus('saved')
       }
-    } catch (err) {
-      console.warn('Backend sync failed, saved locally:', err)
-      setSaveStatus('saved')
+    } catch {
+      setStatus('saved')
     } finally {
       setLoading(false)
     }
   }
 
-  // Handle media upload
-  const handleMediaUpload = (targetKey, file) => {
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const dataUrl = e.target.result
-      if (targetKey.startsWith('nav.')) {
-        const sId = targetKey.split('.')[1]
-        setConfig((prev) => ({
-          ...prev,
-          navCards: {
-            ...prev.navCards,
-            [sId]: { ...prev.navCards[sId], image: dataUrl },
-          },
-        }))
-      } else if (targetKey.startsWith('hero.')) {
-        const [, sId, bannerField] = targetKey.split('.')
-        setConfig((prev) => ({
-          ...prev,
-          heroes: {
-            ...prev.heroes,
-            [sId]: { ...prev.heroes[sId], [bannerField]: dataUrl },
-          },
-        }))
-      }
+  const addCategory = () => {
+    const item = {
+      id: uid('cat'),
+      name: 'New category',
+      slug: `new-category-${tree.categories.length + 1}`,
+      menuDescription: '',
+      menuImage: '/nav/services-card.jpg',
+      menuVideo: '',
+      published: true,
+      showInMenu: true,
+      order: tree.categories.length,
+      page: emptyPage({ banner: { title: 'New category' } }),
+      subcategories: [],
     }
-    reader.readAsDataURL(file)
+    setTree((current) => ({ categories: [...current.categories, item] }))
+    setCategoryId(item.id)
+    setSubId('')
   }
 
-  // Reset to default
-  const handleResetToDefault = () => {
-    if (window.confirm('Reset all 10 service pages to factory studio defaults?')) {
-      setConfig(DEFAULT_SERVICES_CONFIG)
-      setStoredServicesConfig(DEFAULT_SERVICES_CONFIG)
-      setSaveStatus('saved')
+  const addSubcategory = () => {
+    if (!category) return
+    const item = {
+      id: uid('sub'),
+      name: 'New subcategory',
+      slug: `new-page-${category.subcategories.length + 1}`,
+      menuDescription: '',
+      menuImage: category.menuImage || '',
+      published: true,
+      order: category.subcategories.length,
+      page: emptyPage({ banner: { title: 'New subcategory' } }),
     }
+    patchCategory(category.id, { subcategories: [...category.subcategories, item] })
+    setSubId(item.id)
   }
-
-  const currentHero = config.heroes?.[selectedService] || {}
-  const currentNav = config.navCards?.[selectedService] || {}
-  const currentStages = config.stages?.[selectedService] || []
 
   return (
-    <div className="space-y-6 animate-fade-in text-white pb-24">
-      {/* HEADER BAR */}
-      <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 shadow-xl backdrop-blur-md">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 pb-24 text-white">
+      <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121212] p-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#e3943f] to-[#b36c20] text-black shadow-lg shadow-[#e3943f]/20">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                </svg>
-              </span>
-              <div>
-                <h1 className="text-[20px] font-bold tracking-tight text-white uppercase">
-                  Services & Disciplines Manager
-                </h1>
-                <p className="text-[12px] text-white/50">
-                  Full control over All Services and all 9 specialized engineering & design discipline pages, hero banners, stages, and nav cards.
-                </p>
+          <h1 className="text-[20px] font-bold uppercase">{title}</h1>
+          <p className="max-w-xl text-[13px] leading-relaxed text-white/55">{intro}</p>
               </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3">
+        <div className="flex gap-3">
             <button
               type="button"
-              onClick={handleResetToDefault}
-              className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[11.5px] font-bold tracking-wider text-white/70 uppercase transition-all hover:bg-white/[0.08] hover:text-white"
-            >
-              Reset Defaults
+            onClick={() => {
+              if (window.confirm(`Replace the ${title.toLowerCase()} menu with the starter categories?`)) {
+                const next = resetTree()
+                setTree(next)
+                setCategoryId(next.categories[0].id)
+                setSubId('')
+              }
+            }}
+            className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[11.5px] font-bold tracking-wider text-white/80 uppercase hover:bg-white/[0.08]"
+          >
+            Reset starter menu
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={loading}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#e3943f] to-[#d68532] px-6 py-2.5 text-[12px] font-bold tracking-wider text-black uppercase shadow-lg shadow-[#e3943f]/25 transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <span>Save & Publish Live</span>
-                </>
-              )}
+          <button type="button" onClick={save} disabled={loading} className="rounded-xl bg-gradient-to-r from-[#e3943f] to-[#d68532] px-5 py-2.5 text-[11.5px] font-bold tracking-[0.14em] text-black uppercase shadow-md shadow-[#e3943f]/25 disabled:opacity-50">
+            {loading ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>
 
-        {/* STATUS ALERT */}
-        {saveStatus === 'saved' && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[12px] font-medium text-emerald-400 animate-fade-in">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-            <span>All 10 services pages updated and published live to public website!</span>
-          </div>
-        )}
-      </div>
+      {uploading ? <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[13px]">Uploading file… wait for this to finish, then press Save.</p> : null}
+      {status === 'uploaded' ? <p className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-[13px]">File uploaded. Press Save to publish it.</p> : null}
+      {status === 'saved' ? <p className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-[13px]">Saved. The public menu and pages use this content.</p> : null}
+      {status === 'error' ? <p className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-[13px]">{error || 'Could not save.'}</p> : null}
 
-      {/* MAIN NAVIGATION TABS */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-3">
-        {[
-          { id: 'nav', label: '1. Nav & Dropdown Cards', badge: '10 Services' },
-          { id: 'heroes', label: '2. Page Hero Banners', badge: '10 Portals' },
-          { id: 'stages', label: '3. 4-Stage Process', badge: 'Execution' },
-          { id: 'turnkey', label: '4. Turnkey Pillars', badge: '/all-services' },
-          { id: 'cta', label: '5. Consultation CTA', badge: 'Bottom Card' },
-        ].map((tab) => (
+      <div className="space-y-4">
+        <section className="rounded-2xl border border-white/10 bg-[#141414] p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">1. Category</h2>
+            <button type="button" onClick={addCategory} className="text-[12px] font-bold text-[#e3943f]">Add</button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((item) => (
           <button
-            key={tab.id}
+                key={item.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-[12px] font-bold tracking-wider uppercase transition-all cursor-pointer ${
-              activeTab === tab.id
-                ? 'bg-[#e3943f] text-black shadow-md shadow-[#e3943f]/20'
-                : 'border border-white/10 bg-[#161616] text-white/70 hover:bg-white/[0.06] hover:text-white'
-            }`}
-          >
-            <span>{tab.label}</span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[9.5px] font-mono ${
-                activeTab === tab.id ? 'bg-black/20 text-black' : 'bg-white/10 text-white/50'
-              }`}
-            >
-              {tab.badge}
-            </span>
+                onClick={() => { setCategoryId(item.id); setSubId('') }}
+                className={`rounded-full border px-4 py-2 text-[12px] font-semibold tracking-wide ${category?.id === item.id ? 'border-[#e3943f] bg-[#e3943f] text-black' : 'border-white/10 bg-white/[0.03] text-white/80'}`}
+              >
+                {item.name || 'Untitled'}
           </button>
         ))}
       </div>
-
-      {/* SERVICE PICKER BAR (FOR TABS 1, 2, 3) */}
-      {(activeTab === 'nav' || activeTab === 'heroes' || activeTab === 'stages') && (
-        <div className="rounded-2xl border border-white/10 bg-[#141414] p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold tracking-[0.18em] text-[#e3943f] uppercase">
-              Select Discipline / Service Page to Edit:
-            </span>
-            <span className="text-[10.5px] font-mono text-white/40">/{selectedService}</span>
-          </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar flex-wrap">
-            {SERVICES_LIST.map((srv) => (
+          {category ? (
+            <div className="mt-3 flex gap-3 text-[11px] uppercase tracking-wider text-white/45">
+              <button type="button" onClick={() => setTree((current) => ({ categories: move(categories, categories.findIndex((item) => item.id === category.id), -1) }))}>Move left</button>
+              <button type="button" onClick={() => setTree((current) => ({ categories: move(categories, categories.findIndex((item) => item.id === category.id), 1) }))}>Move right</button>
               <button
-                key={srv.id}
                 type="button"
-                onClick={() => setSelectedService(srv.id)}
-                className={`rounded-xl px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all border shrink-0 ${
-                  selectedService === srv.id
-                    ? 'border-[#e3943f] bg-[#e3943f]/15 text-[#e3943f]'
-                    : 'border-white/10 bg-[#1a1a1a] text-white/60 hover:text-white'
-                }`}
+                onClick={() => {
+                  if (window.confirm(`Delete “${category.name}” and its subcategories?`)) {
+                    setTree((current) => ({ categories: current.categories.filter((entry) => entry.id !== category.id) }))
+                    setSubId('')
+                  }
+                }}
               >
-                {srv.label}
+                Delete
+              </button>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-[#141414] p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">2. Subcategory</h2>
+            <button type="button" onClick={addSubcategory} className="text-[12px] font-bold text-[#e3943f]">Add</button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setSubId('')} className={`rounded-full border px-4 py-2 text-[12px] font-semibold ${!subcategory ? 'border-[#e3943f] bg-[#e3943f] text-black' : 'border-white/10 text-white/80'}`}>
+              Category page
+            </button>
+            {subcategories.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setSubId(item.id)}
+                className={`rounded-full border px-4 py-2 text-[12px] font-semibold ${subcategory?.id === item.id ? 'border-[#e3943f] bg-[#e3943f] text-black' : 'border-white/10 bg-white/[0.03] text-white/80'}`}
+              >
+                {item.name || 'Untitled'}
               </button>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* CONTENT GRID: 2 COLUMNS (CONTROLS LEFT, LIVE PREVIEW RIGHT) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: EDIT CONTROLS */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* TAB 1: NAVIGATION & DROPDOWN CARDS */}
-          {activeTab === 'nav' && (
-            <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-              <h3 className="text-[13px] font-bold uppercase tracking-wider text-white">
-                Dropdown Menu Card for <span className="text-[#e3943f]">/{selectedService}</span>
-              </h3>
-
-              <div>
-                <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                  Menu Item Label:
-                </label>
-                <input
-                  type="text"
-                  value={currentNav.title || ''}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      navCards: {
-                        ...prev.navCards,
-                        [selectedService]: { ...currentNav, title: e.target.value },
-                      },
-                    }))
+          {subcategory ? (
+            <div className="mt-3 flex gap-3 text-[11px] uppercase tracking-wider text-white/45">
+              <button type="button" onClick={() => patchCategory(category.id, { subcategories: move(subcategories, subcategories.findIndex((item) => item.id === subcategory.id), -1) })}>Move left</button>
+              <button type="button" onClick={() => patchCategory(category.id, { subcategories: move(subcategories, subcategories.findIndex((item) => item.id === subcategory.id), 1) })}>Move right</button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`Delete “${subcategory.name}”?`)) {
+                    patchCategory(category.id, { subcategories: category.subcategories.filter((entry) => entry.id !== subcategory.id) })
+                    setSubId('')
                   }
-                  placeholder="e.g. ALL SERVICES"
-                  className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
-                />
+                }}
+              >
+                Delete
+              </button>
               </div>
+          ) : null}
+        </section>
 
+        {editing ? (
+          <section className="space-y-4">
+            <div className="space-y-5 rounded-2xl border border-white/10 bg-[#141414] p-5">
               <div>
-                <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                  Hover Description / Pitch:
-                </label>
-                <textarea
-                  rows={2}
-                  value={currentNav.hover || ''}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      navCards: {
-                        ...prev.navCards,
-                        [selectedService]: { ...currentNav, hover: e.target.value },
-                      },
-                    }))
-                  }
-                  placeholder="e.g. From the first drawing to the finished room."
-                  className="w-full rounded-xl border border-white/10 bg-[#181818] p-3 text-[12px] text-white outline-none focus:border-[#e3943f] resize-none"
-                />
+                <p className="text-[10px] font-bold tracking-[0.2em] text-[#e3943f] uppercase">Menu card</p>
+                <h2 className="mt-1 text-[16px] font-semibold">{subcategory ? 'Subcategory' : 'Category'}</h2>
               </div>
-
-              {/* Image / Video File */}
-              <div className="space-y-2">
-                <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider">
-                  Dropdown Card Thumbnail Image / Video URL:
-                </label>
-                <div className="flex gap-2">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Menu name">
                   <input
-                    type="text"
-                    value={currentNav.image || ''}
-                    onChange={(e) =>
-                      setConfig((prev) => ({
-                        ...prev,
-                        navCards: {
-                          ...prev.navCards,
-                          [selectedService]: { ...currentNav, image: e.target.value },
-                        },
-                      }))
-                    }
-                    placeholder="/nav/services-card.jpg or URL"
-                    className="flex-1 rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
+                    className={inputClass}
+                    value={editing.name}
+                    onChange={(event) => {
+                      const name = event.target.value
+                      patchEditing({ name, slug: editing.slug || slugify(name) })
+                    }}
                   />
-                  <label className="rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2.5 text-[11.5px] font-bold tracking-wider text-white uppercase hover:bg-white/[0.1] transition-all cursor-pointer flex items-center gap-2 shrink-0">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="17 8 12 3 7 8" />
-                      <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                    <span>Upload</span>
-                    <input
-                      type="file"
-                      accept="image/*,video/*"
-                      className="hidden"
-                      onChange={(e) =>
-                        handleMediaUpload(`nav.${selectedService}`, e.target.files?.[0])
-                      }
-                    />
-                  </label>
+                </Field>
+                <Field label="URL slug">
+                  <input className={inputClass} value={editing.slug} onChange={(event) => patchEditing({ slug: slugify(event.target.value) })} />
+                </Field>
+              </div>
+              <Field label="Hover text">
+                <input className={inputClass} value={editing.menuDescription || ''} onChange={(event) => patchEditing({ menuDescription: event.target.value })} placeholder="Short line under the picture" />
+              </Field>
+              <Field label="Hover image">
+                <p className="mb-2 text-[12px] leading-relaxed text-white/45">{hoverNote}</p>
+                <div className="flex items-center gap-4">
+                  <MediaThumb src={editing.menuImage || '/nav/services-card.jpg'} />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <input className={inputClass} value={editing.menuImage || ''} onChange={(event) => patchEditing({ menuImage: event.target.value })} placeholder="/uploads/photo.jpg" />
+                    <input type="file" accept="image/*" className="block w-full text-[12px] text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-[#e3943f] file:px-3 file:py-1.5 file:text-[11px] file:font-bold file:uppercase file:text-black" onChange={(event) => storeFile(event.target.files?.[0], (url) => patchEditing({ menuImage: url }))} />
+            </div>
                 </div>
+              </Field>
+              {!subcategory ? (
+                <Field label="Menu video (optional)">
+                  <input className={inputClass} value={editing.menuVideo || ''} onChange={(event) => patchEditing({ menuVideo: event.target.value })} placeholder="Video URL" />
+                </Field>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-5 border-t border-white/10 pt-4">
+                <label className="inline-flex items-center gap-2 text-[13px]">
+                  <input type="checkbox" checked={editing.published !== false} onChange={(event) => patchEditing({ published: event.target.checked })} />
+                  Published
+                </label>
+                {!subcategory ? (
+                  <label className="inline-flex items-center gap-2 text-[13px]">
+                    <input type="checkbox" checked={editing.showInMenu !== false} onChange={(event) => patchEditing({ showInMenu: event.target.checked })} />
+                    Show in the services menu
+                </label>
+                ) : null}
               </div>
             </div>
-          )}
 
-          {/* TAB 2: PAGE HERO BANNERS & PHILOSOPHY */}
-          {activeTab === 'heroes' && (
-            <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-              <h3 className="text-[13px] font-bold uppercase tracking-wider text-white">
-                Hero Banner for <span className="text-[#e3943f]">/{selectedService}</span>
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                    Heading Lead:
-                  </label>
-                  <input
-                    type="text"
-                    value={currentHero.titleLead || ''}
-                    onChange={(e) =>
-                      setConfig((prev) => ({
-                        ...prev,
-                        heroes: {
-                          ...prev.heroes,
-                          [selectedService]: { ...currentHero, titleLead: e.target.value },
-                        },
-                      }))
-                    }
-                    placeholder="e.g. All services or Architecture"
-                    className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10.5px] font-bold text-[#e3943f] uppercase tracking-wider mb-1">
-                    Heading Accent:
-                  </label>
-                  <input
-                    type="text"
-                    value={currentHero.titleAccent || ''}
-                    onChange={(e) =>
-                      setConfig((prev) => ({
-                        ...prev,
-                        heroes: {
-                          ...prev.heroes,
-                          [selectedService]: { ...currentHero, titleAccent: e.target.value },
-                        },
-                      }))
-                    }
-                    placeholder="e.g. by Unique Graphics®"
-                    className="w-full rounded-xl border border-[#e3943f]/40 bg-[#181818] px-3.5 py-2.5 text-[12.5px] font-bold text-[#e3943f] outline-none focus:border-[#e3943f]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                  Hero Subtitle (Primary Subheading):
-                </label>
-                <textarea
-                  rows={2}
-                  value={currentHero.subtitle || ''}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      heroes: {
-                        ...prev.heroes,
-                        [selectedService]: { ...currentHero, subtitle: e.target.value },
-                      },
-                    }))
-                  }
-                  placeholder="From initial architectural sketches to final white-glove furnishing handover."
-                  className="w-full rounded-xl border border-white/10 bg-[#181818] p-3 text-[12px] text-white outline-none focus:border-[#e3943f] resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                  Detailed Studio Narrative:
-                </label>
-                <textarea
-                  rows={3}
-                  value={currentHero.detail || ''}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      heroes: {
-                        ...prev.heroes,
-                        [selectedService]: { ...currentHero, detail: e.target.value },
-                      },
-                    }))
-                  }
-                  placeholder="One studio can hold the project from sketch to the last delivery..."
-                  className="w-full rounded-xl border border-white/10 bg-[#181818] p-3 text-[12px] text-white outline-none focus:border-[#e3943f] resize-none"
-                />
-              </div>
-
-              {/* Video Loops */}
-              <div className="space-y-3 pt-2 border-t border-white/10">
-                <label className="block text-[11px] font-bold text-[#e3943f] uppercase tracking-wider">
-                  Background Video Loops (Rotates automatically)
-                </label>
-
-                {['banner1', 'banner2', 'banner3'].map((bKey, idx) => (
-                  <div key={bKey} className="flex gap-2 items-center">
-                    <span className="text-[10px] font-mono text-white/40 uppercase w-16 shrink-0">
-                      Reel {idx + 1}:
-                    </span>
-                    <input
-                      type="text"
-                      value={currentHero[bKey] || ''}
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          heroes: {
-                            ...prev.heroes,
-                            [selectedService]: { ...currentHero, [bKey]: e.target.value },
-                          },
-                        }))
-                      }
-                      placeholder={`Default: Ultra-HD Studio Video Loop ${idx + 1}`}
-                      className="flex-1 rounded-xl border border-white/10 bg-[#181818] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
-                    />
-                    <label className="rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-[10.5px] font-bold text-white uppercase hover:bg-white/[0.1] transition-all cursor-pointer shrink-0">
-                      <span>Upload</span>
-                      <input
-                        type="file"
-                        accept="video/*,image/*"
-                        className="hidden"
-                        onChange={(e) =>
-                          handleMediaUpload(`hero.${selectedService}.${bKey}`, e.target.files?.[0])
-                        }
-                      />
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: 4 PROCESS STAGES */}
-          {activeTab === 'stages' && (
-            <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-              <h3 className="text-[13px] font-bold uppercase tracking-wider text-white">
-                4-Stage Implementation Process for <span className="text-[#e3943f]">/{selectedService}</span>
-              </h3>
-
-              <div className="space-y-4">
-                {currentStages.map((stage, idx) => (
-                  <div key={idx} className="rounded-xl border border-white/10 bg-[#181818] p-4 space-y-3">
+            <article className="rounded-2xl border border-white/10 bg-[#121212] p-5 space-y-3">
+              <div className="flex items-center justify-between"><h3 className="font-bold">1. Banner</h3><BlockToggle checked={Boolean(page.banner?.show)} onChange={(show) => patchPage('banner', { ...(page.banner || {}), show })} /></div>
+              <Field label="Small label"><input className={inputClass} value={page.banner?.label || ''} onChange={(event) => patchPage('banner', { ...(page.banner || {}), label: event.target.value })} /></Field>
+              <Field label="Page title"><input className={inputClass} value={page.banner?.title || ''} onChange={(event) => patchPage('banner', { ...(page.banner || {}), title: event.target.value })} /></Field>
+              <Field label="Accent line"><input className={inputClass} value={page.banner?.accent || ''} onChange={(event) => patchPage('banner', { ...(page.banner || {}), accent: event.target.value })} /></Field>
+              <Field label="Subtitle"><textarea className={inputClass} rows={3} value={page.banner?.subtitle || ''} onChange={(event) => patchPage('banner', { ...(page.banner || {}), subtitle: event.target.value })} /></Field>
+              {[0, 1, 2].map((index) => {
+                const src = page.banner?.images?.[index] || ''
+                return (
+                  <Field key={index} label={`Banner photo or video ${index + 1}`}>
                     <div className="flex items-center gap-3">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#e3943f] text-black font-bold text-[12px]">
-                        {stage.num || `0${idx + 1}`}
-                      </span>
+                      <MediaThumb src={src} />
+                      <div className="min-w-0 flex-1 space-y-2">
                       <input
-                        type="text"
-                        value={stage.title || ''}
-                        onChange={(e) => {
-                          const updated = [...currentStages]
-                          updated[idx] = { ...stage, title: e.target.value }
-                          setConfig((prev) => ({
-                            ...prev,
-                            stages: { ...prev.stages, [selectedService]: updated },
-                          }))
-                        }}
-                        placeholder="Stage Title"
-                        className="flex-1 rounded-lg border border-white/10 bg-[#121212] px-3 py-1.5 text-[12px] text-white font-bold outline-none focus:border-[#e3943f]"
-                      />
-                    </div>
-                    <textarea
-                      rows={2}
-                      value={stage.desc || ''}
-                      onChange={(e) => {
-                        const updated = [...currentStages]
-                        updated[idx] = { ...stage, desc: e.target.value }
-                        setConfig((prev) => ({
-                          ...prev,
-                          stages: { ...prev.stages, [selectedService]: updated },
-                        }))
-                      }}
-                      placeholder="Stage Description"
-                      className="w-full rounded-lg border border-white/10 bg-[#121212] p-2.5 text-[11.5px] text-white outline-none focus:border-[#e3943f] resize-none"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: TURNKEY PILLARS */}
-          {activeTab === 'turnkey' && (
-            <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-              <h3 className="text-[13px] font-bold uppercase tracking-wider text-white">
-                Turnkey Integration Section <span className="text-[#e3943f]">(Rendered on /all-services)</span>
-              </h3>
-
-              <div>
-                <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                  Section Headline:
-                </label>
+                          className={inputClass}
+                          value={src}
+                          placeholder="Image or video URL"
+                          onChange={(event) => {
+                            const images = [...(page.banner?.images || ['', '', ''])]
+                            images[index] = event.target.value
+                            patchPage('banner', { ...(page.banner || {}), images })
+                          }}
+                        />
                 <input
-                  type="text"
-                  value={config.turnkey?.title || ''}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      turnkey: { ...prev.turnkey, title: e.target.value },
-                    }))
-                  }
-                  placeholder="Full Turnkey Integration Without Compromise"
-                  className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
+                          type="file"
+                          accept="image/*,video/mp4,video/webm,video/ogg,.mov"
+                          className={fileClass}
+                          onChange={(event) => storeFile(event.target.files?.[0], (url) => {
+                            const images = [...(page.banner?.images || ['', '', ''])]
+                            images[index] = url
+                            patchPage('banner', { ...(page.banner || {}), images })
+                          })}
                 />
               </div>
-
-              <div>
-                <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                  Section Subtitle:
-                </label>
-                <textarea
-                  rows={2}
-                  value={config.turnkey?.subtitle || ''}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      turnkey: { ...prev.turnkey, subtitle: e.target.value },
-                    }))
-                  }
-                  placeholder="We integrate architects, interior designers, BIM engineers..."
-                  className="w-full rounded-xl border border-white/10 bg-[#181818] p-3 text-[12px] text-white outline-none focus:border-[#e3943f] resize-none"
-                />
-              </div>
-
-              {/* 4 Pillars */}
-              <div className="space-y-3 pt-2 border-t border-white/10">
-                <label className="block text-[11px] font-bold text-[#e3943f] uppercase tracking-wider">
-                  4 Core Turnkey Pillars:
-                </label>
-
-                {(config.turnkey?.pillars || []).map((pillar, idx) => (
-                  <div key={idx} className="rounded-xl border border-white/10 bg-[#181818] p-3.5 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[14px] font-bold text-[#e3943f] font-mono">
-                        {pillar.num || `0${idx + 1}`}
-                      </span>
-                      <input
-                        type="text"
-                        value={pillar.title || ''}
-                        onChange={(e) => {
-                          const updated = [...config.turnkey.pillars]
-                          updated[idx] = { ...pillar, title: e.target.value }
-                          setConfig((prev) => ({
-                            ...prev,
-                            turnkey: { ...prev.turnkey, pillars: updated },
-                          }))
-                        }}
-                        placeholder="Pillar Title"
-                        className="flex-1 rounded-lg border border-white/10 bg-[#121212] px-3 py-1.5 text-[12px] text-white font-bold outline-none focus:border-[#e3943f]"
-                      />
                     </div>
-                    <textarea
-                      rows={2}
-                      value={pillar.desc || ''}
-                      onChange={(e) => {
-                        const updated = [...config.turnkey.pillars]
-                        updated[idx] = { ...pillar, desc: e.target.value }
-                        setConfig((prev) => ({
-                          ...prev,
-                          turnkey: { ...prev.turnkey, pillars: updated },
-                        }))
-                      }}
-                      placeholder="Pillar Description"
-                      className="w-full rounded-lg border border-white/10 bg-[#121212] p-2 text-[11.5px] text-white outline-none focus:border-[#e3943f] resize-none"
-                    />
-                  </div>
-                ))}
-              </div>
+                  </Field>
+                )
+              })}
+            </article>
+
+            <article className="rounded-2xl border border-white/10 bg-[#121212] p-5 space-y-3">
+              <div className="flex items-center justify-between"><h3 className="font-bold">2. Intro</h3><BlockToggle checked={Boolean(page.intro?.show)} onChange={(show) => patchPage('intro', { ...(page.intro || {}), show })} /></div>
+              <Field label="Heading"><input className={inputClass} value={page.intro?.heading || ''} onChange={(event) => patchPage('intro', { ...(page.intro || {}), heading: event.target.value })} /></Field>
+              <Field label="Paragraph"><textarea className={inputClass} rows={3} value={page.intro?.paragraph1 || ''} onChange={(event) => patchPage('intro', { ...(page.intro || {}), paragraph1: event.target.value })} /></Field>
+              <Field label="Second paragraph"><textarea className={inputClass} rows={3} value={page.intro?.paragraph2 || ''} onChange={(event) => patchPage('intro', { ...(page.intro || {}), paragraph2: event.target.value })} /></Field>
+            </article>
+
+            <RepeatBlock
+              title="3. Highlights"
+              show={Boolean(page.highlights?.show)}
+              onShow={(show) => patchPage('highlights', { ...(page.highlights || {}), show })}
+              items={page.highlights?.items || []}
+              onItems={(items) => patchPage('highlights', { ...(page.highlights || {}), items })}
+              blank={() => ({ id: uid('card'), title: '', text: '', image: '' })}
+              render={(item, update) => (
+                <>
+                  <Field label="Title"><input className={inputClass} value={item.title || ''} onChange={(event) => update({ title: event.target.value })} /></Field>
+                  <Field label="Text"><textarea className={inputClass} rows={2} value={item.text || ''} onChange={(event) => update({ text: event.target.value })} /></Field>
+                  <Field label="Photo or video (optional)">
+                    <div className="flex items-center gap-3">
+                      <MediaThumb src={item.image} />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <input className={inputClass} value={item.image || ''} onChange={(event) => update({ image: event.target.value })} />
+                        <input type="file" accept="image/*,video/mp4,video/webm,video/ogg,.mov" className={fileClass} onChange={(event) => storeFile(event.target.files?.[0], (url) => update({ image: url }))} />
             </div>
-          )}
-
-          {/* TAB 5: CTA BANNER */}
-          {activeTab === 'cta' && (
-            <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-              <h3 className="text-[13px] font-bold uppercase tracking-wider text-white">
-                Bottom Consultation CTA Card
-              </h3>
-
-              <div>
-                <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                  CTA Headline:
-                </label>
-                <input
-                  type="text"
-                  value={config.cta?.title || ''}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      cta: { ...prev.cta, title: e.target.value },
-                    }))
-                  }
-                  placeholder="Ready to initiate your luxury estate or commercial project?"
-                  className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                  CTA Subtext:
-                </label>
-                <textarea
-                  rows={2}
-                  value={config.cta?.subtitle || ''}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      cta: { ...prev.cta, subtitle: e.target.value },
-                    }))
-                  }
-                  placeholder="Contact our architectural directors to arrange a confidential consultation..."
-                  className="w-full rounded-xl border border-white/10 bg-[#181818] p-3 text-[12px] text-white outline-none focus:border-[#e3943f] resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                    Button Label:
-                  </label>
-                  <input
-                    type="text"
-                    value={config.cta?.buttonText || ''}
-                    onChange={(e) =>
-                      setConfig((prev) => ({
-                        ...prev,
-                        cta: { ...prev.cta, buttonText: e.target.value },
-                      }))
-                    }
-                    placeholder="Discuss a project"
-                    className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                    Button Link:
-                  </label>
-                  <input
-                    type="text"
-                    value={config.cta?.buttonLink || '/contacts'}
-                    onChange={(e) =>
-                      setConfig((prev) => ({
-                        ...prev,
-                        cta: { ...prev.cta, buttonLink: e.target.value },
-                      }))
-                    }
-                    placeholder="/contacts"
-                    className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT COLUMN: INTERACTIVE LIVE PREVIEW */}
-        <div className="lg:col-span-5 sticky top-6 space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-[#121212] p-5 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <span className="text-[11px] font-bold tracking-[0.2em] text-[#e3943f] uppercase flex items-center gap-2">
-                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                Live Studia 54 Public Preview
-              </span>
-              <span className="text-[10px] font-mono text-white/40 uppercase">
-                {activeTab === 'nav'
-                  ? 'Services Dropdown'
-                  : activeTab === 'heroes'
-                  ? 'Portal Hero'
-                  : activeTab === 'stages'
-                  ? '4 Process Stages'
-                  : 'Turnkey & CTA'}
-              </span>
-            </div>
-
-            <div className="mt-4">
-              {/* PREVIEW: NAV CARD */}
-              {activeTab === 'nav' && (
-                <div className="space-y-4 flex flex-col items-center">
-                  <div className="w-full max-w-[280px] bg-[#161616] p-4 rounded-[26px] border border-white/10 shadow-xl">
-                    <div className="aspect-square w-full rounded-[20px] overflow-hidden bg-black relative border border-white/10">
-                      <img
-                        src={currentNav.image || '/nav/services-card.jpg'}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
                     </div>
-                    <p className="mt-4 text-[12px] tracking-[0.16em] text-[#e3943f] uppercase font-bold">
-                      {currentNav.title || selectedService.toUpperCase()}
-                    </p>
-                    <p className="mt-2 text-[13px] leading-snug text-white/80">
-                      {currentNav.hover || 'From the first drawing to the finished room.'}
-                    </p>
-                  </div>
-                  <span className="text-[10.5px] text-white/40 italic">
-                    * Appears on desktop navbar when hovering over SERVICES menu.
-                  </span>
-                </div>
+                  </Field>
+                </>
               )}
+            />
 
-              {/* PREVIEW: HERO BANNER */}
-              {activeTab === 'heroes' && (
-                <div className="space-y-3">
-                  <div className="rounded-2xl overflow-hidden border border-white/10 aspect-video relative bg-black flex flex-col justify-end p-5">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/30 z-[1]" />
-                    <img
-                      src="/nav/services-card.jpg"
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover scale-105"
-                    />
-
-                    <div className="relative z-10 space-y-1.5">
-                      <div className="text-[10px] text-white/60">‹ Home</div>
-                      <h2 className="text-[17px] font-bold uppercase leading-tight tracking-tight">
-                        {currentHero.titleLead || 'All services'}{' '}
-                        <span className="text-[#e3943f]">
-                          {currentHero.titleAccent || 'by Unique Graphics®'}
-                        </span>
-                      </h2>
-                      <p className="text-[10px] text-white/70 line-clamp-2 leading-relaxed">
-                        {currentHero.subtitle}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-[10.5px] text-white/40 italic block text-center">
-                    * Top hero banner rendered at /{selectedService} portal.
-                  </span>
-                </div>
+            <RepeatBlock
+              title="4. Process steps"
+              show={Boolean(page.steps?.show)}
+              onShow={(show) => patchPage('steps', { ...(page.steps || {}), show })}
+              items={page.steps?.items || []}
+              onItems={(items) => patchPage('steps', { ...(page.steps || {}), items })}
+              blank={() => ({ id: uid('step'), number: '', title: '', text: '' })}
+              render={(item, update) => (
+                <>
+                  <Field label="Step number"><input className={inputClass} value={item.number || ''} onChange={(event) => update({ number: event.target.value })} /></Field>
+                  <Field label="Title"><input className={inputClass} value={item.title || ''} onChange={(event) => update({ title: event.target.value })} /></Field>
+                  <Field label="Text"><textarea className={inputClass} rows={2} value={item.text || ''} onChange={(event) => update({ text: event.target.value })} /></Field>
+                </>
               )}
+            />
 
-              {/* PREVIEW: 4 STAGES */}
-              {activeTab === 'stages' && (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    {currentStages.map((stg, idx) => (
-                      <div key={idx} className="rounded-xl border border-white/10 bg-[#161616] p-3 space-y-1">
-                        <span className="text-[14px] font-bold text-[#e3943f]">{stg.num || `0${idx + 1}`}</span>
-                        <h4 className="text-[11px] font-bold text-white truncate">{stg.title}</h4>
-                        <p className="text-[9.5px] text-white/60 line-clamp-2 leading-tight">{stg.desc}</p>
+            <RepeatBlock
+              title="5. Gallery"
+              show={Boolean(page.gallery?.show)}
+              onShow={(show) => patchPage('gallery', { ...(page.gallery || {}), show })}
+              items={page.gallery?.items || []}
+              onItems={(items) => patchPage('gallery', { ...(page.gallery || {}), items })}
+              blank={() => ({ id: uid('photo'), image: '', caption: '' })}
+              render={(item, update) => (
+                <>
+                  <Field label="Photo or video">
+                    <div className="flex items-center gap-3">
+                      <MediaThumb src={item.image} />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <input className={inputClass} value={item.image || ''} onChange={(event) => update({ image: event.target.value })} />
+                        <input type="file" accept="image/*,video/mp4,video/webm,video/ogg,.mov" className={fileClass} onChange={(event) => storeFile(event.target.files?.[0], (url) => update({ image: url }))} />
                       </div>
-                    ))}
-                  </div>
-                  <span className="text-[10.5px] text-white/40 italic block text-center">
-                    * Implementation Process cards rendered on /{selectedService}
-                  </span>
-                </div>
-              )}
-
-              {/* PREVIEW: TURNKEY & CTA */}
-              {(activeTab === 'turnkey' || activeTab === 'cta') && (
-                <div className="space-y-4">
-                  {/* Turnkey Sample */}
-                  <div className="rounded-2xl border border-white/10 bg-[#161616] p-4 space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#e3943f] block">
-                      Turnkey Integration
-                    </span>
-                    <h4 className="text-[13px] font-bold text-white leading-tight">
-                      {config.turnkey?.title}
-                    </h4>
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      {(config.turnkey?.pillars || []).slice(0, 2).map((p, idx) => (
-                        <div key={idx} className="rounded-lg bg-black/40 p-2 border border-white/5">
-                          <span className="text-[11px] font-bold text-[#e3943f]">{p.num}</span>
-                          <p className="text-[10px] font-bold text-white truncate">{p.title}</p>
-                        </div>
-                      ))}
                     </div>
-                  </div>
-
-                  {/* CTA Sample */}
-                  <div className="rounded-2xl border border-[#e3943f]/30 bg-gradient-to-r from-[#1c1813] to-[#161616] p-4 space-y-2">
-                    <h4 className="text-[12px] font-bold text-white leading-snug">
-                      {config.cta?.title}
-                    </h4>
-                    <p className="text-[9.5px] text-white/70 line-clamp-2">
-                      {config.cta?.subtitle}
-                    </p>
-                    <button
-                      type="button"
-                      className="rounded-full bg-[#e3943f] px-3 py-1.5 text-[9.5px] font-bold text-black uppercase pointer-events-none"
-                    >
-                      {config.cta?.buttonText || 'Discuss a project'}
-                    </button>
-                  </div>
-                </div>
+                  </Field>
+                  <Field label="Caption"><input className={inputClass} value={item.caption || ''} onChange={(event) => update({ caption: event.target.value })} /></Field>
+                </>
               )}
-            </div>
-          </div>
-        </div>
+            />
+
+            <article className="rounded-2xl border border-white/10 bg-[#121212] p-5 space-y-3">
+              <div className="flex items-center justify-between"><h3 className="font-bold">6. Closing note</h3><BlockToggle checked={Boolean(page.closing?.show)} onChange={(show) => patchPage('closing', { ...(page.closing || {}), show })} /></div>
+              <Field label="Heading"><input className={inputClass} value={page.closing?.heading || ''} onChange={(event) => patchPage('closing', { ...(page.closing || {}), heading: event.target.value })} /></Field>
+              <Field label="Paragraph"><textarea className={inputClass} rows={3} value={page.closing?.paragraph || ''} onChange={(event) => patchPage('closing', { ...(page.closing || {}), paragraph: event.target.value })} /></Field>
+              <Field label="Button label"><input className={inputClass} value={page.closing?.buttonLabel || ''} onChange={(event) => patchPage('closing', { ...(page.closing || {}), buttonLabel: event.target.value })} /></Field>
+              <Field label="Button link"><input className={inputClass} value={page.closing?.buttonLink || ''} onChange={(event) => patchPage('closing', { ...(page.closing || {}), buttonLink: event.target.value })} /></Field>
+            </article>
+          </section>
+        ) : null}
       </div>
     </div>
+  )
+}
+
+function RepeatBlock({ title, show, onShow, items, onItems, blank, render }) {
+  const list = items || []
+  const updateAt = (index, patch) => {
+    onItems(list.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)))
+  }
+  return (
+    <article className="rounded-2xl border border-white/10 bg-[#121212] p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold">{title}</h3>
+        <BlockToggle checked={show} onChange={onShow} />
+      </div>
+      {list.map((item, index) => (
+        <div key={item.id || index} className="space-y-3 rounded-xl border border-white/10 p-3">
+          {render(item, (patch) => updateAt(index, patch))}
+          <div className="flex gap-3 text-[12px] text-white/50">
+            <button type="button" onClick={() => onItems(move(list, index, -1))}>Up</button>
+            <button type="button" onClick={() => onItems(move(list, index, 1))}>Down</button>
+            <button type="button" onClick={() => onItems(list.filter((_, itemIndex) => itemIndex !== index))}>Remove</button>
+          </div>
+        </div>
+      ))}
+      <button type="button" onClick={() => onItems([...list, blank()])} className="text-[12px] font-bold text-[#e3943f]">Add</button>
+    </article>
   )
 }

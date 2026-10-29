@@ -1,266 +1,37 @@
 import { useState, useMemo, useEffect } from 'react'
+import { readBlogCategories, withoutStaticBlogs } from '../../data/blogCategories'
+import { DEFAULT_BLOGS, getStoredBlogs, setStoredBlogs, sanitizeBlogItem } from '../../data/blogConfig'
 
-export const BLOG_POSTS = [
-  {
-    id: 'monumental-desert-villas',
-    category: 'Architecture',
-    tag: 'Cover Story',
-    date: 'October 12, 2026',
-    readTime: '6 min read',
-    title: 'The Spatial Poetry of Monumental Villas: Blending Desert Rock and Floating Bronze',
-    excerpt:
-      'How our studio crafts cantilevered architectural marvels that celebrate dramatic desert topography while insulating against extreme thermal shifts through monolithic stone and smart aero-façades.',
-    image: '/architectural/dubai_villa.jpg',
-    author: 'Unique Graphics Architectural Board',
-    content: [
-      {
-        type: 'paragraph',
-        text: 'Monumental architecture in arid climates demands an uncompromising dialogue between elemental forces and human sanctuary. When designing private residences across the Emirates and Palm Jumeirah, our approach transcends decorative luxury—it operates as an engineering masterwork anchored directly into natural bedrock.',
-      },
-      {
-        type: 'quote',
-        text: 'True architectural grandeur does not impose itself upon the landscape; it emerges from the earth as if geological time had sculpted it into bronze and travertine.',
-      },
-      {
-        type: 'heading',
-        text: 'Thermal Mass Meets Cantilevered Defiance',
-      },
-      {
-        type: 'paragraph',
-        text: 'By pairing 1200mm monolithic Portuguese travertine slabs with triple-glazed aerodynamic structural glass, we establish an interior microclimate that reduces active cooling dependency by 38%. Overhanging bronze eaves cast sweeping geometrical shadows across cascading infinity water features, creating atmospheric cooling currents throughout open-air colonnades.',
-      },
-      {
-        type: 'heading',
-        text: 'Material Palette & Atmospheric Lighting',
-      },
-      {
-        type: 'paragraph',
-        text: 'Every joint is recessed with 8mm shadow reveals. At dusk, indirect 2400K architectural lighting strips embedded beneath stone plinths make the multi-ton structure appear to float effortlessly over the desert sand.',
-      },
-    ],
-  },
-  {
-    id: 'neo-monaco-penthouse',
-    category: 'Interior Design',
-    tag: 'Haute Interiors',
-    date: 'October 08, 2026',
-    readTime: '5 min read',
-    title: 'The Neo-Monaco Aesthetic: Penthouse Interiors Defined by Liquid Bronze & Onyx',
-    excerpt:
-      'An intimate breakdown of acoustic dampening, concealed climate diffusion, and bespoke backlit onyx installations in the Côte d’Azur’s most prestigious sky residences.',
-    image: '/interior/monaco.jpg',
-    author: 'Elena Rostova, Principal Interior Lead',
-    content: [
-      {
-        type: 'paragraph',
-        text: 'In high-altitude coastal penthouses, light is both a blessing and a relentless challenge. The glare of the Mediterranean noon must be subdued into velvety, tactile warmth without compromising panoramic horizon vistas.',
-      },
-      {
-        type: 'quote',
-        text: 'Liquid metal coatings, brushed smoked bronze, and bookmatched backlit Iranian white onyx turn living quarters into private galleries of sensory calm.',
-      },
-      {
-        type: 'heading',
-        text: 'Acoustic Engineering in Modern High-Rises',
-      },
-      {
-        type: 'paragraph',
-        text: 'We integrate micro-perforated acoustic timber wall paneling finished in matte Italian walnut, dampening reverberation times to an ultra-plush 0.4 seconds. Invisible slot diffusers eliminate intrusive mechanical grilles, allowing ceilings to maintain uninterrupted architectural purity.',
-      },
-    ],
-  },
-  {
-    id: 'biophilic-hotel-atriums',
-    category: 'Commercial',
-    tag: 'Hospitality',
-    date: 'September 28, 2026',
-    readTime: '7 min read',
-    title: 'Biophilic Grand Atriums: Reimagining 5-Star Hospitality for 2027',
-    excerpt:
-      'How 18-meter vertical water curtains, live ficus canopies, and sculpted brass lattices transform commercial hotel lobbies into world-renowned public sanctuaries.',
-    image: '/commercial/atrium.jpg',
-    author: 'Unique Graphics Commercial Practice',
-    content: [
-      {
-        type: 'paragraph',
-        text: 'The era of sterile, echo-prone hotel lobbies is definitively over. Today’s premier hotel guests seek immediate decompression from intense transit. Our commercial atrium designs establish an intoxicating sensory narrative from the precise millisecond of arrival.',
-      },
-      {
-        type: 'quote',
-        text: 'A great lobby is not merely a waiting lounge; it is an unforgettable civic threshold that commands awe and quiet reverence.',
-      },
-      {
-        type: 'heading',
-        text: 'Hydraulic Soundscapes and Micro-Ecosystems',
-      },
-      {
-        type: 'paragraph',
-        text: 'Using computer-calculated laminar water curtains, we tune the ambient acoustic frequency of the atrium to mask exterior traffic noise while circulating misted, ion-rich air that naturally lowers ambient hall temperatures.',
-      },
-    ],
-  },
-  {
-    id: 'alpine-haute-courchevel',
-    category: 'Architecture',
-    tag: 'Alpine Luxury',
-    date: 'September 20, 2026',
-    readTime: '6 min read',
-    title: 'Alpine Haute Living: Thermal Engineering Meets Raw Granite in Courchevel 1850',
-    excerpt:
-      'Balancing extreme snow load dynamics with triple-height panoramic heated glazing, charred Shou Sugi Ban timber, and indoor wellness spas cut into living mountainside rock.',
-    image: '/architectural/courchevel_chalet.jpg',
-    author: 'Marc Dubois, Alpine Projects Director',
-    content: [
-      {
-        type: 'paragraph',
-        text: 'Designing in the French Alps requires reverence for nature’s untamed hostility. In Courchevel 1850, structural beams must support up to 600 kg/m² of heavy winter snow while sustaining immense expansive cantilevers that frame the Mont Blanc massif.',
-      },
-      {
-        type: 'quote',
-        text: 'Heated glass systems prevent ice condensation, keeping panoramic vistas razor-sharp even during ferocious sub-zero alpine blizzards.',
-      },
-      {
-        type: 'heading',
-        text: 'Subterranean Spa Integration',
-      },
-      {
-        type: 'paragraph',
-        text: 'Carved directly into the granite bedrock, the indoor spa features heated basalt loungers, cryogenic plunge pools, and custom cedar saunas overlooking floodlit snow pines.',
-      },
-    ],
-  },
-  {
-    id: 'italian-bespoke-millwork',
-    category: 'Interior Design',
-    tag: 'Bespoke Craft',
-    date: 'September 14, 2026',
-    readTime: '5 min read',
-    title: 'Italian Craftsmanship: Why Bespoke Joinery Defines Authentic Residential Luxury',
-    excerpt:
-      'Why catalog luxury furniture falls short in high-end architecture, and how our direct ateliers in Brianza fabricate custom bronze-inlaid millwork tailored to exact architectural geometry.',
-    image: '/interior/beverly.jpg',
-    author: 'Unique Graphics Procurement Division',
-    content: [
-      {
-        type: 'paragraph',
-        text: 'Every premier residence contains unique geometrical anomalies: subtle ceiling rake angles, specific sightlines toward exterior gardens, and individual storage ergonomics. Mass-produced luxury pieces invariably create awkward spatial gaps.',
-      },
-      {
-        type: 'quote',
-        text: 'When furniture is custom-drafted alongside architectural blueprints, interior millwork ceases to be furniture—it becomes an organic extension of the building’s spine.',
-      },
-      {
-        type: 'heading',
-        text: 'Hand-Finished Bronze & Open-Pore Veneers',
-      },
-      {
-        type: 'paragraph',
-        text: 'Our artisans in Northern Italy hand-apply patinated liquid bronze trims to fluted smoked oak cabinets, fitted with whisper-quiet magnetic soft-close mechanics and velvet-lined jewelry drawers.',
-      },
-    ],
-  },
-  {
-    id: 'circadian-lighting-philosophy',
-    category: 'Commercial',
-    tag: 'Lighting Tech',
-    date: 'August 30, 2026',
-    readTime: '4 min read',
-    title: 'Architectural Illuminance: The Invisible Fixture & Circadian Glow Philosophy',
-    excerpt:
-      'Transitioning luxury hospitality and private estates from harsh glare to biodynamic 1800K–4000K lighting scenarios tailored to biological rhythms.',
-    image: '/commercial/tokyo.jpg',
-    author: 'Kenji Takahashi, Lighting Architecture Specialist',
-    content: [
-      {
-        type: 'paragraph',
-        text: 'The best lighting in world-class architecture is that which you never explicitly see. By banishing visible bulbs and high-contrast glare points, spatial volumes are sculpted purely through light reflection and graduated wall grazing.',
-      },
-      {
-        type: 'quote',
-        text: 'Light should feel like morning dawn filtering through mist, not an electric spotlight imposing upon the eyes.',
-      },
-      {
-        type: 'heading',
-        text: 'Automated Scene Transitions',
-      },
-      {
-        type: 'paragraph',
-        text: 'Our integrated lighting control processors monitor outdoor astronomical clocks, slowly shifting color temperatures from 3500K crisp morning vitality to 2000K candlelit warmth at sunset without occupants consciously perceiving the shift.',
-      },
-    ],
-  },
-  {
-    id: 'miami-biscayne-transitions',
-    category: 'Interior Design',
-    tag: 'Coastal Estates',
-    date: 'August 22, 2026',
-    readTime: '5 min read',
-    title: 'Oceanfront Villa Living: Seamless Indoor-Outdoor Transitions in Biscayne Bay',
-    excerpt:
-      'Eliminating visual and physical thresholds through motorized pocketing glass doors, flush floor drainage, and marine-grade stainless bronze alloys.',
-    image: '/interior/miami.jpg',
-    author: 'Unique Graphics Residential Team',
-    content: [
-      {
-        type: 'paragraph',
-        text: 'In South Florida’s prime coastal sanctuaries, living rooms and pool terraces must merge into a single boundless entertainment arena. Standard sliding door tracks create clumsy trip hazards and visual friction.',
-      },
-      {
-        type: 'quote',
-        text: 'With invisible recessed floor tracks and floor-to-ceiling motorized panels sliding into hidden wall pockets, the living room expands 80 feet directly to the infinity edge.',
-      },
-    ],
-  },
-  {
-    id: 'sensory-spa-hydrotherapy',
-    category: 'Commercial',
-    tag: 'Wellness Design',
-    date: 'August 10, 2026',
-    readTime: '6 min read',
-    title: 'Sensory Serenity: Acoustics, Natural Stone, and Hydro-Thermal Spatial Design',
-    excerpt:
-      'Crafting private thermal sanctuaries that harmonize volcanic basalt, salt inhalation rooms, and tranquil water acoustics for ultra-high-net-worth wellness.',
-    image: '/commercial/spa_belgrade.jpg',
-    author: 'Unique Graphics Wellness Studio',
-    content: [
-      {
-        type: 'paragraph',
-        text: 'Wellness spatial design has shifted from clinical fitness rooms to deeply sacred sensory decompression temples. Stone selection is paramount: textured volcanic basalt provides tactile traction while retaining thermal energy from underfloor radiant loops.',
-      },
-      {
-        type: 'quote',
-        text: 'In private wellness architecture, silence is the ultimate luxury. Every pipe, pump, and ventilation system is isolated on floating acoustic rubber dampeners.',
-      },
-    ],
-  },
-]
-
-const CATEGORIES = ['All', 'Architecture', 'Interior Design', 'Commercial']
+export const BLOG_POSTS = DEFAULT_BLOGS
 
 export default function BlogPage() {
   const [selectedCategory, setSelectedCategory] = useState('All')
+  const [categories, setCategories] = useState(() => readBlogCategories())
   const [searchQuery, setSearchQuery] = useState('')
   const [activeArticle, setActiveArticle] = useState(null)
   const [emailSubscribed, setEmailSubscribed] = useState(false)
   const [emailInput, setEmailInput] = useState('')
 
   // Dynamic posts state with initial static or localStorage fallback
-  const [posts, setPosts] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ug_studio_blogs')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
-      }
-    } catch {}
-    return BLOG_POSTS
-  })
+  const [posts, setPosts] = useState(() => getStoredBlogs())
 
   // Dynamic hero banner and page typography settings
   const [bannerConfig, setBannerConfig] = useState(() => {
+    const defaultUrl =
+      '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4'
     try {
       const saved = localStorage.getItem('ug_blog_banner_config')
-      if (saved) return JSON.parse(saved)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (
+          parsed.mediaUrl &&
+          !parsed.mediaUrl.includes('RYDHUM%20HOTEL') &&
+          !parsed.mediaUrl.includes('dubai_villa') &&
+          parsed.mediaUrl !== '/video/1.mp4'
+        ) {
+          return parsed
+        }
+      }
     } catch {}
     return {
       badge: 'STUDIO JOURNAL & PUBLICATIONS',
@@ -271,7 +42,7 @@ export default function BlogPage() {
       newsletterSubtitle:
         'Receive private quarterly retrospectives, material sourcing guides, and invitations to our international design symposiums directly in your inbox.',
       mediaType: 'video',
-      mediaUrl: '/video/1.mp4',
+      mediaUrl: defaultUrl,
     }
   })
 
@@ -283,8 +54,15 @@ export default function BlogPage() {
         if (res.ok) {
           const json = await res.json()
           if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            setPosts(json.data)
-            localStorage.setItem('ug_studio_blogs', JSON.stringify(json.data))
+            const live = json.data
+              .map((p, idx) => sanitizeBlogItem(p, idx))
+              .sort((a, b) => {
+                const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime()
+                const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime()
+                return bTime - aTime
+              })
+            setStoredBlogs(live)
+            setPosts(live)
           }
         }
       } catch {
@@ -300,6 +78,10 @@ export default function BlogPage() {
           if (json.success && json.data) {
             setBannerConfig(json.data)
             localStorage.setItem('ug_blog_banner_config', JSON.stringify(json.data))
+            if (Array.isArray(json.data.categories) && json.data.categories.length) {
+              localStorage.setItem('ug_blog_categories', JSON.stringify(json.data.categories))
+              setCategories(json.data.categories)
+            }
           }
         }
       } catch {}
@@ -307,9 +89,26 @@ export default function BlogPage() {
 
     fetchApiBlogs()
     fetchBannerSettings()
+
+    const refreshBlogs = () => setPosts(getStoredBlogs())
+    const refreshCategories = () => setCategories(readBlogCategories())
+    const refreshBanner = () => {
+      try {
+        const saved = localStorage.getItem('ug_blog_banner_config')
+        if (saved) setBannerConfig(JSON.parse(saved))
+      } catch {}
+    }
+    window.addEventListener('ug_blogs_updated', refreshBlogs)
+    window.addEventListener('blog-categories-changed', refreshCategories)
+    window.addEventListener('ug_blog_banner_updated', refreshBanner)
+    return () => {
+      window.removeEventListener('ug_blogs_updated', refreshBlogs)
+      window.removeEventListener('blog-categories-changed', refreshCategories)
+      window.removeEventListener('ug_blog_banner_updated', refreshBanner)
+    }
   }, [])
 
-  const featuredPost = posts.find((p) => p.featured) || posts[0] || BLOG_POSTS[0]
+  const featuredPost = posts.find((p) => p.featured) || posts[0] || null
 
   const filteredPosts = useMemo(() => {
     return posts.filter((post) => {
@@ -344,7 +143,7 @@ export default function BlogPage() {
             muted
             playsInline
             key={bannerConfig.mediaUrl}
-            className="absolute inset-0 h-full w-full object-cover opacity-35 filter brightness-75 scale-105 pointer-events-none"
+            className="absolute inset-0 h-full w-full object-cover opacity-60 filter brightness-90 contrast-105 saturate-105 scale-105 pointer-events-none transition-all duration-700"
             src={bannerConfig.mediaUrl}
           />
         ) : bannerConfig.mediaUrl && bannerConfig.mediaType !== 'none' ? (
@@ -352,13 +151,13 @@ export default function BlogPage() {
             key={bannerConfig.mediaUrl}
             src={bannerConfig.mediaUrl}
             alt="Blog Banner Background"
-            className="absolute inset-0 h-full w-full object-cover opacity-35 filter brightness-75 scale-105 pointer-events-none"
+            className="absolute inset-0 h-full w-full object-cover opacity-60 filter brightness-90 contrast-105 saturate-105 scale-105 pointer-events-none transition-all duration-700"
           />
         ) : null}
 
-        {/* Cinematic Ambient Dark Gradients */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#101010] via-[#101010]/75 to-black/50 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#101010] via-transparent to-[#101010]/80 pointer-events-none" />
+        {/* Cinematic Ambient Dark Gradients: preserves text legibility on left while keeping architectural motion vibrant */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/35 to-black/40 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#141414]/90 via-[#141414]/50 to-transparent pointer-events-none" />
 
         {/* Foreground Content */}
         <div className="relative z-10 flex flex-col items-start gap-3">
@@ -385,7 +184,7 @@ export default function BlogPage() {
         <div className="mt-10 flex flex-col md:flex-row md:items-center justify-between gap-5 border-y border-white/10 py-5">
           {/* Category Tabs */}
           <div className="flex flex-wrap items-center gap-2">
-            {CATEGORIES.map((cat) => {
+            {Array.from(new Set(['All', ...(categories || [])])).map((cat, catIdx) => {
               const isSelected = selectedCategory === cat
               const count =
                 cat === 'All'
@@ -394,7 +193,7 @@ export default function BlogPage() {
 
               return (
                 <button
-                  key={cat}
+                  key={`${cat}-${catIdx}`}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
                   className={`flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-semibold tracking-wider uppercase transition-all duration-200 cursor-pointer ${
@@ -440,7 +239,7 @@ export default function BlogPage() {
       </section>
 
       {/* Featured Cover Story */}
-      {!searchQuery && selectedCategory === 'All' && (
+      {!searchQuery && selectedCategory === 'All' && featuredPost && (
         <section className="mx-auto mt-10 max-w-[1440px] px-6 sm:px-10 lg:px-16">
           <div
             onClick={() => setActiveArticle(featuredPost)}
@@ -461,7 +260,7 @@ export default function BlogPage() {
                   />
                 ) : (
                   <img
-                    src={featuredPost.image || '/architectural/dubai_villa.jpg'}
+                    src={featuredPost.image || '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg'}
                     alt={featuredPost.title}
                     className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                   />
@@ -546,9 +345,9 @@ export default function BlogPage() {
           </div>
         ) : (
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {filteredPosts.map((post) => (
+            {filteredPosts.map((post, idx) => (
               <article
-                key={post.id}
+                key={post.id || post._id || post.slug || `post-${idx}`}
                 onClick={() => setActiveArticle(post)}
                 className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#161616] transition-all duration-300 hover:border-[#e3943f]/50 hover:shadow-[0_0_30px_rgba(227,148,63,0.12)] cursor-pointer"
               >

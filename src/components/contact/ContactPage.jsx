@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import CountrySelect from '../CountrySelect'
 import { defaultCountry } from '../../data/countries'
-import reel from '../../assets/Contact/Nina_obrezano_8250f042fc.mp4'
-import frame from '../../assets/Contact/videoframe_15197.png'
+const DEFAULT_REAL_CONTACT_VIDEO = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
+const DEFAULT_REAL_POSTER = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png'
 import { getStoredContactConfig, setStoredContactConfig } from '../../data/contactConfig'
 
 export default function ContactPage({ lang }) {
@@ -107,7 +107,8 @@ export default function ContactPage({ lang }) {
     setSent(true)
   }
 
-  const activeMedia = config.mediaUrl || reel
+  const isOldMedia = (u) => !u || String(u).includes('/assets/Contact') || String(u).includes('Nina_obrezano')
+  const activeMedia = !isOldMedia(config.mediaUrl) ? config.mediaUrl : DEFAULT_REAL_CONTACT_VIDEO
   const isImageMedia = activeMedia && activeMedia.match(/\.(jpeg|jpg|png|webp|avif|svg)(\?.*)?$/i)
 
   return (
@@ -127,7 +128,7 @@ export default function ContactPage({ lang }) {
             <video
               ref={video}
               src={activeMedia}
-              poster={config.posterUrl || frame}
+              poster={config.posterUrl && !String(config.posterUrl).includes('videoframe') ? config.posterUrl : DEFAULT_REAL_POSTER}
               muted
               loop
               playsInline

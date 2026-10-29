@@ -33,7 +33,7 @@ const blogSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Category is required'],
       default: 'Architecture',
-      enum: ['Architecture', 'Interior Design', 'Commercial', 'Residential', 'Philosophy'],
+      trim: true,
     },
     tag: {
       type: String,

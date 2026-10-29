@@ -1,4 +1,5 @@
 import { isMenuPage } from './data/menuPages'
+import { LEGACY_SERVICE_PATHS } from './data/serviceTree'
 
 const sections = new Set(['portfolio', 'partner'])
 
@@ -42,8 +43,24 @@ export function consumeScroll() {
   return y
 }
 
+export function serviceRoute(pathname) {
+  const path = normalize(pathname)
+  const parts = path.split('/').filter(Boolean)
+  if (parts[0] === 'portfolio' && parts[1] && parts.length <= 3) {
+    return { page: 'portfolio-item', category: parts[1], subcategory: parts[2] || '' }
+  }
+  if (parts[0] === 'services' && parts[1] && parts.length <= 3) {
+    return { page: 'service', category: parts[1], subcategory: parts[2] || '' }
+  }
+  if (parts.length === 1 && LEGACY_SERVICE_PATHS[parts[0]]) {
+    return { page: 'service', ...LEGACY_SERVICE_PATHS[parts[0]], subcategory: '' }
+  }
+  return null
+}
+
 export function isAppPath(pathname) {
   const path = normalize(pathname)
+  if (serviceRoute(path)) return true
   if (
     path === '/' ||
     path === '/about' ||
@@ -61,6 +78,7 @@ export function isAppPath(pathname) {
     path === '/architectural-design' ||
     path === '/architecture' ||
     path === '/all-projects' ||
+    path === '/astro-vastu' ||
     path === '/portfolio'
   )
     return true
@@ -70,6 +88,8 @@ export function isAppPath(pathname) {
 
 export function routeFromPath(pathname) {
   const path = normalize(pathname)
+  const service = serviceRoute(path)
+  if (service) return service
   if (path === '/about') return { page: 'about' }
   if (path === '/contacts') return { page: 'contacts' }
   if (path === '/privacy') return { page: 'privacy' }

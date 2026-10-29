@@ -1,99 +1,100 @@
 export const DEFAULT_ABOUT_PAGE_CONFIG = {
   banner: {
-    mediaUrl: '',
+    mediaUrl: '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
     en: {
       title: 'About us',
-      text: 'Unique Graphics is a studio for architecture and interior design, working with private houses and the rooms inside them.',
+      text: 'Unique Graphics is a premier studio for luxury architecture and visionary interior design, crafting bespoke residences, private estates, and landmark commercial spaces.',
       button: 'Discuss your project',
       buttonLink: '/contacts',
     },
     ru: {
       title: 'О нас',
-      text: 'Unique Graphics — студия архитектуры и интерьера. Мы делаем частные дома и комнаты внутри них.',
+      text: 'Unique Graphics — премиальная студия архитектуры и интерьерного дизайна. Мы создаём авторские резиденции, частные виллы и знаковые пространства.',
       button: 'Обсудить проект',
       buttonLink: '/contacts',
     },
   },
   style: {
+    mediaUrl: '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png',
     en: {
-      mark: 'Unique Graphics style',
-      text: 'The work is recognised by a calm use of form, colour, and light. A room should read as one piece, not a set of objects.',
+      mark: 'Unique Graphics Style & Philosophy',
+      text: 'Our signature philosophy unites architectural purity, refined materiality, and ambient illumination. Every space is curated as a unified masterpiece of form, light, and enduring elegance.',
     },
     ru: {
-      mark: 'Стиль Unique Graphics',
-      text: 'Работу узнают по спокойной форме, цвету и свету. Комната должна читаться целиком, а не набором предметов.',
+      mark: 'Стиль и философия Unique Graphics',
+      text: 'Наш почерк — это гармония чистых архитектурных форм, благородных материалов и световых сценариев. Пространство воспринимается как единое произведение искусства.',
     },
   },
   story: {
-    mediaUrl: '',
+    mediaUrl: '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png',
     en: {
-      teamTitle: 'The studio team',
+      teamTitle: 'The Studio Collective',
       teamText:
-        'Architecture, interiors, and the work on site sit with one team, so the drawing and the built room stay the same idea.',
-      years: '10+ years',
-      yearsText: 'of work in design and building',
-      bigNumber: '10+',
-      story: 'How a project moves',
+        'Architectural masterminds, interior designers, 3D visualizers, and project directors work as one dedicated team. From concept sketch to finished residence, your vision remains impeccably uncompromised.',
+      years: '15+ years',
+      yearsText: 'of architectural mastery and turnkey interior execution',
+      bigNumber: '15+',
+      story: 'How a project moves from vision to reality',
       steps: [
-        { label: 'Brief', text: 'We listen to how you live and what the plot allows.' },
-        { label: 'Concept', text: 'Plans and a first view of the rooms, before details.' },
-        { label: 'Drawings', text: 'Sections, finishes, and the list of what will be ordered.' },
-        { label: 'Site', text: 'The build is checked against those drawings.' },
-        { label: 'Handover', text: 'The rooms are complete, and we stay for what follows.' },
+        { label: 'Brief & Discovery', text: 'We delve into your lifestyle, aesthetic aspirations, spatial needs, and site orientation.' },
+        { label: 'Master Concept', text: 'Volumetric planning, functional layout zoning, and photorealistic 3D architectural views.' },
+        { label: 'Technical Blueprints', text: 'Complete architectural sections, electrical & MEP schematics, custom millwork, and finishes schedule.' },
+        { label: 'Site Supervision', text: 'Rigorous engineering oversight on-site to ensure uncompromising fidelity to blueprints.' },
+        { label: 'Turnkey Handover', text: 'Impeccable styling, bespoke furnishing reveal, and ongoing post-completion concierge care.' },
       ],
     },
     ru: {
       teamTitle: 'Команда студии',
       teamText:
-        'Архитектура, интерьер и площадка у одной команды, поэтому чертёж и построенная комната остаются одной идеей.',
-      years: '10+ лет',
-      yearsText: 'работы в дизайне и строительстве',
-      bigNumber: '10+',
-      story: 'Как движется проект',
+        'Архитекторы, дизайнеры интерьера, 3D-визуализаторы и инженеры работают как единый слаженный организм. От первого эскиза до сдачи ключей идея остаётся нетронутой компромиссами.',
+      years: '15+ лет',
+      yearsText: 'опыта в проектировании, дизайне и строительстве премиум-класса',
+      bigNumber: '15+',
+      story: 'Как создаётся и воплощается ваш проект',
       steps: [
-        { label: 'Бриф', text: 'Слушаем, как вы живёте и что позволяет участок.' },
-        { label: 'Концепция', text: 'Планы и первый вид комнат, до деталей.' },
-        { label: 'Чертежи', text: 'Разрезы, отделка и список того, что закажут.' },
-        { label: 'Площадка', text: 'Стройку сверяем с этими чертежами.' },
-        { label: 'Сдача', text: 'Комнаты готовы, и мы остаёмся на то, что после.' },
+        { label: 'Бриф и анализ', text: 'Изучаем образ жизни, топографию участка и пожелания по планировке и стилю.' },
+        { label: 'Концепция', text: 'Объёмно-пространственные планы и первые 3D-визуализации будущих пространств.' },
+        { label: 'Рабочий проект', text: 'Инженерные узлы, спецификации материалов, индивидуальные чертежи мебели.' },
+        { label: 'Авторский надзор', text: 'Контроль строительства на площадке и строгое соблюдение проектных чертежей.' },
+        { label: 'Сдача объекта', text: 'Финальное декорирование, клининг и комплексная забота о пространстве после сдачи.' },
       ],
     },
   },
   conditions: {
-    mediaUrl: '',
+    mediaUrl: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png',
     en: {
-      title: 'Special conditions for your project',
+      title: 'Distinctive advantages for your project',
       cards: [
-        { title: 'Support after completion', text: 'We remain after the rooms are finished and do not disappear on the last day.' },
-        { title: 'Familiar premium service', text: 'You keep your usual days while the work is carried for you.' },
-        { title: 'Personal expert', text: 'One person at Unique Graphics knows the project from the first talk.' },
-        { title: 'Special attention', text: 'A closer level of care when the house or the deadline asks for it.' },
-        { title: 'Pricing framework', text: 'The cost is set out so the project can be agreed before work starts.' },
-        { title: 'Roadmap', text: 'Stages are written down, and each one waits for your approval.' },
-        { title: 'Reporting system', text: 'You can see the site without travelling to it every week.' },
-        { title: 'Transparency', text: 'Dates and the order of work stay visible for the whole build.' },
+        { title: 'Lifelong Support After Completion', text: 'We remain your trusted partners after handover, assisting with seasonal upkeep, art curation, and spatial enhancements.' },
+        { title: 'White-Glove Turnkey Service', text: 'Your daily routine continues smoothly while our studio manages all contractors, shipments, and artisan trades.' },
+        { title: 'Dedicated Principal Architect', text: 'A dedicated partner coordinates every facet of your project from the initial consultation through final inspection.' },
+        { title: 'Artisan & Material Curation', text: 'Exclusive direct access to master joinery artisans, rare stone quarries, and bespoke European furnishings.' },
+        { title: 'Transparent Fixed Budgeting', text: 'Comprehensive itemized bills of quantities and fixed stage agreements eliminate budget surprises.' },
+        { title: 'Interactive Milestone Roadmap', text: 'Clear progressive phases with formal milestones so you have total control at every stage.' },
+        { title: 'Virtual Site Walkthroughs', text: 'High-definition photo logs, 360° virtual tours, and regular milestone reports sent directly to you.' },
+        { title: 'Vastu & Acoustic Excellence', text: 'Harmonious spatial orientations, sound-insulated sanctuaries, and climate-responsive architecture.' },
       ],
-      mission: 'The aim is to stay with the project after the handover.',
+      mission: 'Our commitment is to create spaces of enduring legacy that elevate life every single day.',
       stat: '98%',
-      statText: 'of clients recommend the studio and come back with the next room.',
-      button: 'Contact our manager',
+      statText: 'of our private and commercial clients return to us for their next expansion and recommend our studio.',
+      button: 'Contact our design director',
       buttonLink: '/contacts',
     },
     ru: {
       title: 'Особые условия для вашего проекта',
       cards: [
-        { title: 'Поддержка после сдачи', text: 'Мы остаёмся, когда комнаты готовы, и не исчезаем в последний день.' },
-        { title: 'Привычный сервис', text: 'Ваши дни остаются вашими, пока работу ведут за вас.' },
-        { title: 'Личный эксперт', text: 'Один человек в Unique Graphics знает проект с первого разговора.' },
-        { title: 'Особое внимание', text: 'Более плотное ведение, когда дом или срок этого просят.' },
-        { title: 'Рамка стоимости', text: 'Стоимость раскладываем так, чтобы её можно было согласовать до работ.' },
-        { title: 'Дорожная карта', text: 'Этапы записаны, и каждый ждёт вашего согласия.' },
-        { title: 'Отчёты', text: 'Площадку видно без поездки каждую неделю.' },
-        { title: 'Прозрачность', text: 'Даты и порядок работ видны на всю стройку.' },
+        { title: 'Поддержка после сдачи', text: 'Мы остаёмся рядом после завершения объекта, помогая в эксплуатации и интерьерных обновлениях.' },
+        { title: 'Премиальный сервис под ключ', text: 'Ваше время остаётся вашим — всю логистику, координацию и авторский контроль мы берём на себя.' },
+        { title: 'Личный главный архитектор', text: 'Один ведущий эксперт студии ведёт проект от первой встречи до торжественного вручения ключей.' },
+        { title: 'Эксклюзивные материалы', text: 'Прямые поставки мрамора, авторские столярные изделия и индивидуальные сценарии освещения.' },
+        { title: 'Прозрачная смета', text: 'Детализированный бюджет фиксируется до начала работ без скрытых платежей и переплат.' },
+        { title: 'Дорожная карта', text: 'Поэтапный график с прозрачными контрольными точками и утверждением каждого шага.' },
+        { title: 'Регулярные фотоотчёты', text: 'Контролируйте ход реализации онлайн без необходимости частых личных визитов.' },
+        { title: 'Гармония Васту и эргономика', text: 'Идеальное зонирование, акустический комфорт и энергоэффективные решения.' },
       ],
-      mission: 'Задача — остаться с проектом и после сдачи.',
+      mission: 'Наша цель — создавать пространства, которые вдохновляют поколения и приносят радость каждый день.',
       stat: '98%',
-      statText: 'клиентов рекомендуют студию и возвращаются со следующей комнатой.',
+      statText: 'клиентов рекомендуют студию Unique Graphics и обращаются к нам со следующими проектами.',
       button: 'Связаться с менеджером',
       buttonLink: '/contacts',
     },
@@ -105,11 +106,33 @@ export const getStoredAboutConfig = () => {
     const saved = localStorage.getItem('ug_about_page_config')
     if (saved) {
       const parsed = JSON.parse(saved)
+      const bannerMedia = parsed.banner?.mediaUrl?.trim()
+      const isBadBanner =
+        !bannerMedia ||
+        bannerMedia.includes('GREEN%20WOOD.mp4') ||
+        bannerMedia.includes('GREEN WOOD.mp4')
+
       return {
-        banner: { ...DEFAULT_ABOUT_PAGE_CONFIG.banner, ...parsed.banner },
-        style: { ...DEFAULT_ABOUT_PAGE_CONFIG.style, ...parsed.style },
-        story: { ...DEFAULT_ABOUT_PAGE_CONFIG.story, ...parsed.story },
-        conditions: { ...DEFAULT_ABOUT_PAGE_CONFIG.conditions, ...parsed.conditions },
+        banner: {
+          ...DEFAULT_ABOUT_PAGE_CONFIG.banner,
+          ...parsed.banner,
+          mediaUrl: isBadBanner ? DEFAULT_ABOUT_PAGE_CONFIG.banner.mediaUrl : bannerMedia,
+        },
+        style: {
+          ...DEFAULT_ABOUT_PAGE_CONFIG.style,
+          ...parsed.style,
+          mediaUrl: parsed.style?.mediaUrl || DEFAULT_ABOUT_PAGE_CONFIG.style.mediaUrl,
+        },
+        story: {
+          ...DEFAULT_ABOUT_PAGE_CONFIG.story,
+          ...parsed.story,
+          mediaUrl: parsed.story?.mediaUrl || DEFAULT_ABOUT_PAGE_CONFIG.story.mediaUrl,
+        },
+        conditions: {
+          ...DEFAULT_ABOUT_PAGE_CONFIG.conditions,
+          ...parsed.conditions,
+          mediaUrl: parsed.conditions?.mediaUrl || DEFAULT_ABOUT_PAGE_CONFIG.conditions.mediaUrl,
+        },
       }
     }
   } catch (e) {

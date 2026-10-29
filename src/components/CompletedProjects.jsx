@@ -18,42 +18,64 @@ export const DEFAULT_COMPLETED_PROJECTS_CONFIG = {
   projects: defaultProjects,
 }
 
-function HoverClip({ video, className, children }) {
+const FALLBACK_PROJECT_IMAGE = '/website-assets/architecture/AUTOMOTIVE%20GALLERY/9ea0e852-0904-49c5-b948-f8504d0ea7fb.png'
+
+function HoverClip({ video, image, className, children }) {
   const clip = useRef(null)
+  const [videoFailed, setVideoFailed] = useState(false)
+  const [imgSrc, setImgSrc] = useState(image || FALLBACK_PROJECT_IMAGE)
+
+  useEffect(() => {
+    setImgSrc(image || FALLBACK_PROJECT_IMAGE)
+    setVideoFailed(false)
+  }, [image, video])
 
   useEffect(() => {
     const node = clip.current
-    if (!node) return
+    if (!node || videoFailed) return
     node.play().catch(() => {})
-  }, [video])
+  }, [video, videoFailed])
 
   const play = () => {
     const node = clip.current
-    if (!node) return
+    if (!node || videoFailed) return
     node.play().catch(() => {})
   }
 
   const stop = () => {
     const node = clip.current
     if (!node) return
-    // Keep playing or rewind softly
   }
+
+  const showVideo = video && !videoFailed
 
   return (
     <div className={`group relative overflow-hidden bg-[#181818] ${className}`} onMouseEnter={play} onMouseLeave={stop}>
-      {video ? (
+      {showVideo ? (
         <video
           ref={clip}
           src={video}
+          poster={imgSrc}
           muted
           loop
           autoPlay
           playsInline
-          preload="auto"
+          preload="metadata"
+          onError={() => setVideoFailed(true)}
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-[#2a221b] via-[#1a1a1a] to-[#0e0e0e]" />
+        <img
+          src={imgSrc}
+          alt=""
+          loading="lazy"
+          onError={() => {
+            if (imgSrc !== FALLBACK_PROJECT_IMAGE) {
+              setImgSrc(FALLBACK_PROJECT_IMAGE)
+            }
+          }}
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
       )}
       {children}
     </div>
@@ -63,8 +85,14 @@ function HoverClip({ video, className, children }) {
 export default function CompletedProjects({ lang = 'en' }) {
   const [config, setConfig] = useState(() => {
     try {
-      const saved = localStorage.getItem('ug_completed_projects_config')
-      if (saved) return JSON.parse(saved)
+      const saved = localStorage.getItem('ug_completed_projects_config_v3')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const hasDummy = parsed?.projects?.some((p) => p.id === 'day-living' || (p.image && p.image.includes('/assets/')))
+        if (!hasDummy && Array.isArray(parsed?.projects) && parsed.projects.length >= 70) {
+          return parsed
+        }
+      }
     } catch {}
     return DEFAULT_COMPLETED_PROJECTS_CONFIG
   })
@@ -75,9 +103,13 @@ export default function CompletedProjects({ lang = 'en' }) {
       try {
         const res = await fetch('/api/blogs/settings/completed-projects')
         const data = await res.json()
-        if (data.success && data.data) {
+        const hasDummy = data?.data?.projects?.some((p) => p.id === 'day-living' || (p.image && p.image.includes('/assets/')))
+        if (data.success && data.data && Array.isArray(data.data.projects) && data.data.projects.length >= defaultProjects.length && !hasDummy) {
           setConfig(data.data)
-          localStorage.setItem('ug_completed_projects_config', JSON.stringify(data.data))
+          localStorage.setItem('ug_completed_projects_config_v3', JSON.stringify(data.data))
+        } else {
+          // Store fresh defaults
+          localStorage.setItem('ug_completed_projects_config_v3', JSON.stringify(DEFAULT_COMPLETED_PROJECTS_CONFIG))
         }
       } catch {}
     }
@@ -87,8 +119,13 @@ export default function CompletedProjects({ lang = 'en' }) {
     // Listen to real-time update events from Admin panel
     const handleUpdate = () => {
       try {
-        const saved = localStorage.getItem('ug_completed_projects_config')
-        if (saved) setConfig(JSON.parse(saved))
+        const saved = localStorage.getItem('ug_completed_projects_config_v3')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (!parsed?.projects?.some((p) => p.id === 'day-living')) {
+            setConfig(parsed)
+          }
+        }
       } catch {}
     }
 
@@ -102,8 +139,8 @@ export default function CompletedProjects({ lang = 'en' }) {
 
   const currentLang = lang === 'ru' ? 'ru' : 'en'
   const text = config?.copy?.[currentLang] || DEFAULT_COMPLETED_PROJECTS_CONFIG.copy[currentLang]
-  const labels = config?.categories?.[currentLang] || defaultCategories[currentLang] || defaultCategories.en
-  const currentProjects = (Array.isArray(config?.projects) && config.projects.length > 0)
+  const labels = defaultCategories[currentLang] || defaultCategories.en
+  const currentProjects = (Array.isArray(config?.projects) && config.projects.length >= defaultProjects.length && !config.projects.some((p) => p.id === 'day-living'))
     ? config.projects
     : defaultProjects
 
@@ -131,6 +168,7 @@ export default function CompletedProjects({ lang = 'en' }) {
             >
               <HoverClip
                 video={sample?.video}
+                image={sample?.image}
                 className={`h-[132px] w-[210px] rounded-[22px] sm:h-[148px] sm:w-[240px] transition-all duration-300 ${
                   selected ? 'ring-2 ring-[#e3943f] shadow-lg shadow-[#e3943f]/25 scale-[1.02]' : 'opacity-85 hover:opacity-100'
                 }`}
@@ -161,7 +199,7 @@ export default function CompletedProjects({ lang = 'en' }) {
             const info = project[currentLang] ?? project.en ?? { title: project.title || 'Untitled' }
             return (
               <a key={project.id} href={`/project/${project.id}`} className="shrink-0">
-                <HoverClip video={project.video} className="h-[190px] w-[250px] rounded-[18px] sm:h-[230px] sm:w-[300px] transition-transform hover:scale-[1.03]">
+                <HoverClip video={project.video} image={project.image} className="h-[190px] w-[250px] rounded-[18px] sm:h-[230px] sm:w-[300px] transition-transform hover:scale-[1.03]">
                   <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 text-[13px] font-medium tracking-[0.06em]">
                     {info.title}
                   </span>

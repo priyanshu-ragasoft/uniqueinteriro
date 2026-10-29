@@ -10,15 +10,18 @@ import { DEFAULT_DREAM_HOME_CONFIG } from '../DreamHome'
 import { DEFAULT_CLOSING_CONFIG } from '../Closing'
 import { FaInstagram, FaPinterest, FaVk, FaYoutube } from 'react-icons/fa'
 import AboutPageManager from './AboutPageManager'
-import PortfolioManager from './PortfolioManager'
 import ServicesManager from './ServicesManager'
+import PortfolioManager from './PortfolioManager'
+import { getStoredPortfolioConfig } from '../../data/portfolioConfig'
+import { readBlogCategories, writeBlogCategories, withoutStaticBlogs } from '../../data/blogCategories'
+import { getStoredBlogs, setStoredBlogs, sanitizeBlogItem } from '../../data/blogConfig'
+import { buildDefaultPortfolioTree, getStoredPortfolioTree, normalizePortfolioTree, setStoredPortfolioTree, validatePortfolioTree } from '../../data/portfolioTree'
 import ContactPageManager from './ContactPageManager'
 import { getStoredContactConfig } from '../../data/contactConfig'
 import { getStoredAboutConfig } from '../../data/aboutConfig'
-import { getStoredPortfolioConfig } from '../../data/portfolioConfig'
 import { getStoredServicesConfig } from '../../data/servicesConfig'
 import { projects } from '../../data/projects'
-import recognitionDefaultReel from '../../assets/Product/11593543-hd_1920_1080_30fps.mp4'
+const recognitionDefaultReel = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
 import LoopVideo from '../LoopVideo'
 
 import areaIcon from '../../assets/icons/avrproj.png'
@@ -29,26 +32,63 @@ import globeImage from '../../assets/hero/globe.png'
 
 import { API_BASE_URL } from '../../config/api.js'
 
+export const DEFAULT_REAL_HERO_VIDEO = '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
+
 const LUXURY_IMAGE_PRESETS = [
-  { label: 'Desert Villa (Dubai)', url: '/architectural/dubai_villa.jpg' },
-  { label: 'Monaco Penthouse', url: '/interior/monaco.jpg' },
-  { label: 'Hotel Atrium (Commercial)', url: '/commercial/atrium.jpg' },
-  { label: 'Courchevel Alpine Chalet', url: '/architectural/courchevel_chalet.jpg' },
-  { label: 'Italian Bespoke Millwork', url: '/interior/beverly.jpg' },
-  { label: 'Tokyo Atrium / Lighting', url: '/commercial/tokyo.jpg' },
-  { label: 'Miami Oceanfront Villa', url: '/interior/miami.jpg' },
-  { label: 'Hydrothermal Basalt Spa', url: '/commercial/spa_belgrade.jpg' },
+  { label: 'Greenwood Avenue Mullanpur', url: '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg' },
+  { label: 'Neo Classic Villa Bijnor', url: '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png' },
+  { label: 'Teetro Bar & Restaurant Mohali', url: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png' },
+  { label: 'The Romania Banquet Hall', url: '/website-assets/architecture/The%20Romania%20-%20Luxury%20Wedding%20Spaces%20BANQUET%20HALL/Golden%20Arch%20Banquet%20Hall%20at%20Night-6.png' },
+  { label: 'Modern Living Room Interior', url: '/website-assets/INTERIOR/INTERIOR%20MODERN/LIVING%20ROOM/A1.jpg' },
+  { label: 'Al Rehman Tower Kolkata', url: '/website-assets/architecture/AL%20REHMAN%20TOWER%20KOLKATA/7e4f4312-846d-4e35-9f2b-af632b7dfc0a.png' },
+  { label: 'Al Rehman Tower Kolkata', url: '/website-assets/architecture/AL%20REHMAN%20TOWER%20KOLKATA/7e4f4312-846d-4e35-9f2b-af632b7dfc0a.png' },
+  { label: 'G S Street Market', url: '/website-assets/architecture/G%20S%20STREET%20MARKET/076fc39d-c3b1-48a3-a1df-4abaa5bbf7c1.png' },
 ]
 
+const DEFAULT_VIDEO_PRESETS = [
+  { name: 'Original Studio Cycling Video (Default)', url: 'cycle:default' },
+  { name: 'Rydhum Hotel & Banquet Hall', url: '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4' },
+  { name: 'Teetro Bar & Restaurant Mohali', url: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4' },
+  { name: 'Smart City Society Walkthrough', url: '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4' },
+  { name: 'Pushpa The Fire Dance Bar', url: '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4' },
+  { name: 'Victerrace Hotel Dance Bar', url: '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4' },
+]
+
+const DEFAULT_IMAGE_PRESETS = [
+  { name: 'Greenwood Avenue Mullanpur', url: '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg' },
+  { name: 'Neo Classic Villa Bijnor', url: '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png' },
+  { name: 'Teetro Bar & Restaurant Mohali', url: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png' },
+  { name: 'The Romania Banquet Hall', url: '/website-assets/architecture/The%20Romania%20-%20Luxury%20Wedding%20Spaces%20BANQUET%20HALL/Golden%20Arch%20Banquet%20Hall%20at%20Night-6.png' },
+  { name: 'Modern Living Room Interior', url: '/website-assets/INTERIOR/INTERIOR%20MODERN/LIVING%20ROOM/A1.jpg' },
+]
+
+function withBannerPresets(config) {
+  const fill = (preset) => ({
+    title: preset.title || config?.title || 'Unique Graphics',
+    subtitle: preset.subtitle || config?.subtitle || 'Leading international bureau for premium architectural and interior design',
+    buttonText: preset.buttonText || config?.buttonText || 'Discuss your project',
+    buttonLink: preset.buttonLink || config?.buttonLink || '/contacts',
+    name: preset.name || 'Untitled',
+    url: preset.url || '',
+  })
+  const videos = Array.isArray(config?.videoPresets) && config.videoPresets.length ? config.videoPresets : DEFAULT_VIDEO_PRESETS
+  const images = Array.isArray(config?.imagePresets) && config.imagePresets.length ? config.imagePresets : DEFAULT_IMAGE_PRESETS
+  return {
+    ...config,
+    videoPresets: videos.map(fill),
+    imagePresets: images.map(fill),
+  }
+}
+
 const BANNER_MEDIA_PRESETS = [
-  { label: 'Cinematic Loop 1 (Interior Living)', type: 'video', url: '/video/1.mp4' },
-  { label: 'Cinematic Loop 2 (Glazing Facade)', type: 'video', url: '/video/2.mp4' },
-  { label: 'Cinematic Loop 3 (Grand Atrium)', type: 'video', url: '/video/4.mp4' },
-  { label: 'Monumental Desert Villa', type: 'image', url: '/architectural/dubai_villa.jpg' },
-  { label: 'Neo-Monaco Penthouse', type: 'image', url: '/interior/monaco.jpg' },
-  { label: 'Alpine Ski Chalet Spa', type: 'image', url: '/architectural/courchevel_chalet.jpg' },
-  { label: 'Biophilic Hotel Atrium', type: 'image', url: '/commercial/atrium.jpg' },
-  { label: 'Studio Masterpiece Hero', type: 'image', url: '/hero.jpg' },
+  { label: 'Smart City Society Architectural Flyover (Monograph Showcase)', type: 'video', url: '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4' },
+  { label: 'Vic Terrace Hotel & Lounge Motion Loop', type: 'video', url: '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4' },
+  { label: 'Teetro Bar & Restaurant Mohali', type: 'video', url: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4' },
+  { label: 'Pushpa The Fire Dance Bar', type: 'video', url: '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4' },
+  { label: 'Rydhum Hotel & Banquet Hall Loop', type: 'video', url: '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4' },
+  { label: 'Neo Classic Villa Bijnor', type: 'image', url: '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png' },
+  { label: 'The Romania Banquet Hall', type: 'image', url: '/website-assets/architecture/The%20Romania%20-%20Luxury%20Wedding%20Spaces%20BANQUET%20HALL/Golden%20Arch%20Banquet%20Hall%20at%20Night-6.png' },
+  { label: 'Modern Living Room Interior', type: 'image', url: '/website-assets/INTERIOR/INTERIOR%20MODERN/LIVING%20ROOM/A1.jpg' },
 ]
 
 const INITIAL_INQUIRIES = []
@@ -68,7 +108,7 @@ export default function AdminPage() {
       const savedUser = localStorage.getItem('ug_admin_user')
       if (savedUser) return JSON.parse(savedUser)
     } catch { }
-    return { name: 'Executive Administrator', email: 'admin@uniquegraphics.com', role: 'superadmin' }
+    return { name: 'Executive Administrator', email: 'admin@uniquegraphics.com', role: 'Administrator' }
   })
   const [token, setToken] = useState(() => localStorage.getItem('ug_admin_token') || '')
   const [email, setEmail] = useState('')
@@ -132,16 +172,9 @@ export default function AdminPage() {
   const [inquirySaving, setInquirySaving] = useState(false)
 
   // DYNAMIC BLOG MANAGEMENT STATE (Website & MongoDB Integrated)
-  const [blogs, setBlogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ug_studio_blogs')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
-      }
-    } catch { }
-    return BLOG_POSTS
-  })
+  const [blogCategories, setBlogCategories] = useState(() => readBlogCategories())
+  const [newBlogCategory, setNewBlogCategory] = useState('')
+  const [blogs, setBlogs] = useState(() => getStoredBlogs())
   const [blogFilter, setBlogFilter] = useState('All')
   const [blogSearch, setBlogSearch] = useState('')
   const [blogModalOpen, setBlogModalOpen] = useState(false)
@@ -154,7 +187,7 @@ export default function AdminPage() {
     author: 'Unique Graphics Architectural Board',
     readTime: '6 min read',
     excerpt: '',
-    image: '/architectural/dubai_villa.jpg',
+    image: '/website-assets/architecture/NEO%20CLASSIC%20EXTERIOR%20DESIGN%20BIJNOR/Sunlit%20Classical%20Villa%20with%20Palm%20Gardens-11.png',
     content: '',
     published: true,
     featured: false,
@@ -163,9 +196,21 @@ export default function AdminPage() {
   // Dynamic Blog Page & Hero Banner Settings State
   const [bannerModalOpen, setBannerModalOpen] = useState(false)
   const [bannerSettings, setBannerSettings] = useState(() => {
+    const defaultUrl =
+      '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4'
     try {
       const saved = localStorage.getItem('ug_blog_banner_config')
-      if (saved) return JSON.parse(saved)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (
+          parsed.mediaUrl &&
+          !parsed.mediaUrl.includes('RYDHUM%20HOTEL') &&
+          !parsed.mediaUrl.includes('dubai_villa') &&
+          parsed.mediaUrl !== '/video/1.mp4'
+        ) {
+          return parsed
+        }
+      }
     } catch { }
     return {
       badge: 'STUDIO JOURNAL & PUBLICATIONS',
@@ -176,7 +221,7 @@ export default function AdminPage() {
       newsletterSubtitle:
         'Receive private quarterly retrospectives, material sourcing guides, and invitations to our international design symposiums directly in your inbox.',
       mediaType: 'video',
-      mediaUrl: '/video/1.mp4',
+      mediaUrl: defaultUrl,
     }
   })
 
@@ -184,7 +229,7 @@ export default function AdminPage() {
   const [heroBannerConfig, setHeroBannerConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('ug_homepage_hero_config')
-      if (saved) return JSON.parse(saved)
+      if (saved) return withBannerPresets(JSON.parse(saved))
     } catch { }
     return {
       title: 'Unique Graphics',
@@ -192,10 +237,13 @@ export default function AdminPage() {
       buttonText: 'Discuss your project',
       buttonLink: '/contacts',
       mediaType: 'video',
-      mediaUrl: '/video/4.mp4',
+      mediaUrl: DEFAULT_REAL_HERO_VIDEO,
+      videoPresets: DEFAULT_VIDEO_PRESETS,
+      imagePresets: DEFAULT_IMAGE_PRESETS,
     }
   })
   const [heroBannerSaving, setHeroBannerSaving] = useState(false)
+  const [editingPreset, setEditingPreset] = useState(null)
 
   const showToast = (msg) => {
     setActiveToast(msg)
@@ -255,8 +303,14 @@ export default function AdminPage() {
       const res = await fetch(`${API_BASE_URL}/blogs/settings/hero`)
       const result = await res.json()
       if (result.success && result.data) {
-        setHeroBannerConfig(result.data)
-        localStorage.setItem('ug_homepage_hero_config', JSON.stringify(result.data))
+        const localRaw = localStorage.getItem('ug_homepage_hero_config')
+        let local = null
+        try { local = localRaw ? JSON.parse(localRaw) : null } catch { local = null }
+        const remote = withBannerPresets(result.data)
+        const keepLocal = local?.updatedAt && (!remote.updatedAt || local.updatedAt >= remote.updatedAt)
+        const next = keepLocal ? withBannerPresets(local) : remote
+        setHeroBannerConfig(next)
+        localStorage.setItem('ug_homepage_hero_config', JSON.stringify(next))
       }
     } catch { }
   }
@@ -266,33 +320,44 @@ export default function AdminPage() {
     if (e) e.preventDefault()
     setHeroBannerSaving(true)
 
+    const payload = { ...heroBannerConfig, updatedAt: Date.now() }
+
+    const persistLocal = (value) => {
+      localStorage.setItem('ug_homepage_hero_config', JSON.stringify(value))
+      window.dispatchEvent(new Event('ug_hero_updated'))
+    }
+
+    const authToken = token || localStorage.getItem('ug_admin_token') || ''
+    const canReachApi = authToken && !authToken.startsWith('ug_vault_session_')
+
     try {
-      if (serverOnline && token) {
+      if (canReachApi) {
         const res = await fetch(`${API_BASE_URL}/blogs/settings/hero`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify(heroBannerConfig),
+          body: JSON.stringify(payload),
         })
         const data = await res.json()
-        if (data.success && data.data) {
-          setHeroBannerConfig(data.data)
-          localStorage.setItem('ug_homepage_hero_config', JSON.stringify(data.data))
-          window.dispatchEvent(new Event('ug_hero_updated'))
-          showToast('Homepage Hero Banner updated live on website!')
+        if (res.ok && data.success && data.data) {
+          const next = withBannerPresets({ ...data.data, updatedAt: payload.updatedAt })
+          setHeroBannerConfig(next)
+          persistLocal(next)
+          showToast('Banner is live on the website.')
           setHeroBannerSaving(false)
           return
         }
+        showToast(data.message || 'Could not publish the banner.')
       }
     } catch (err) {
       console.warn('API save error:', err)
     }
 
-    localStorage.setItem('ug_homepage_hero_config', JSON.stringify(heroBannerConfig))
-    window.dispatchEvent(new Event('ug_hero_updated'))
-    showToast('Homepage Hero Banner saved!')
+    setHeroBannerConfig(payload)
+    persistLocal(payload)
+    showToast(canReachApi ? 'Saved in this browser. The website will use it.' : 'Saved. Refresh the home page to see it.')
     setHeroBannerSaving(false)
   }
 
@@ -1184,12 +1249,17 @@ export default function AdminPage() {
       })
       const result = await res.json()
       if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-        setBlogs(result.data)
-        localStorage.setItem('ug_studio_blogs', JSON.stringify(result.data))
+        const live = result.data.map((p, idx) => sanitizeBlogItem(p, idx))
+        setBlogs(live)
+        setStoredBlogs(live)
         setServerOnline(true)
+      } else {
+        const fallback = getStoredBlogs()
+        setBlogs(fallback)
       }
     } catch {
       // offline fallback maintains localStorage
+      setBlogs(getStoredBlogs())
     }
   }
 
@@ -1201,6 +1271,9 @@ export default function AdminPage() {
       if (result.success && result.data) {
         setBannerSettings(result.data)
         localStorage.setItem('ug_blog_banner_config', JSON.stringify(result.data))
+        if (Array.isArray(result.data.categories) && result.data.categories.length) {
+          setBlogCategories(writeBlogCategories(result.data.categories))
+        }
       }
     } catch { }
   }
@@ -1421,7 +1494,7 @@ export default function AdminPage() {
       author: 'Unique Graphics Architectural Board',
       readTime: '6 min read',
       excerpt: '',
-      image: '/architectural/dubai_villa.jpg',
+      image: '/website-assets/architecture/NEO%20CLASSIC%20EXTERIOR%20DESIGN%20BIJNOR/Sunlit%20Classical%20Villa%20with%20Palm%20Gardens-11.png',
       content: '',
       published: true,
       featured: false,
@@ -1447,7 +1520,7 @@ export default function AdminPage() {
       author: blog.author || 'Unique Graphics Atelier Lead',
       readTime: blog.readTime || '5 min read',
       excerpt: blog.excerpt || '',
-      image: blog.image || '/architectural/dubai_villa.jpg',
+      image: blog.image || '/website-assets/architecture/NEO%20CLASSIC%20EXTERIOR%20DESIGN%20BIJNOR/Sunlit%20Classical%20Villa%20with%20Palm%20Gardens-11.png',
       content: contentString,
       published: blog.published !== false,
       featured: Boolean(blog.featured),
@@ -1507,7 +1580,7 @@ export default function AdminPage() {
             updatedList = [data.data, ...blogs]
           }
           setBlogs(updatedList)
-          localStorage.setItem('ug_studio_blogs', JSON.stringify(updatedList))
+          setStoredBlogs(updatedList)
           showToast(`Article "${blogFormData.title}" updated in MongoDB.`)
           setBlogModalOpen(false)
           setBlogSaving(false)
@@ -1524,7 +1597,7 @@ export default function AdminPage() {
         (b._id || b.slug || b.id) === blogId ? { ...b, ...payload } : b
       )
       setBlogs(updatedList)
-      localStorage.setItem('ug_studio_blogs', JSON.stringify(updatedList))
+      setStoredBlogs(updatedList)
       showToast(`Article "${blogFormData.title}" updated successfully.`)
     } else {
       const generatedSlug = blogFormData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')
@@ -1536,7 +1609,7 @@ export default function AdminPage() {
       }
       const updatedList = [newLocalBlog, ...blogs]
       setBlogs(updatedList)
-      localStorage.setItem('ug_studio_blogs', JSON.stringify(updatedList))
+      setStoredBlogs(updatedList)
       showToast(`New article "${blogFormData.title}" published!`)
     }
 
@@ -1562,7 +1635,7 @@ export default function AdminPage() {
 
     const updatedList = blogs.filter((b) => (b._id || b.slug || b.id) !== blogId)
     setBlogs(updatedList)
-    localStorage.setItem('ug_studio_blogs', JSON.stringify(updatedList))
+    setStoredBlogs(updatedList)
     showToast(`Article removed from architectural journal.`)
   }
 
@@ -1587,7 +1660,7 @@ export default function AdminPage() {
       (b._id || b.slug || b.id) === blogId ? { ...b, published: newStatus } : b
     )
     setBlogs(updatedList)
-    localStorage.setItem('ug_studio_blogs', JSON.stringify(updatedList))
+    setStoredBlogs(updatedList)
     showToast(`Article status set to ${newStatus ? 'Live / Published' : 'Draft'}.`)
   }
 
@@ -1611,7 +1684,7 @@ export default function AdminPage() {
       return { ...b, featured: match, published: match ? true : b.published }
     })
     setBlogs(updated)
-    localStorage.setItem('ug_studio_blogs', JSON.stringify(updated))
+    setStoredBlogs(updated)
     showToast(`"${blog.title}" is now the Main Top Cover Banner on the website!`)
   }
 
@@ -1667,6 +1740,8 @@ export default function AdminPage() {
     } catch { }
 
     localStorage.setItem('ug_blog_banner_config', JSON.stringify(bannerSettings))
+    if (Array.isArray(bannerSettings.categories)) writeBlogCategories(bannerSettings.categories)
+    window.dispatchEvent(new Event('ug_blog_banner_updated'))
     showToast('Blog banner and page typography updated on website!')
     setBannerModalOpen(false)
   }
@@ -1725,7 +1800,7 @@ export default function AdminPage() {
         const defaultAdmin = {
           name: storedOffline.name || adminUser?.name || 'Executive Administrator',
           email: validEmail,
-          role: 'superadmin',
+          role: 'Administrator',
         }
         localStorage.setItem('ug_admin_token', dummyToken)
         localStorage.setItem('ug_admin_user', JSON.stringify(defaultAdmin))
@@ -1864,7 +1939,7 @@ export default function AdminPage() {
       ...(adminUser || {}),
       name: settingsName.trim(),
       email: settingsEmail.trim(),
-      role: 'superadmin',
+      role: 'Administrator',
     }
     localStorage.setItem('ug_admin_user', JSON.stringify(updatedAdmin))
     setAdminUser(updatedAdmin)
@@ -1938,12 +2013,7 @@ export default function AdminPage() {
               </svg>
             </button>
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#e3943f] text-black font-extrabold text-[11px]">
-                UG
-              </span>
-              <span className="text-[12px] font-bold tracking-widest text-white uppercase">
-                ATELIER OS
-              </span>
+              <img src="/logouniqe.png" alt="Unique Graphics" className="h-8 w-auto object-contain" />
             </div>
           </div>
           <button
@@ -1971,17 +2041,7 @@ export default function AdminPage() {
           {/* Sidebar Brand Header */}
           <div className="shrink-0 flex items-center justify-between pb-4 border-b border-white/[0.08]">
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#e3943f] to-[#b36e22] text-black font-black text-[13px] shadow-lg shadow-[#e3943f]/25">
-                UG
-              </span>
-              <div>
-                <span className="text-[9.5px] font-bold tracking-[0.22em] text-[#e3943f] uppercase block">
-                  EXECUTIVE OS
-                </span>
-                <h2 className="text-[13px] font-bold tracking-wider text-white uppercase">
-                  Unique Graphics
-                </h2>
-              </div>
+            <img src="/logouniqe.png" alt="Unique Graphics" className="h-12 w-auto max-w-[160px] object-contain" />
             </div>
             <button
               type="button"
@@ -2018,7 +2078,7 @@ export default function AdminPage() {
                     <rect x="14" y="12" width="7" height="9" />
                     <rect x="3" y="16" width="7" height="5" />
                   </svg>
-                  <span>Overview</span>
+                  <span>Dashboard</span>
                 </div>
               </button>
 
@@ -2040,7 +2100,7 @@ export default function AdminPage() {
                     <line x1="8" y1="21" x2="16" y2="21" />
                     <line x1="12" y1="17" x2="12" y2="21" />
                   </svg>
-                  <span>Homepage Banner</span>
+                  <span>Home Banner</span>
                 </div>
 
               </button>
@@ -2063,7 +2123,7 @@ export default function AdminPage() {
                     <line x1="2" y1="12" x2="22" y2="12" />
                     <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                   </svg>
-                  <span>Countries & Stats</span>
+                  <span>32 countries</span>
                 </div>
 
               </button>
@@ -2087,7 +2147,7 @@ export default function AdminPage() {
                     <line x1="17" y1="2" x2="17" y2="22" />
                     <line x1="2" y1="12" x2="22" y2="12" />
                   </svg>
-                  <span>Projects Gallery</span>
+                  <span>Project photos</span>
                 </div>
 
               </button>
@@ -2108,7 +2168,7 @@ export default function AdminPage() {
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
-                  <span>Brand & Showcase</span>
+                  <span>Clients</span>
                 </div>
 
               </button>
@@ -2130,7 +2190,7 @@ export default function AdminPage() {
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
-                  <span>About Us Page</span>
+                  <span>About page</span>
                 </div>
               </button>
 
@@ -2152,7 +2212,7 @@ export default function AdminPage() {
                   <rect x="14" y="14" width="7" height="7" />
                   <rect x="3" y="14" width="7" height="7" />
                 </svg>
-                <span className="whitespace-nowrap">Portfolio & Disciplines</span>
+                <span className="whitespace-nowrap">Portfolio</span>
               </button>
 
               {/* Tab: Services & Disciplines Manager */}
@@ -2170,7 +2230,7 @@ export default function AdminPage() {
                 <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
                 </svg>
-                <span className="whitespace-nowrap">Services & Disciplines</span>
+                <span className="whitespace-nowrap">Services</span>
               </button>
 
               {/* Tab: Contact Page Customizer */}
@@ -2193,7 +2253,7 @@ export default function AdminPage() {
                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                     <polyline points="22,6 12,13 2,6" />
                   </svg>
-                  <span>Contact Us & Leads</span>
+                  <span>Messages</span>
                 </div>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'inquiries' ? 'bg-black/20 text-black' : 'bg-[#e3943f]/20 text-[#e3943f]'
@@ -2220,7 +2280,7 @@ export default function AdminPage() {
                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                   </svg>
-                  <span>Journal & Blog</span>
+                  <span>Blog</span>
                 </div>
               </button>
 
@@ -2241,7 +2301,7 @@ export default function AdminPage() {
                     <circle cx="12" cy="12" r="3" />
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                   </svg>
-                  <span>Admin Settings</span>
+                  <span>Settings</span>
                 </div>
                 <span className="h-1.5 w-1.5 rounded-full bg-[#e3943f]" />
               </button>
@@ -2278,18 +2338,18 @@ export default function AdminPage() {
                 </span>
               </div>
               <h1 className="text-[18px] sm:text-[22px] font-normal tracking-[-0.01em] text-white uppercase mt-0.5">
-                {activeTab === 'overview' && 'Studio Overview & Management Console'}
-                {activeTab === 'hero_banner' && 'Homepage Hero Banner & Media Engine'}
-                {activeTab === 'projects_section' && 'Global Portfolio (32 Countries) & Architectural Stats'}
-                {activeTab === 'completed_projects' && 'Completed Projects Gallery (650+) & Video Portfolio'}
-                {activeTab === 'brand_showcase' && 'Brand Showcase, Clients & Worldwide Recognition'}
-                {activeTab === 'about_page' && 'About Us Page & Studio Culture Customizer'}
-                {activeTab === 'portfolio_pages' && 'Portfolio & Category Pages Engine'}
-                {activeTab === 'services_pages' && 'Services & Disciplines Customizer'}
-                {activeTab === 'contact_page' && 'Contact Us Portal & Video Reel Customizer'}
-                {activeTab === 'inquiries' && 'Client Inquiries & Leads Pipeline'}
-                {activeTab === 'blog' && 'Architectural Journal & Publications'}
-                {activeTab === 'settings' && 'Admin Account & Password Security Settings'}
+                {activeTab === 'overview' && 'Dashboard'}
+                {activeTab === 'hero_banner' && 'Home page banner'}
+                {activeTab === 'projects_section' && '32 countries on the home page'}
+                {activeTab === 'completed_projects' && 'Project photos'}
+                {activeTab === 'brand_showcase' && 'Clients and awards'}
+                {activeTab === 'about_page' && 'About page'}
+                {activeTab === 'portfolio_pages' && 'Portfolio pages'}
+                {activeTab === 'services_pages' && 'Services'}
+                {activeTab === 'contact_page' && 'Contact page'}
+                {activeTab === 'inquiries' && 'Messages'}
+                {activeTab === 'blog' && 'Blog'}
+                {activeTab === 'settings' && 'Account settings'}
               </h1>
             </div>
 
@@ -2315,7 +2375,7 @@ export default function AdminPage() {
                   index: '01',
                   category: 'crm',
                   targetTab: 'inquiries',
-                  name: 'Contact Us Portal & Lead Intake',
+                  name: 'Contact page',
                   route: '/contacts',
                   tag: 'Primary Inbound Hub',
                   icon: (
@@ -2336,7 +2396,7 @@ export default function AdminPage() {
                   index: '02',
                   category: 'homepage',
                   targetTab: 'hero_banner',
-                  name: 'Homepage Hero Banner & 4K Loop',
+                  name: 'Home page banner',
                   route: '/#hero',
                   tag: 'Cinematic Gateway',
                   icon: (
@@ -2359,7 +2419,7 @@ export default function AdminPage() {
                   index: '03',
                   category: 'homepage',
                   targetTab: 'projects_section',
-                  name: '32 Countries & Global Metrics',
+                  name: '32 countries',
                   route: '/#portfolio',
                   tag: 'International Footprint',
                   icon: (
@@ -2382,7 +2442,7 @@ export default function AdminPage() {
                   index: '04',
                   category: 'homepage',
                   targetTab: 'completed_projects',
-                  name: 'Completed Projects Gallery (650+)',
+                  name: 'Project photos',
                   route: '/#projects',
                   tag: 'Built Works Showcase',
                   icon: (
@@ -2406,7 +2466,7 @@ export default function AdminPage() {
                   index: '05',
                   category: 'homepage',
                   targetTab: 'brand_showcase',
-                  name: 'Brand Showcase & 6 Manifestos',
+                  name: 'Clients and awards',
                   route: '/#brand',
                   tag: 'Atelier Philosophy',
                   icon: (
@@ -2427,7 +2487,7 @@ export default function AdminPage() {
                   index: '06',
                   category: 'portals',
                   targetTab: 'about_page',
-                  name: 'About Us Studio Monograph Page',
+                  name: 'About page',
                   route: '/about',
                   tag: 'Full Studio Dossier',
                   icon: (
@@ -2449,7 +2509,7 @@ export default function AdminPage() {
                   index: '07',
                   category: 'portals',
                   targetTab: 'portfolio_pages',
-                  name: 'Portfolio Categories & Landing Portals',
+                  name: 'Portfolio pages',
                   route: '/all-projects',
                   tag: '4 Category Gateways',
                   icon: (
@@ -2473,7 +2533,7 @@ export default function AdminPage() {
                   index: '08',
                   category: 'portals',
                   targetTab: 'services_pages',
-                  name: 'Services & Disciplines Engine (10)',
+                  name: 'Services',
                   route: '/all-services',
                   tag: '10 Disciplines',
                   icon: (
@@ -2494,7 +2554,7 @@ export default function AdminPage() {
                   index: '09',
                   category: 'crm',
                   targetTab: 'inquiries',
-                  name: 'Client Inquiries & CRM Pipeline',
+                  name: 'Messages',
                   route: '/contacts',
                   tag: 'Client Briefs Pipeline',
                   icon: (
@@ -2506,7 +2566,7 @@ export default function AdminPage() {
                   ...getSectionUpdateInfo(
                     'inquiries',
                     inquiries[0] ? `${inquiries[0].date}` : 'Live Synced',
-                    `${inquiries.length} total client briefs logged from /contacts form and manual registrations.`
+                    `${inquiries.length} messages from the contact form.`
                   ),
                   badgeNote: `${inquiries.length} total client submissions registered`,
                   chips: [`${inquiries.length} Active Leads`, 'Real-time Mail Sync', 'Status Tracker'],
@@ -2516,7 +2576,7 @@ export default function AdminPage() {
                   index: '10',
                   category: 'crm',
                   targetTab: 'blog',
-                  name: 'Architectural Journal & Monograph Blog',
+                  name: 'Blog',
                   route: '/blog',
                   tag: 'Publications & Monographs',
                   icon: (
@@ -2581,266 +2641,73 @@ export default function AdminPage() {
               const recentActivityLogs = getRecentLogs()
 
               return (
-                <div className="space-y-8 animate-fade-in pb-12">
-                  {/* HERO COMMAND STRIP WITH HIGH-FASHION ARCHITECTURAL GLOW */}
-                  <div className="relative rounded-3xl border border-[#e3943f]/30 bg-gradient-to-br from-[#18140f] via-[#111111] to-[#0a0a0a] p-6 sm:p-8 overflow-hidden shadow-2xl backdrop-blur-2xl">
-                    {/* Background Decorative Gold Ambient Orbs */}
-                    <div className="pointer-events-none absolute -top-28 -right-28 h-80 w-80 rounded-full bg-[#e3943f]/15 blur-3xl animate-pulse" />
-                    <div className="pointer-events-none absolute -bottom-28 -left-28 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
-                    <div className="pointer-events-none absolute top-1/2 left-1/3 -translate-y-1/2 h-44 w-96 rounded-full bg-amber-500/5 blur-3xl" />
+                <div className="space-y-8 pb-12">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#e3943f]">Studio</p>
+                    <h2 className="mt-1 text-[28px] font-semibold tracking-tight text-white">Dashboard</h2>
+                    <p className="mt-1 text-[13px] text-white/45">Open a section to edit it, or check what changed last.</p>
+                  </div>
 
-                    <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                      <div className="space-y-2.5">
-                        <div className="inline-flex items-center gap-2.5 px-3.5 py-1 rounded-full bg-[#e3943f]/10 border border-[#e3943f]/30 backdrop-blur-md">
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#e3943f] opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#e3943f]" />
-                          </span>
-                          <span className="text-[10px] font-mono font-bold tracking-[0.25em] text-[#e3943f] uppercase">
-                            UNIQUE GRAPHICS ARCHITECTURAL ATELIER • AUDIT MATRIX
-                          </span>
+                  <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    {[
+                      { label: 'Sections', value: '10', onClick: null },
+                      { label: 'Messages', value: inquiries.length, onClick: () => setActiveTab('inquiries') },
+                      { label: 'Blog posts', value: blogs.length, onClick: () => setActiveTab('blog') },
+                      { label: 'Project photos', value: completedProjectsConfig?.projects?.length || projects.length || 0, onClick: () => setActiveTab('completed_projects') },
+                    ].map((card) => (
+                      <button
+                        key={card.label}
+                        type="button"
+                        onClick={card.onClick || undefined}
+                        className={`rounded-2xl border border-white/10 bg-[#141414] px-5 py-5 text-left ${card.onClick ? 'cursor-pointer hover:border-[#e3943f]/60' : 'cursor-default'}`}
+                      >
+                        <p className="text-[12px] text-white/45">{card.label}</p>
+                        <p className="mt-3 text-[32px] font-semibold leading-none text-white">{card.value}</p>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+                    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#121212]">
+                      <div className="flex flex-col gap-3 border-b border-white/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-wrap gap-1">
+                          {[
+                            { id: 'all', label: 'All' },
+                            { id: 'homepage', label: 'Home' },
+                            { id: 'portals', label: 'Pages' },
+                            { id: 'crm', label: 'Inbox' },
+                          ].map((tab) => (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => setOverviewFilter(tab.id)}
+                              className={`rounded-lg px-3 py-1.5 text-[13px] ${overviewFilter === tab.id ? 'bg-[#e3943f] font-semibold text-black' : 'text-white/60 hover:text-white'}`}
+                            >
+                              {tab.label}
+                            </button>
+                          ))}
                         </div>
-                        <h2 className="text-[26px] sm:text-[32px] font-light tracking-wide text-white">
-                          Studio Production & Revision <span className="font-semibold text-gradient bg-gradient-to-r from-white via-amber-100 to-[#e3943f] bg-clip-text text-transparent">Telemetry</span>
-                        </h2>
-                        <p className="text-[13px] text-white/60 max-w-2xl leading-relaxed">
-                          Live chronological control monitor tracking all 10 architectural sections — inspect updates, review live parameters, or jump directly into the module editor.
-                        </p>
-                      </div>
-
-                    </div>
-                  </div>
-
-                  {/* 4 LUXURY KPI METRIC TILES */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Metric 1 */}
-                    <div className="group relative rounded-2xl border border-white/[0.09] bg-gradient-to-b from-[#161616] to-[#101010] p-5 hover:border-[#e3943f]/50 transition-all duration-300 shadow-xl overflow-hidden">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-[#e3943f]/5 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono font-bold tracking-widest text-[#e3943f] uppercase">
-                          MONITORED MODULES
-                        </span>
-                        <span className="h-2 w-2 rounded-full bg-[#e3943f] shadow-sm shadow-[#e3943f]" />
-                      </div>
-                      <p className="mt-2.5 text-[34px] font-extralight text-white tracking-tight">
-                        10<span className="text-[14px] text-white/40 ml-1">/10</span>
-                      </p>
-                      <div className="mt-2 flex items-center gap-2 text-[11px] text-white/50">
-                        <span className="text-emerald-400 font-medium font-mono">100% Synced</span>
-                        <span>•</span>
-                        <span>Production Site</span>
-                      </div>
-                    </div>
-
-                    {/* Metric 2 */}
-                    <div
-                      onClick={() => setActiveTab('inquiries')}
-                      className="group relative rounded-2xl border border-white/[0.09] bg-gradient-to-b from-[#161616] to-[#101010] p-5 hover:border-emerald-500/50 transition-all duration-300 shadow-xl overflow-hidden cursor-pointer"
-                      title="Click to view inquiries"
-                    >
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono font-bold tracking-widest text-emerald-400 uppercase">
-                          CLIENT INQUIRIES
-                        </span>
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400" />
-                      </div>
-                      <p className="mt-2.5 text-[34px] font-extralight text-emerald-400 tracking-tight">
-                        {inquiries.length}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-white/50">
-                        <span>Active Briefs</span>
-                        <span className="text-emerald-400/80 group-hover:text-emerald-300 group-hover:underline">Open CRM ↗</span>
-                      </div>
-                    </div>
-
-                    {/* Metric 3 */}
-                    <div
-                      onClick={() => setActiveTab('blog')}
-                      className="group relative rounded-2xl border border-white/[0.09] bg-gradient-to-b from-[#161616] to-[#101010] p-5 hover:border-purple-500/50 transition-all duration-300 shadow-xl overflow-hidden cursor-pointer"
-                      title="Click to view journal"
-                    >
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono font-bold tracking-widest text-purple-400 uppercase">
-                          JOURNAL ESSAYS
-                        </span>
-                        <span className="h-2 w-2 rounded-full bg-purple-400 shadow-sm shadow-purple-400" />
-                      </div>
-                      <p className="mt-2.5 text-[34px] font-extralight text-purple-400 tracking-tight">
-                        {blogs.length}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-white/50">
-                        <span>Monographs</span>
-                        <span className="text-purple-400/80 group-hover:text-purple-300 group-hover:underline">Open Blog ↗</span>
-                      </div>
-                    </div>
-
-                    {/* Metric 4: Portfolio Works (Replacing MongoDB Atlas) */}
-                    <div
-                      onClick={() => setActiveTab('completed_projects')}
-                      className="group relative rounded-2xl border border-white/[0.09] bg-gradient-to-b from-[#161616] to-[#101010] p-5 hover:border-sky-400/50 transition-all duration-300 shadow-xl overflow-hidden cursor-pointer"
-                      title="Click to view completed projects gallery"
-                    >
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono font-bold tracking-widest text-sky-400 uppercase">
-                          PORTFOLIO WORKS
-                        </span>
-                        <span className="h-2 w-2 rounded-full bg-sky-400 shadow-sm shadow-sky-400" />
-                      </div>
-                      <p className="mt-2.5 text-[34px] font-extralight text-sky-400 tracking-tight">
-                        {completedProjectsConfig?.projects?.length ? `${completedProjectsConfig.projects.length}+` : '650+'}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-white/50">
-                        <span>Built Works</span>
-                        <span className="text-sky-400/80 group-hover:text-sky-300 group-hover:underline">Open Gallery ↗</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* INTERACTIVE CONTROLS BAR: REAL-TIME HUD WITH SEARCH & CATEGORY PILLS */}
-                  <div className="rounded-2xl border border-white/10 bg-[#141414]/90 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 backdrop-blur-md shadow-xl">
-                    {/* Category Filter Pills */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      {[
-                        { id: 'all', label: 'All Modules', count: 10 },
-                        { id: 'homepage', label: 'Homepage Canvas', count: 4 },
-                        { id: 'portals', label: 'Studio Portals', count: 4 },
-                        { id: 'crm', label: 'CRM & Journal', count: 2 },
-                      ].map((tab) => (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setOverviewFilter(tab.id)}
-                          className={`px-4 py-2 rounded-xl text-[12px] font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-2 ${overviewFilter === tab.id
-                            ? 'bg-[#e3943f] text-black font-bold shadow-lg shadow-[#e3943f]/25 scale-[1.02]'
-                            : 'bg-white/[0.04] text-white/70 hover:text-white hover:bg-white/[0.08] border border-white/[0.06]'
-                            }`}
-                        >
-                          <span>{tab.label}</span>
-                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${overviewFilter === tab.id ? 'bg-black/20 text-black font-bold' : 'bg-white/10 text-white/60'}`}>
-                            {tab.count}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Search Bar & Counter */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-[11px] text-white/40 hidden md:inline font-mono">
-                        Showing {filteredModules.length} of 10
-                      </span>
-                      <div className="relative w-full sm:w-72">
-                        <svg className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="11" cy="11" r="8" />
-                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        </svg>
                         <input
                           type="text"
                           value={overviewSearch}
                           onChange={(e) => setOverviewSearch(e.target.value)}
-                          placeholder="Search section, route, tags..."
-                          className="w-full rounded-xl border border-white/10 bg-black/60 pl-10 pr-8 py-2 text-[12px] text-white placeholder-white/40 outline-none focus:border-[#e3943f] transition-all"
+                          placeholder="Search"
+                          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-[13px] text-white outline-none focus:border-[#e3943f] sm:w-52"
                         />
-                        {overviewSearch && (
-                          <button
-                            type="button"
-                            onClick={() => setOverviewSearch('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white text-xs cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        )}
                       </div>
-                    </div>
-                  </div>
 
-                  {/* BESPOKE LUXURY SECTION UPDATE STREAM (NON-BORING ARCHITECTURAL SPEC ROWS) */}
-                  <div className="space-y-3.5">
-                    {filteredModules.length === 0 ? (
-                      <div className="rounded-2xl border border-white/10 bg-[#141414] p-12 text-center space-y-3">
-                        <svg className="w-8 h-8 text-white/30 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="11" cy="11" r="8" />
-                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        </svg>
-                        <p className="text-[14px] text-white/60">No sections match your search "{overviewSearch}"</p>
-                        <button
-                          type="button"
-                          onClick={() => { setOverviewSearch(''); setOverviewFilter('all'); }}
-                          className="text-[12px] text-[#e3943f] hover:underline cursor-pointer"
-                        >
-                          Clear search and filters
-                        </button>
-                      </div>
-                    ) : (
-                      filteredModules.map((mod) => (
-                        <div
-                          key={mod.id}
-                          className="group relative rounded-2xl border border-white/[0.08] bg-gradient-to-r from-[#171717] via-[#141414] to-[#101010] p-4 sm:p-5 hover:border-[#e3943f]/40 hover:bg-gradient-to-r hover:from-[#1d1812] hover:to-[#141414] transition-all duration-300 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-                        >
-                          {/* Left: Index Number & Glowing Icon & Section Identity */}
-                          <div className="flex items-center gap-3.5 min-w-[280px]">
-                            <span className="text-[11px] font-mono text-white/25 w-6 shrink-0 font-semibold">
-                              {mod.index}
-                            </span>
-                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#e3943f]/20 via-[#e3943f]/10 to-transparent border border-[#e3943f]/30 shrink-0 group-hover:scale-105 group-hover:border-[#e3943f]/60 transition-all shadow-inner">
+                      {filteredModules.length === 0 ? (
+                        <p className="px-5 py-10 text-center text-[13px] text-white/45">Nothing matches that search.</p>
+                      ) : (
+                        filteredModules.map((mod) => (
+                          <div key={mod.id} className="flex items-center gap-4 border-b border-white/[0.06] px-4 py-4 last:border-b-0">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e3943f]/10 text-[#e3943f]">
                               {mod.icon}
                             </div>
-                            <div className="space-y-0.5 min-w-0">
-                              <h3 className="text-[15px] font-bold text-white group-hover:text-[#e3943f] transition-colors tracking-wide truncate">
-                                {mod.name}
-                              </h3>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[11px] font-mono text-[#e3943f] font-semibold">
-                                  {mod.route}
-                                </span>
-                                <span className="text-white/20">•</span>
-                                <span className="text-[9.5px] uppercase tracking-wider text-white/40 font-semibold">
-                                  {mod.tag}
-                                </span>
-                              </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="truncate text-[14px] font-medium text-white">{mod.name}</h3>
+                              <p className="truncate text-[12px] text-white/40">{mod.time}</p>
                             </div>
-                          </div>
-
-                          {/* Middle: What was Updated & Active Live Parameters & Chips */}
-                          <div className="flex-1 min-w-0 space-y-2 lg:px-4">
-                            <p className="text-[13px] text-white/85 leading-snug">
-                              {mod.summary}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {mod.chips && mod.chips.map((chip, idx) => (
-                                <span
-                                  key={idx}
-                                  className="text-[10px] font-mono text-white/60 bg-white/[0.04] px-2.5 py-0.5 rounded-md border border-white/[0.07]"
-                                >
-                                  {chip}
-                                </span>
-                              ))}
-                              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#e3943f]/80 bg-[#e3943f]/10 px-2.5 py-0.5 rounded-md border border-[#e3943f]/20">
-                                {mod.badgeNote}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Right: Timestamp & Dual Actions (Configure & Preview) */}
-                          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-white/[0.06]">
-                            {/* Kab Update Hua Badge */}
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-mono font-semibold bg-[#e3943f]/10 text-[#e3943f] border border-[#e3943f]/30 shadow-inner">
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10" />
-                                <polyline points="12 6 12 12 16 14" />
-                              </svg>
-                              <span>{mod.time}</span>
-                            </div>
-
-                            {/* Production Live Beacon */}
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                              Live
-                            </span>
-
-                            {/* Quick Configure / Switch Tab Action */}
                             <button
                               type="button"
                               onClick={() => {
@@ -2849,65 +2716,35 @@ export default function AdminPage() {
                                   window.scrollTo({ top: 0, behavior: 'smooth' })
                                 }
                               }}
-                              className="px-3 py-1.5 rounded-xl border border-[#e3943f]/40 bg-[#e3943f]/15 hover:bg-[#e3943f] hover:text-black text-[11.5px] font-bold text-[#e3943f] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                              title={`Jump into ${mod.name} Editor`}
+                              className="rounded-lg bg-[#e3943f] px-3 py-1.5 text-[12px] font-semibold text-black"
                             >
-                              <span>Configure</span>
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
+                              Edit
                             </button>
-
-                            {/* Live Site Preview Button */}
                             <a
                               href={mod.route.startsWith('/#') ? `/${mod.route}` : mod.route}
                               target="_blank"
                               rel="noreferrer"
-                              className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.04] text-[11.5px] font-semibold text-white/80 hover:text-white hover:border-[#e3943f]/50 hover:bg-[#e3943f]/10 transition-all cursor-pointer flex items-center gap-1.5"
-                              title="Preview on live site"
+                              className="rounded-lg border border-white/10 px-3 py-1.5 text-[12px] text-white/70 hover:text-white"
                             >
-                              <span>Site ↗</span>
+                              View
                             </a>
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                        ))
+                      )}
+                    </section>
 
-                  {/* RECENT STUDIO CHANGELOG & AUDIT LOGS STREAM */}
-                  <div className="rounded-3xl border border-white/[0.09] bg-gradient-to-br from-[#151515] to-[#0d0d0d] p-6 sm:p-7 shadow-2xl space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.07]">
-                      <div className="flex items-center gap-2.5">
-                        <span className="h-2 w-2 rounded-full bg-[#e3943f]" />
-                        <h4 className="text-[14px] font-mono font-bold tracking-widest text-white uppercase">
-                          STUDIO AUDIT FEED & RECENT CHANGELOG
-                        </h4>
-                      </div>
-                      <span className="text-[11px] font-mono text-white/40">
-                        Auto-logged whenever you save or publish changes
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
-                      {recentActivityLogs.map((log, i) => (
-                        <div
-                          key={log.id || i}
-                          className="rounded-xl border border-white/[0.06] bg-black/40 p-4 space-y-1.5 hover:border-[#e3943f]/30 transition-all"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-[12px] font-bold text-white tracking-wide">
-                              {log.sectionName || 'Studio Core Module'}
-                            </span>
-                            <span className="text-[10px] font-mono text-[#e3943f] bg-[#e3943f]/10 px-2 py-0.5 rounded border border-[#e3943f]/20">
-                              {log.time}
-                            </span>
+                    <aside className="rounded-2xl border border-white/10 bg-[#121212] p-5">
+                      <h3 className="text-[14px] font-medium text-white">Recent changes</h3>
+                      <div className="mt-4 space-y-4">
+                        {recentActivityLogs.map((log, index) => (
+                          <div key={log.id || index} className="border-t border-white/[0.06] pt-4 first:border-t-0 first:pt-0">
+                            <p className="text-[13px] text-white">{log.sectionName || 'Section'}</p>
+                            <p className="mt-1 text-[12px] leading-relaxed text-white/45">{log.detail}</p>
+                            <p className="mt-1 text-[11px] text-white/30">{log.time}</p>
                           </div>
-                          <p className="text-[12px] text-white/60 leading-relaxed">
-                            {log.detail || 'Configuration parameters updated and verified.'}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    </aside>
                   </div>
                 </div>
               )
@@ -2917,45 +2754,28 @@ export default function AdminPage() {
             {activeTab === 'hero_banner' && (
               <div className="space-y-6 animate-fade-in">
                 {/* Header with Title and Quick Action */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
+                <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-[#e3943f] animate-pulse" />
-                      <span className="text-[10px] font-bold tracking-[0.2em] text-[#e3943f] uppercase">
-                        HOMEPAGE HERO CUSTOMIZER
-                      </span>
-                    </div>
-                    <h3 className="text-[18px] font-semibold text-white mt-1">
-                      Homepage Hero Banner & Media Engine
-                    </h3>
-                    <p className="text-[12.5px] text-white/50">
-                      Set video loops or high-resolution luxury imagery with custom typography directly on the website hero.
+                    <h3 className="text-[22px] font-semibold text-white">Home Banner</h3>
+                    <p className="mt-1 max-w-xl text-[13px] text-white/50">
+                      Videos and photos rotate on the first screen. Each one has its own title and button.
                     </p>
                   </div>
-
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => navigateTo('/')}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[11.5px] font-bold tracking-wider text-white/80 uppercase hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer flex items-center gap-2"
+                      className="rounded-lg border border-white/10 px-3.5 py-2 text-[13px] text-white/70 hover:text-white"
                     >
-                      <span>Preview Live Site</span>
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                        <polyline points="15 3 21 3 21 9" />
-                        <line x1="10" y1="14" x2="21" y2="3" />
-                      </svg>
+                      View site
                     </button>
                     <button
                       type="button"
                       onClick={handleSaveHeroBanner}
                       disabled={heroBannerSaving}
-                      className="rounded-xl bg-gradient-to-r from-[#e3943f] to-[#d68532] px-5 py-2.5 text-[11.5px] font-bold tracking-[0.14em] text-black uppercase hover:brightness-105 transition-all shadow-md shadow-[#e3943f]/25 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                      className="rounded-lg bg-[#e3943f] px-4 py-2 text-[13px] font-semibold text-black disabled:opacity-50"
                     >
-                      <svg className="h-4 w-4 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      <span>{heroBannerSaving ? 'Publishing...' : 'Save & Publish Banner'}</span>
+                      {heroBannerSaving ? 'Saving…' : 'Save'}
                     </button>
                   </div>
                 </div>
@@ -2966,13 +2786,27 @@ export default function AdminPage() {
                   <form onSubmit={handleSaveHeroBanner} className="lg:col-span-7 space-y-6">
                     {/* 1. Media Type Selector */}
                     <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-                      <label className="block text-[11px] font-bold tracking-[0.18em] text-[#e3943f] uppercase">
-                        1. Background Media Type
+                      <label className="block text-[13px] font-semibold text-white">
+                        Background
                       </label>
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           type="button"
-                          onClick={() => setHeroBannerConfig({ ...heroBannerConfig, mediaType: 'video' })}
+                          onClick={() => {
+                            const next = (heroBannerConfig.videoPresets || []).find((item) => item.url && !String(item.url).startsWith('cycle:'))
+                            const mediaUrl = heroBannerConfig.mediaUrl && !/\.(jpg|jpeg|png|webp|gif)$/i.test(heroBannerConfig.mediaUrl)
+                              ? heroBannerConfig.mediaUrl
+                              : next?.url || DEFAULT_REAL_HERO_VIDEO
+                            setHeroBannerConfig({
+                              ...heroBannerConfig,
+                              mediaType: 'video',
+                              mediaUrl,
+                              title: next && mediaUrl === next.url ? next.title : heroBannerConfig.title,
+                              subtitle: next && mediaUrl === next.url ? next.subtitle : heroBannerConfig.subtitle,
+                              buttonText: next && mediaUrl === next.url ? next.buttonText : heroBannerConfig.buttonText,
+                              buttonLink: next && mediaUrl === next.url ? next.buttonLink : heroBannerConfig.buttonLink,
+                            })
+                          }}
                           className={`flex items-center justify-center gap-2.5 p-3.5 rounded-xl border text-[12px] font-bold tracking-wider uppercase transition-all cursor-pointer ${heroBannerConfig.mediaType === 'video'
                             ? 'border-[#e3943f] bg-[#e3943f]/15 text-[#e3943f] shadow-lg shadow-[#e3943f]/10'
                             : 'border-white/10 bg-white/[0.02] text-white/60 hover:text-white hover:border-white/20'
@@ -2982,12 +2816,26 @@ export default function AdminPage() {
                             <polygon points="23 7 16 12 23 17 23 7" />
                             <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                           </svg>
-                          <span>Video Loop</span>
+                          <span>Video</span>
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => setHeroBannerConfig({ ...heroBannerConfig, mediaType: 'image' })}
+                          onClick={() => {
+                            const next = (heroBannerConfig.imagePresets || []).find((item) => item.url)
+                            const mediaUrl = /\.(jpg|jpeg|png|webp|gif)$/i.test(heroBannerConfig.mediaUrl || '')
+                              ? heroBannerConfig.mediaUrl
+                              : next?.url || '/hero.jpg'
+                            setHeroBannerConfig({
+                              ...heroBannerConfig,
+                              mediaType: 'image',
+                              mediaUrl,
+                              title: next && mediaUrl === next.url ? (next.title || heroBannerConfig.title) : heroBannerConfig.title,
+                              subtitle: next && mediaUrl === next.url ? (next.subtitle || heroBannerConfig.subtitle) : heroBannerConfig.subtitle,
+                              buttonText: next && mediaUrl === next.url ? (next.buttonText || heroBannerConfig.buttonText) : heroBannerConfig.buttonText,
+                              buttonLink: next && mediaUrl === next.url ? (next.buttonLink || heroBannerConfig.buttonLink) : heroBannerConfig.buttonLink,
+                            })
+                          }}
                           className={`flex items-center justify-center gap-2.5 p-3.5 rounded-xl border text-[12px] font-bold tracking-wider uppercase transition-all cursor-pointer ${heroBannerConfig.mediaType === 'image'
                             ? 'border-[#e3943f] bg-[#e3943f]/15 text-[#e3943f] shadow-lg shadow-[#e3943f]/10'
                             : 'border-white/10 bg-white/[0.02] text-white/60 hover:text-white hover:border-white/20'
@@ -2998,151 +2846,266 @@ export default function AdminPage() {
                             <circle cx="8.5" cy="8.5" r="1.5" />
                             <polyline points="21 15 16 10 5 21" />
                           </svg>
-                          <span>High-Res Photo / Image</span>
+                          <span>Photo</span>
                         </button>
                       </div>
 
                       {/* Media URL Input & Local File Picker */}
-                      <div className="space-y-2 pt-2">
-                        <label className="block text-[11px] font-bold text-white/50 uppercase tracking-wider">
-                          Media Source URL / File Path:
-                        </label>
-                        <div className="flex gap-2">
+                      <div className="flex justify-end">
+                        <label className="cursor-pointer rounded-lg border border-white/15 px-3.5 py-2 text-[12px] text-white/80 hover:text-white">
+                          Upload {heroBannerConfig.mediaType === 'video' ? 'video' : 'photo'}
                           <input
-                            type="text"
-                            value={heroBannerConfig.mediaUrl}
-                            onChange={(e) => setHeroBannerConfig({ ...heroBannerConfig, mediaUrl: e.target.value })}
-                            placeholder={heroBannerConfig.mediaType === 'video' ? 'e.g. /video/1.mp4 or video link' : 'e.g. /hero.jpg or image link'}
-                            className="flex-1 rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
+                            type="file"
+                            accept={heroBannerConfig.mediaType === 'video' ? 'video/*' : 'image/*'}
+                            onChange={handleHeroFileUpload}
+                            className="hidden"
                           />
-                          <label className="rounded-xl border border-white/15 bg-white/[0.05] px-3.5 py-2.5 text-[11px] font-bold text-white/80 uppercase hover:bg-white/10 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shrink-0">
-                            <svg className="h-4 w-4 text-[#e3943f]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                              <polyline points="17 8 12 3 7 8" />
-                              <line x1="12" y1="3" x2="12" y2="15" />
-                            </svg>
-                            <span>Upload File</span>
-                            <input
-                              type="file"
-                              accept={heroBannerConfig.mediaType === 'video' ? 'video/*' : 'image/*'}
-                              onChange={handleHeroFileUpload}
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
+                        </label>
                       </div>
 
                       {/* Curated Presets */}
-                      <div className="space-y-2 pt-2 border-t border-white/[0.06]">
-                        <span className="block text-[10.5px] font-bold text-white/40 uppercase tracking-wider">
-                          Quick Presets ({heroBannerConfig.mediaType === 'video' ? 'Video Clips' : 'Luxury Architecture Images'}):
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                          {heroBannerConfig.mediaType === 'video' ? (
-                            [
-                              { name: 'Grand Atrium (Default)', url: '/video/4.mp4' },
-                              { name: 'Cinematic Living', url: '/video/1.mp4' },
-                              { name: 'Glazing Facade', url: '/video/2.mp4' },
-                              { name: 'Multi-Clip Cycling', url: 'cycle:all' },
-                            ].map((preset) => (
-                              <button
-                                key={preset.url}
-                                type="button"
-                                onClick={() => setHeroBannerConfig({ ...heroBannerConfig, mediaType: 'video', mediaUrl: preset.url })}
-                                className={`px-3 py-1.5 rounded-lg text-[10.5px] font-semibold tracking-wider transition-all cursor-pointer ${heroBannerConfig.mediaUrl === preset.url
-                                  ? 'bg-[#e3943f] text-black font-bold'
-                                  : 'border border-white/10 bg-white/[0.03] text-white/70 hover:text-white hover:border-white/20'
-                                  }`}
-                              >
-                                {preset.name}
-                              </button>
-                            ))
-                          ) : (
-                            [
-                              { name: 'Studio Masterpiece Hero', url: '/hero.jpg' },
-                              { name: 'Desert Villa (Dubai)', url: '/architectural/dubai_villa.jpg' },
-                              { name: 'Monaco Penthouse', url: '/interior/monaco.jpg' },
-                              { name: 'Courchevel Chalet', url: '/architectural/courchevel_chalet.jpg' },
-                              { name: 'Biophilic Atrium', url: '/commercial/atrium.jpg' },
-                            ].map((preset) => (
-                              <button
-                                key={preset.url}
-                                type="button"
-                                onClick={() => setHeroBannerConfig({ ...heroBannerConfig, mediaType: 'image', mediaUrl: preset.url })}
-                                className={`px-3 py-1.5 rounded-lg text-[10.5px] font-semibold tracking-wider transition-all cursor-pointer ${heroBannerConfig.mediaUrl === preset.url
-                                  ? 'bg-[#e3943f] text-black font-bold'
-                                  : 'border border-white/10 bg-white/[0.03] text-white/70 hover:text-white hover:border-white/20'
-                                  }`}
-                              >
-                                {preset.name}
-                              </button>
-                            ))
-                          )}
+                      <div className="space-y-3 pt-2 border-t border-white/[0.06]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <span className="block text-[13px] font-semibold text-white">Banners</span>
+                            <p className="text-[12px] text-white/45">They play in this order on the home page.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const listKey = heroBannerConfig.mediaType === 'video' ? 'videoPresets' : 'imagePresets'
+                              const list = [...(heroBannerConfig[listKey] || [])]
+                              list.push({
+                                name: heroBannerConfig.mediaType === 'video' ? 'New video' : 'New photo',
+                                url: '',
+                                title: 'New banner',
+                                subtitle: '',
+                                buttonText: 'Discuss your project',
+                                buttonLink: '/contacts',
+                              })
+                              setHeroBannerConfig({ ...heroBannerConfig, [listKey]: list })
+                              setEditingPreset(`${listKey}-${list.length - 1}`)
+                            }}
+                            className="shrink-0 rounded-lg bg-[#e3943f] px-3 py-1.5 text-[12px] font-semibold text-black cursor-pointer"
+                          >
+                            Add banner
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {(heroBannerConfig.mediaType === 'video' ? heroBannerConfig.videoPresets : heroBannerConfig.imagePresets).map((preset, index) => {
+                            const listKey = heroBannerConfig.mediaType === 'video' ? 'videoPresets' : 'imagePresets'
+                            const open = editingPreset === `${listKey}-${index}`
+                            const updatePreset = (patch) => {
+                              const list = [...(heroBannerConfig[listKey] || [])]
+                              const next = { ...list[index], ...patch }
+                              list[index] = next
+                              const isActive = heroBannerConfig.mediaUrl === preset.url || heroBannerConfig.mediaUrl === next.url
+                              setHeroBannerConfig({
+                                ...heroBannerConfig,
+                                [listKey]: list,
+                                ...(isActive
+                                  ? {
+                                      mediaUrl: next.url,
+                                      title: next.title,
+                                      subtitle: next.subtitle,
+                                      buttonText: next.buttonText,
+                                      buttonLink: next.buttonLink,
+                                    }
+                                  : {}),
+                              })
+                            }
+                            return (
+                              <div key={`${listKey}-${index}`} className="rounded-xl border border-white/10 bg-white/[0.02] p-2">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setHeroBannerConfig({
+                                      ...heroBannerConfig,
+                                      mediaUrl: preset.url,
+                                      title: preset.title || heroBannerConfig.title,
+                                      subtitle: preset.subtitle || heroBannerConfig.subtitle,
+                                      buttonText: preset.buttonText || heroBannerConfig.buttonText,
+                                      buttonLink: preset.buttonLink || heroBannerConfig.buttonLink,
+                                    })}
+                                    className={`flex-1 rounded-lg px-3 py-1.5 text-left text-[12px] font-semibold cursor-pointer ${heroBannerConfig.mediaUrl === preset.url ? 'bg-[#e3943f] text-black' : 'text-white/80 hover:bg-white/5'}`}
+                                  >
+                                    {preset.name || 'Untitled banner'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setHeroBannerConfig({
+                                        ...heroBannerConfig,
+                                        mediaUrl: preset.url,
+                                        title: preset.title || heroBannerConfig.title,
+                                        subtitle: preset.subtitle || heroBannerConfig.subtitle,
+                                        buttonText: preset.buttonText || heroBannerConfig.buttonText,
+                                        buttonLink: preset.buttonLink || heroBannerConfig.buttonLink,
+                                      })
+                                      setEditingPreset(open ? null : `${listKey}-${index}`)
+                                    }}
+                                    className="rounded-lg border border-white/10 px-3 py-1.5 text-[12px] text-white/70 hover:text-white cursor-pointer"
+                                  >
+                                    {open ? 'Close' : 'Edit'}
+                                  </button>
+                                </div>
+                                {open ? (
+                                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                    <label className="text-[12px] text-white/45">Name in this list</label>
+                                    <input
+                                      type="text"
+                                      value={preset.name}
+                                      onChange={(event) => updatePreset({ name: event.target.value })}
+                                      placeholder="Clip name"
+                                      className="rounded-lg border border-white/10 bg-[#181818] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
+                                    />
+                                    <label className="text-[12px] text-white/45">File</label>
+                                    <input
+                                      type="text"
+                                      value={preset.url}
+                                      onChange={(event) => updatePreset({ url: event.target.value })}
+                                      placeholder="/video/1.mp4"
+                                      className="rounded-lg border border-white/10 bg-[#181818] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
+                                    />
+                                    <label className="text-[12px] text-white/45">Big title on this banner</label>
+                                    <input
+                                      type="text"
+                                      value={preset.title || ''}
+                                      onChange={(event) => updatePreset({ title: event.target.value })}
+                                      className="rounded-lg border border-white/10 bg-[#181818] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
+                                    />
+                                    <label className="sm:col-span-2 text-[12px] text-white/45">Line under the title</label>
+                                    <textarea
+                                      rows={2}
+                                      value={preset.subtitle || ''}
+                                      onChange={(event) => updatePreset({ subtitle: event.target.value })}
+                                      className="sm:col-span-2 rounded-lg border border-white/10 bg-[#181818] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
+                                    />
+                                    <label className="text-[12px] text-white/45">Button text</label>
+                                    <input
+                                      type="text"
+                                      value={preset.buttonText || ''}
+                                      onChange={(event) => updatePreset({ buttonText: event.target.value })}
+                                      className="rounded-lg border border-white/10 bg-[#181818] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
+                                    />
+                                    <label className="text-[12px] text-white/45">Button link</label>
+                                    <input
+                                      type="text"
+                                      value={preset.buttonLink || ''}
+                                      onChange={(event) => updatePreset({ buttonLink: event.target.value })}
+                                      placeholder="/contacts"
+                                      className="rounded-lg border border-white/10 bg-[#181818] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
+                                    />
+                                    <label className="sm:col-span-2 inline-flex w-fit cursor-pointer rounded-lg border border-white/10 px-3 py-2 text-[12px] text-white/70 hover:text-white">
+                                      Replace file
+                                      <input
+                                        type="file"
+                                        accept={listKey === 'videoPresets' ? 'video/*' : 'image/*'}
+                                        className="hidden"
+                                        onChange={async (event) => {
+                                          const file = event.target.files?.[0]
+                                          if (!file) return
+                                          try {
+                                            const dataUrl = await new Promise((resolve, reject) => {
+                                              const reader = new FileReader()
+                                              reader.onload = () => resolve(String(reader.result || ''))
+                                              reader.onerror = () => reject(new Error('read failed'))
+                                              reader.readAsDataURL(file)
+                                            })
+                                            const res = await fetch('/api/blogs/uploads', {
+                                              method: 'POST',
+                                              headers: {
+                                                'Content-Type': 'application/json',
+                                                Authorization: `Bearer ${token || localStorage.getItem('ug_admin_token') || ''}`,
+                                              },
+                                              body: JSON.stringify({ filename: file.name, dataUrl }),
+                                            })
+                                            const data = await res.json()
+                                            if (!res.ok || !data.url) throw new Error(data.message || 'Upload failed')
+                                            updatePreset({ url: data.url })
+                                            showToast('File replaced. Press Save to publish.')
+                                          } catch (err) {
+                                            showToast(err.message || 'Could not upload that file')
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                  </div>
+                                ) : null}
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
                     </div>
 
-                    {/* 2. Text Content & Typography */}
-                    <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-                      <label className="block text-[11px] font-bold tracking-[0.18em] text-[#e3943f] uppercase">
-                        2. Headline, Subtitle & Call-To-Action
-                      </label>
-
+                    <div className="space-y-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-white/50 uppercase tracking-wider mb-1.5">
-                          Main Headline (H1 Title)
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={heroBannerConfig.title}
-                          onChange={(e) => setHeroBannerConfig({ ...heroBannerConfig, title: e.target.value })}
-                          placeholder="e.g. UNIQUE GRAPHICS"
-                          className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[14px] text-white font-semibold outline-none focus:border-[#e3943f]"
-                        />
+                        <h3 className="text-[14px] font-semibold text-white">Text for each banner</h3>
+                        <p className="text-[12px] text-white/45">Change one box without changing the others. Save when you are done.</p>
                       </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-white/50 uppercase tracking-wider mb-1.5">
-                          Subtitle / Tagline Description
-                        </label>
-                        <textarea
-                          rows={3}
-                          required
-                          value={heroBannerConfig.subtitle}
-                          onChange={(e) => setHeroBannerConfig({ ...heroBannerConfig, subtitle: e.target.value })}
-                          placeholder="e.g. LEADING INTERNATIONAL BUREAU FOR PREMIUM ARCHITECTURAL AND INTERIOR DESIGN"
-                          className="w-full rounded-xl border border-white/10 bg-[#181818] p-3 text-[13px] text-white outline-none focus:border-[#e3943f] resize-none"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-[11px] font-bold text-white/50 uppercase tracking-wider mb-1.5">
-                            CTA Button Label
-                          </label>
-                          <input
-                            type="text"
-                            value={heroBannerConfig.buttonText}
-                            onChange={(e) => setHeroBannerConfig({ ...heroBannerConfig, buttonText: e.target.value })}
-                            placeholder="e.g. DISCUSS YOUR PROJECT"
-                            className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-[#e3943f]"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold text-white/50 uppercase tracking-wider mb-1.5">
-                            CTA Button Target Link
-                          </label>
-                          <input
-                            type="text"
-                            value={heroBannerConfig.buttonLink}
-                            onChange={(e) => setHeroBannerConfig({ ...heroBannerConfig, buttonLink: e.target.value })}
-                            placeholder="e.g. /contacts"
-                            className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-[#e3943f]"
-                          />
-                        </div>
-                      </div>
+                      {(heroBannerConfig.mediaType === 'video' ? heroBannerConfig.videoPresets : heroBannerConfig.imagePresets)
+                        .filter((preset) => preset?.url && !String(preset.url).startsWith('cycle:'))
+                        .map((preset) => {
+                          const listKey = heroBannerConfig.mediaType === 'video' ? 'videoPresets' : 'imagePresets'
+                          const index = (heroBannerConfig[listKey] || []).findIndex((item) => item === preset || (item.url === preset.url && item.name === preset.name))
+                          const write = (patch) => {
+                            const list = [...(heroBannerConfig[listKey] || [])]
+                            const at = index >= 0 ? index : list.findIndex((item) => item.url === preset.url)
+                            if (at < 0) return
+                            const next = { ...list[at], ...patch }
+                            list[at] = next
+                            const isActive = heroBannerConfig.mediaUrl === preset.url
+                            setHeroBannerConfig({
+                              ...heroBannerConfig,
+                              [listKey]: list,
+                              ...(isActive ? patch : {}),
+                            })
+                          }
+                          return (
+                            <div key={`${preset.name}-${preset.url}`} className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-3">
+                              <h3 className="text-[14px] font-semibold text-[#e3943f]">{preset.name || 'Banner'}</h3>
+                              <div>
+                                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-white/50">Big title</label>
+                                <input
+                                  type="text"
+                                  value={preset.title || ''}
+                                  onChange={(event) => write({ title: event.target.value })}
+                                  className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[14px] font-semibold text-white outline-none focus:border-[#e3943f]"
+                                />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-white/50">Line under the title</label>
+                                <textarea
+                                  rows={2}
+                                  value={preset.subtitle || ''}
+                                  onChange={(event) => write({ subtitle: event.target.value })}
+                                  className="w-full resize-none rounded-xl border border-white/10 bg-[#181818] p-3 text-[13px] text-white outline-none focus:border-[#e3943f]"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div>
+                                  <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-white/50">Button text</label>
+                                  <input
+                                    type="text"
+                                    value={preset.buttonText || ''}
+                                    onChange={(event) => write({ buttonText: event.target.value })}
+                                    className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-[#e3943f]"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-white/50">Button opens this page</label>
+                                  <input
+                                    type="text"
+                                    value={preset.buttonLink || ''}
+                                    onChange={(event) => write({ buttonLink: event.target.value })}
+                                    className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-[#e3943f]"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                     </div>
 
                     {/* Submit Actions */}
@@ -3156,7 +3119,7 @@ export default function AdminPage() {
                             buttonText: 'Discuss your project',
                             buttonLink: '/contacts',
                             mediaType: 'video',
-                            mediaUrl: '/video/4.mp4',
+                            mediaUrl: DEFAULT_REAL_HERO_VIDEO,
                           }
                           setHeroBannerConfig(def)
                           showToast('Reset to default studio hero configuration.')
@@ -3171,7 +3134,7 @@ export default function AdminPage() {
                         disabled={heroBannerSaving}
                         className="rounded-xl bg-gradient-to-r from-[#e3943f] to-[#d68532] px-6 py-3 text-[12px] font-bold tracking-[0.16em] text-black uppercase hover:brightness-105 transition-all shadow-lg shadow-[#e3943f]/25 disabled:opacity-50 cursor-pointer"
                       >
-                        {heroBannerSaving ? 'Saving Changes...' : 'Save & Publish to Homepage'}
+                      {heroBannerSaving ? 'Saving…' : 'Save'}
                       </button>
                     </div>
                   </form>
@@ -3179,13 +3142,7 @@ export default function AdminPage() {
                   {/* Right Column: Live Interactive Preview (5 cols) */}
                   <div className="lg:col-span-5 sticky top-28 space-y-3">
                     <div className="flex items-center justify-between px-1">
-                      <span className="text-[11px] font-bold tracking-widest text-white/50 uppercase flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                        Live Homepage Hero Preview
-                      </span>
-                      <span className="text-[10px] font-mono text-[#e3943f] uppercase">
-                        {heroBannerConfig.mediaType}
-                      </span>
+                      <span className="text-[13px] text-white/50">Preview</span>
                     </div>
 
                     <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-2xl overflow-hidden border border-white/15 bg-black shadow-2xl flex flex-col justify-end p-6 select-none group">
@@ -3193,13 +3150,14 @@ export default function AdminPage() {
                       {heroBannerConfig.mediaType === 'image' ? (
                         <img
                           src={heroBannerConfig.mediaUrl || '/hero.jpg'}
-                          alt="Preview"
+                          alt=""
+                          onError={(event) => { event.currentTarget.src = '/hero.jpg' }}
                           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                         />
                       ) : (
                         <video
                           key={heroBannerConfig.mediaUrl}
-                          src={heroBannerConfig.mediaUrl && !heroBannerConfig.mediaUrl.startsWith('cycle:') ? heroBannerConfig.mediaUrl : '/video/4.mp4'}
+                          src={heroBannerConfig.mediaUrl && !heroBannerConfig.mediaUrl.startsWith('cycle:') && !heroBannerConfig.mediaUrl.includes('/video/4.mp4') ? heroBannerConfig.mediaUrl : DEFAULT_REAL_HERO_VIDEO}
                           autoPlay
                           muted
                           loop
@@ -3226,14 +3184,7 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      <div className="absolute top-3 right-3 rounded-full bg-black/60 backdrop-blur-md px-2.5 py-1 text-[9px] font-mono text-white/70 border border-white/10 uppercase">
-                        1:1 Preview
-                      </div>
                     </div>
-
-                    <p className="text-[11.5px] text-white/40 italic px-1">
-                      * Real-time preview mirrors the exact layout on your public homepage (<span className="text-[#e3943f]">/</span>). Click "Save & Publish" to update website live.
-                    </p>
                   </div>
                 </div>
               </div>
@@ -3245,17 +3196,11 @@ export default function AdminPage() {
                 {/* Header with Title, Language Switcher and Quick Action */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-[#e3943f] animate-pulse" />
-                      <span className="text-[10px] font-bold tracking-[0.2em] text-[#e3943f] uppercase">
-                        GLOBAL SHOWCASE & STATS ENGINE
-                      </span>
-                    </div>
-                    <h3 className="text-[18px] font-semibold text-white mt-1">
-                      Projects in 32 Countries & Architectural Performance Metrics
+                    <h3 className="text-[18px] font-semibold text-white">
+                      Home page — “Completed projects in 32 countries”
                     </h3>
-                    <p className="text-[12.5px] text-white/50">
-                      Update the global completed projects headline, accent keywords, Discover Portfolio CTA, 3D Globe visual, and all 4 stat cards live on the website.
+                    <p className="text-[12.5px] text-white/50 max-w-xl">
+                      This is the block on the home page with the gold globe. Change the heading, the short line under it, the button, and the four numbers (area, recommendation, factories, awards).
                     </p>
                   </div>
 
@@ -3730,7 +3675,7 @@ export default function AdminPage() {
                     </div>
 
                     <p className="text-[11.5px] text-white/40 italic px-1">
-                      * Real-time preview mirrors the exact layout on your public homepage (<span className="text-[#e3943f]">/#portfolio</span>). Click "Save & Publish" to update website live.
+                      * This matches the home page. Save to publish it.
                     </p>
                   </div>
                 </div>
@@ -3746,7 +3691,7 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-[#e3943f] animate-pulse" />
                       <span className="text-[10px] font-bold tracking-[0.2em] text-[#e3943f] uppercase">
-                        650+ COMPLETED PROJECTS ENGINE
+                        COMPLETED PROJECTS ENGINE
                       </span>
                     </div>
                     <h3 className="text-[18px] font-semibold text-white mt-1">
@@ -4220,7 +4165,7 @@ export default function AdminPage() {
                     </div>
 
                     <p className="text-[11.5px] text-white/40 italic px-1">
-                      * Real-time preview mirrors the exact layout on your public homepage (<span className="text-[#e3943f]">/#all-projects</span>). Click "Save & Publish" to update website live.
+                      * This matches the home page. Save to publish it.
                     </p>
                   </div>
                 </div>
@@ -5682,7 +5627,7 @@ export default function AdminPage() {
                       )}
 
                       <p className="text-[11px] text-white/40 italic mt-3 px-1">
-                        * Real-time preview mirrors public homepage sections (<span className="text-[#e3943f]">/#brand</span>). Click "Save & Publish" to update website live.
+                        * This matches the home page. Save to publish it.
                       </p>
                     </div>
                   </div>
@@ -5697,7 +5642,25 @@ export default function AdminPage() {
 
             {/* VIEW: PORTFOLIO & CATEGORY PAGES MANAGER (STANDALONE COMPONENT) */}
             {activeTab === 'portfolio_pages' && (
-              <PortfolioManager token={token} />
+              <>
+              <ServicesManager
+                token={token}
+                title="Portfolio menu"
+                intro="This top block updates the Portfolio menu in the website header: category names, the side list, the hover picture, and the text on each portfolio page. Save here before you edit the project cards below."
+                endpoint="/api/blogs/settings/portfolio-pages"
+                readTree={getStoredPortfolioTree}
+                writeTree={setStoredPortfolioTree}
+                resetTree={buildDefaultPortfolioTree}
+                checkTree={validatePortfolioTree}
+                normalize={normalizePortfolioTree}
+                packTree={(value) => ({ ...getStoredPortfolioConfig(), categories: value.categories })}
+                urlFor={(categoryItem, sub) => sub?.href || categoryItem?.href || (sub ? `/portfolio/${categoryItem.slug}/${sub.slug}` : `/portfolio/${categoryItem.slug}`)}
+                hoverNote="Only the small picture in the Portfolio menu. The page banner is set below."
+              />
+              <div className="mt-10">
+                <PortfolioManager token={token} />
+              </div>
+              </>
             )}
 
             {/* VIEW: SERVICES & DISCIPLINES MANAGER (STANDALONE COMPONENT) */}
@@ -5734,7 +5697,7 @@ export default function AdminPage() {
                       <svg className="w-4 h-4 text-[#e3943f]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
-                      <span>Customize /contacts Portal</span>
+                      <span>Contact page</span>
                       <span className="text-[10px] text-[#e3943f] font-mono font-bold bg-[#e3943f]/10 px-2 py-0.5 rounded-md">Edit Reel & Copy</span>
                     </button>
                   </div>
@@ -5744,7 +5707,7 @@ export default function AdminPage() {
                     rel="noreferrer"
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-[11px] text-white/50 hover:text-white hover:border-[#e3943f]/50 transition-colors"
                   >
-                    <span>View Live /contacts</span>
+                    <span>View site</span>
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
@@ -5758,7 +5721,7 @@ export default function AdminPage() {
                       TOTAL CONTACT ENTRIES
                     </span>
                     <p className="mt-1 text-[24px] font-light text-white">{inquiries.length}</p>
-                    <span className="text-[10.5px] text-white/40">From /contacts & direct leads</span>
+                    <span className="text-[10.5px] text-white/40">From the contact form and direct leads</span>
                   </div>
 
                   <div className="rounded-2xl border border-white/10 bg-[#141414] p-4">
@@ -5952,7 +5915,7 @@ export default function AdminPage() {
                                 </svg>
                                 <p className="text-[14px] font-medium text-white/60">No client contact entries yet</p>
                                 <p className="text-[12px] text-white/40 max-w-sm">
-                                  Submissions from visitors on the <span className="text-[#e3943f]">/contacts</span> page or entries logged with <span className="text-white/70">+ Log Contact Entry</span> will appear here in real time.
+                                  Submissions from the contact page, or entries you add with <span className="text-white/70">+ Log Contact Entry</span>, show up here.
                                 </p>
                               </div>
                             </td>
@@ -5966,31 +5929,26 @@ export default function AdminPage() {
 
                             return (
                               <tr key={inq.id || inq._id} className="hover:bg-white/[0.02] transition-colors group">
-                                <td className="py-4 px-5">
-                                  <span className="font-mono text-white/70 text-xs block font-bold">{inq.id}</span>
-                                  <span className="text-[10px] text-white/40 block mt-0.5">{inq.date}</span>
+                                <td className="py-4 px-5 whitespace-nowrap">
+                                  <span className="font-mono text-white/70 text-xs font-bold">{inq.id}</span>
+                                  <span className="text-[10px] text-white/40 ml-2">{inq.date}</span>
                                 </td>
 
                                 <td className="py-4 px-5">
-                                  <div className="flex items-center gap-2.5">
-                                    <div className="h-8 w-8 rounded-full bg-[#e3943f]/15 border border-[#e3943f]/30 flex items-center justify-center font-bold text-[11px] text-[#e3943f] shrink-0">
-                                      {inq.client?.slice(0, 2).toUpperCase()}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <span className="font-semibold text-white group-hover:text-[#e3943f] transition-colors block truncate">
-                                        {inq.client}
-                                      </span>
-                                      <span className="text-[10px] text-white/40 font-mono block">
-                                        {inq.source || 'Contact Us Page'}
-                                      </span>
-                                    </div>
+                                  <div className="min-w-0">
+                                    <span className="font-semibold text-white group-hover:text-[#e3943f] transition-colors block truncate">
+                                      {inq.client}
+                                    </span>
+                                    <span className="text-[10px] text-white/40 font-mono block">
+                                      {inq.source || 'Contact Us Page'}
+                                    </span>
                                   </div>
                                 </td>
 
-                                <td className="py-4 px-5">
+                                <td className="py-4 px-5 whitespace-nowrap">
                                   {inq.phone ? (
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-mono text-white text-[12px] font-medium">
+                                    <div className="flex items-center gap-2 whitespace-nowrap">
+                                      <span className="font-mono text-white text-[12px] font-medium whitespace-nowrap">
                                         {inq.phone}
                                       </span>
                                       {waLink && (
@@ -6103,7 +6061,7 @@ export default function AdminPage() {
                       Architectural Journal & Publications
                     </h3>
                     <p className="text-[12px] text-white/50">
-                      Live editorial monographs synchronized directly with the website's public /blog portal.
+                      Posts on the public blog.
                     </p>
                   </div>
 
@@ -6169,10 +6127,10 @@ export default function AdminPage() {
 
                   <div className="rounded-xl border border-white/10 bg-[#141414] p-3.5">
                     <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase block">
-                      READERSHIP
+                      CATEGORIES
                     </span>
-                    <p className="mt-1 text-[22px] font-light text-white">12.8K+</p>
-                    <span className="text-[10.5px] text-white/40">HNWI executive readers</span>
+                    <p className="mt-1 text-[22px] font-light text-white">{blogCategories.length}</p>
+                    <span className="text-[10.5px] text-white/40">Names on the blog page</span>
                   </div>
                 </div>
 
@@ -6243,7 +6201,7 @@ export default function AdminPage() {
                             />
                           ) : (
                             <img
-                              src={coverBlog.image || '/architectural/dubai_villa.jpg'}
+                              src={coverBlog.image || '/website-assets/26. NEO CLASSIC EXTERIOR DESIGN BIJNOR/1.jpg'}
                               alt={coverBlog.title}
                               className="h-full w-full object-cover"
                             />
@@ -6298,7 +6256,7 @@ export default function AdminPage() {
                               onClick={() => navigateTo('/blog')}
                               className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[11px] font-bold tracking-wider text-white/80 uppercase hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer flex items-center gap-1.5"
                             >
-                              <span>View Live on /blog</span>
+                              <span>View blog</span>
                               <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                                 <polyline points="15 3 21 3 21 9" />
@@ -6312,11 +6270,58 @@ export default function AdminPage() {
                   )
                 })()}
 
+                <div className="rounded-2xl border border-white/10 bg-[#141414] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <h3 className="text-[15px] font-medium text-white">Categories</h3>
+                      <p className="text-[12px] text-white/45">These names appear on the public blog. Posts inside a category show when that name is selected.</p>
+                    </div>
+                    <form
+                      className="flex gap-2"
+                      onSubmit={(event) => {
+                        event.preventDefault()
+                        const name = newBlogCategory.trim()
+                        if (!name || blogCategories.some((item) => item.toLowerCase() === name.toLowerCase())) return
+                        const next = writeBlogCategories([...blogCategories, name])
+                        setBlogCategories(next)
+                        setBannerSettings((current) => ({ ...current, categories: next }))
+                        setNewBlogCategory('')
+                      }}
+                    >
+                      <input
+                        value={newBlogCategory}
+                        onChange={(event) => setNewBlogCategory(event.target.value)}
+                        placeholder="New category"
+                        className="w-44 rounded-lg border border-white/10 bg-[#181818] px-3 py-2 text-[13px] text-white outline-none focus:border-[#e3943f]"
+                      />
+                      <button type="submit" className="rounded-lg bg-[#e3943f] px-3 py-2 text-[13px] font-semibold text-black">Add</button>
+                    </form>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {blogCategories.map((name) => (
+                      <span key={name} className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-[12px] text-white/80">
+                        {name}
+                        <button
+                          type="button"
+                          className="text-white/40 hover:text-white"
+                          onClick={() => {
+                            const next = writeBlogCategories(blogCategories.filter((item) => item !== name))
+                            setBlogCategories(next.length ? next : blogCategories)
+                            setBannerSettings((current) => ({ ...current, categories: next.length ? next : blogCategories }))
+                          }}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Filter and Search Bar */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
                   {/* Category Filter Pills */}
                   <div className="flex flex-wrap items-center gap-2">
-                    {['All', 'Architecture', 'Interior Design', 'Commercial', 'Drafts'].map((cat) => (
+                    {['All', ...blogCategories, 'Drafts'].map((cat) => (
                       <button
                         key={cat}
                         type="button"
@@ -6385,7 +6390,7 @@ export default function AdminPage() {
                             {/* Card Image Thumbnail */}
                             <div className="relative h-44 overflow-hidden bg-black/50">
                               <img
-                                src={blog.image || '/architectural/dubai_villa.jpg'}
+                                src={blog.image || '/website-assets/architecture/NEO%20CLASSIC%20EXTERIOR%20DESIGN%20BIJNOR/Sunlit%20Classical%20Villa%20with%20Palm%20Gardens-11.png'}
                                 alt={blog.title}
                                 className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                               />
@@ -6535,19 +6540,16 @@ export default function AdminPage() {
 
                 {/* Main Settings Form */}
                 <div className="max-w-4xl mx-auto">
-                  <form onSubmit={handleSaveSettings} className="space-y-6">
+                  <form onSubmit={handleSaveSettings} autoComplete="off" className="space-y-6">
                     {/* Card 1: Executive Identity Profile */}
                     <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 sm:p-6 space-y-5 shadow-xl">
-                      <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                      <div className="pb-3 border-b border-white/[0.08]">
                         <div className="flex items-center gap-2.5">
                           <span className="h-2 w-2 rounded-full bg-[#e3943f]" />
                           <h3 className="text-[13px] font-mono font-bold tracking-widest text-[#e3943f] uppercase">
                             1. EXECUTIVE PROFILE DETAILS
                           </h3>
                         </div>
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-[#e3943f]/10 text-[#e3943f] border border-[#e3943f]/30">
-                          {adminUser?.role || 'Superadmin'}
-                        </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -6590,9 +6592,7 @@ export default function AdminPage() {
                             2. CHANGE ADMIN PASSWORD
                           </h3>
                         </div>
-                        <span className="text-[10px] text-white/40">
-                          Leave blank if keeping current password
-                        </span>
+
                       </div>
 
                       {/* Current Password Field */}
@@ -6601,16 +6601,18 @@ export default function AdminPage() {
                           <label className="block text-[11px] font-bold tracking-wider text-white/70 uppercase">
                             Current Password
                           </label>
-                          <span className="text-[10px] text-white/40">
-                            Required only when changing password
-                          </span>
+                         
                         </div>
                         <div className="relative">
                           <input
                             type={showSettingsCurrentPass ? 'text' : 'password'}
+                            name="ug-current-password"
+                            autoComplete="new-password"
+                            readOnly
+                            onFocus={(event) => { event.target.readOnly = false }}
                             value={settingsCurrentPassword}
                             onChange={(e) => setSettingsCurrentPassword(e.target.value)}
-                            placeholder="Enter your existing password (default: admin2026)"
+                            placeholder="Current password"
                             className="w-full rounded-xl border border-white/10 bg-black/60 pl-4 pr-11 py-2.5 text-[13px] text-white placeholder-white/30 outline-none focus:border-[#e3943f] transition-all font-mono"
                           />
                           <button
@@ -6642,6 +6644,10 @@ export default function AdminPage() {
                           <div className="relative">
                             <input
                               type={showSettingsNewPass ? 'text' : 'password'}
+                              name="ug-new-password"
+                              autoComplete="new-password"
+                              readOnly
+                              onFocus={(event) => { event.target.readOnly = false }}
                               value={settingsNewPassword}
                               onChange={(e) => setSettingsNewPassword(e.target.value)}
                               placeholder="Minimum 6 characters"
@@ -6674,6 +6680,10 @@ export default function AdminPage() {
                           <div className="relative">
                             <input
                               type={showSettingsConfirmPass ? 'text' : 'password'}
+                              name="ug-confirm-password"
+                              autoComplete="new-password"
+                              readOnly
+                              onFocus={(event) => { event.target.readOnly = false }}
                               value={settingsConfirmPassword}
                               onChange={(e) => setSettingsConfirmPassword(e.target.value)}
                               placeholder="Re-enter new password"
@@ -6705,25 +6715,7 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Password Requirements Checklist */}
-                      <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex flex-wrap items-center gap-4 text-[11px] text-white/50">
-                        <span className="flex items-center gap-1.5">
-                          <span className={settingsNewPassword.length >= 6 ? 'text-emerald-400 font-bold' : 'text-white/30'}>
-                            {settingsNewPassword.length >= 6 ? '✓' : '•'}
-                          </span>
-                          Minimum 6 characters
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className={settingsNewPassword && settingsNewPassword === settingsConfirmPassword ? 'text-emerald-400 font-bold' : 'text-white/30'}>
-                            {settingsNewPassword && settingsNewPassword === settingsConfirmPassword ? '✓' : '•'}
-                          </span>
-                          Passwords match
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="text-[#e3943f] font-bold">✦</span>
-                          Encrypted with 10-round bcrypt hash
-                        </span>
-                      </div>
+                     
                     </div>
 
                     {/* Action Buttons */}
@@ -6880,7 +6872,7 @@ export default function AdminPage() {
                     <span className="text-white/50 text-[11px] font-bold uppercase tracking-wider">
                       Client Brief / Project Inquiry Note:
                     </span>
-                    <span className="text-white/30 text-[10px]">Submitted via /contacts form</span>
+                    <span className="text-white/30 text-[10px]">From the contact form</span>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-black/60 p-4 text-white/90 leading-relaxed text-[13.5px] whitespace-pre-wrap">
                     {selectedInquiry.message || 'Direct architectural consultation request submitted via website.'}
@@ -7077,7 +7069,7 @@ export default function AdminPage() {
                     onChange={(e) => setInquiryFormData({ ...inquiryFormData, source: e.target.value })}
                     className="w-full rounded-xl border border-white/10 bg-[#191919] px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-[#e3943f] cursor-pointer"
                   >
-                    <option value="Contact Us Page (/contacts)">Contact Us Page (/contacts)</option>
+                    <option value="Contact Us Page (/contacts)">Contact page</option>
                     <option value="Direct Studio Walk-In">Direct Studio Walk-In</option>
                     <option value="Direct Phone Call">Direct Phone Call</option>
                     <option value="Partner Architect Referral">Partner Architect Referral</option>
@@ -7174,11 +7166,9 @@ export default function AdminPage() {
                       onChange={(e) => setBlogFormData({ ...blogFormData, category: e.target.value })}
                       className="w-full rounded-xl border border-white/10 bg-[#1c1c1c] px-4 py-3 text-[13px] text-white outline-none focus:border-[#e3943f] transition-colors cursor-pointer"
                     >
-                      <option value="Architecture">Architecture</option>
-                      <option value="Interior Design">Interior Design</option>
-                      <option value="Commercial">Commercial</option>
-                      <option value="Residential">Residential</option>
-                      <option value="Philosophy">Philosophy</option>
+                      {(blogCategories.includes(blogFormData.category) ? blogCategories : [blogFormData.category, ...blogCategories]).map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -7681,7 +7671,7 @@ export default function AdminPage() {
               {/* Form Body */}
               <form onSubmit={handleSaveBannerSettings} className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar">
                 <p className="text-[12.5px] text-white/60 leading-relaxed">
-                  Customize the visual background (cinematic video loop or luxury photograph) and page typography shown at the very top of the public <span className="text-[#e3943f] font-mono">/blog</span> portal.
+                  The picture and heading at the top of the blog.
                 </p>
 
                 {/* VISUAL BACKGROUND MEDIA SECTION */}
@@ -7993,7 +7983,7 @@ export default function AdminPage() {
         {/* Background Visual with Dramatic Gradients */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <img
-            src="/architectural/dubai_villa.jpg"
+            src="/website-assets/26. NEO CLASSIC EXTERIOR DESIGN BIJNOR/1.jpg"
             alt="Studio Architectural Masterpiece"
             className="h-full w-full object-cover opacity-35 filter brightness-75 contrast-125 scale-105 transition-transform duration-1000 ease-out"
           />
@@ -8008,18 +7998,10 @@ export default function AdminPage() {
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/int_logo.png"
-              alt="Unique Graphics Logo"
-              className="h-10 sm:h-12 w-auto object-contain"
+              src="/logouniqe.png"
+              alt="Unique Graphics"
+              className="h-12 w-auto max-w-[180px] object-contain"
             />
-            <div className="hidden sm:block border-l border-white/20 pl-3">
-              <span className="text-[10px] font-bold tracking-[0.25em] text-[#e3943f] uppercase block">
-                ATELIER CORE
-              </span>
-              <span className="text-[12px] font-medium tracking-wider text-white/70 uppercase">
-                Unique Graphics
-              </span>
-            </div>
           </div>
 
 
@@ -8030,7 +8012,7 @@ export default function AdminPage() {
           <div className="inline-flex items-center gap-2 rounded-full border border-[#e3943f]/30 bg-[#e3943f]/10 px-3 py-1 mb-5">
             <span className="h-1.5 w-1.5 rounded-full bg-[#e3943f]" />
             <span className="text-[9.5px] font-bold tracking-[0.22em] text-[#e3943f] uppercase">
-              STUDIO MANAGEMENT DIRECTIVE
+              UNIQUE GRAPHICS ADMINISTRATIVE PORTAL
             </span>
           </div>
 
@@ -8038,43 +8020,14 @@ export default function AdminPage() {
             Architecture sculpted for eternity, managed with precision.
           </h2>
 
-          <p className="mt-5 text-[14.5px] sm:text-[16px] leading-relaxed text-white/75 font-light max-w-[520px]">
-            The centralized administrative engine for Unique Graphics. Orchestrating monumental villas,
-            penthouse interiors, and commercial hospitality developments across 32 countries.
-          </p>
+        
 
-          {/* Three Key Studio Pillars */}
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-white/10">
-            <div className="rounded-xl border border-white/10 bg-black/40 p-3.5 backdrop-blur-sm">
-              <span className="text-[10px] font-bold tracking-widest text-[#e3943f] uppercase block">
-                GLOBAL COMMISSIONS
-              </span>
-              <p className="mt-1 text-[20px] font-light text-white">Projects</p>
-              <span className="text-[11px] text-white/40">Delivered worldwide</span>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-black/40 p-3.5 backdrop-blur-sm">
-              <span className="text-[10px] font-bold tracking-widest text-[#e3943f] uppercase block">
-                ACTIVE PIPELINE
-              </span>
-              <p className="mt-1 text-[20px] font-light text-white">$450M+ Value</p>
-              <span className="text-[11px] text-white/40">Under development</span>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-black/40 p-3.5 backdrop-blur-sm">
-              <span className="text-[10px] font-bold tracking-widest text-[#e3943f] uppercase block">
-                DISCRETION
-              </span>
-              <p className="mt-1 text-[20px] font-light text-emerald-400">256-Bit Vault</p>
-              <span className="text-[11px] text-white/40">Private client enclave</span>
-            </div>
-          </div>
         </div>
 
         {/* Bottom Note of Left Side */}
         <div className="relative z-10 flex items-center justify-between text-[11px] text-white/40 pt-4 border-t border-white/[0.08]">
           <p>© 2026 Unique Graphics Architecture & Interiors Ltd.</p>
-          <span className="font-mono tracking-wider">SECURE ENCLAVE 2.4</span>
+      
         </div>
       </section>
 
@@ -8096,21 +8049,19 @@ export default function AdminPage() {
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span>Return to Studio</span>
+            <span>Return to Unique Graphics</span>
           </button>
 
-          <span className="text-[10px] font-bold tracking-[0.2em] text-white/30 uppercase">
-            PORTAL ACCESS
-          </span>
+         
         </div>
 
         {/* Center Login Form Container */}
         <div className="my-auto w-full max-w-[400px] mx-auto">
           {/* Header */}
           <div className="mb-6">
-            <span className="text-[10px] font-bold tracking-[0.2em] text-[#e3943f] uppercase block mb-1">
-              AUTHORIZED PERSONNEL ONLY
-            </span>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#e3943f]">
+              Authorized administrator only
+            </p>
             <h1 className="text-[26px] sm:text-[30px] font-normal tracking-[-0.01em] text-white">
               Executive Sign In
             </h1>
@@ -8136,7 +8087,7 @@ export default function AdminPage() {
             {/* Work Email Field */}
             <div>
               <label className="block text-[11px] font-bold tracking-[0.14em] text-white/60 uppercase mb-1.5">
-                Work Email / Executive ID
+                Work Email
               </label>
               <div className="relative group">
                 <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35 transition-colors group-focus-within:text-[#e3943f]">
@@ -8148,7 +8099,7 @@ export default function AdminPage() {
                 <input
                   type="email"
                   required
-                  placeholder="admin@uniquegraphics.com"
+                  placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-[#161616] pl-10 pr-4 py-3.5 text-[13px] text-white placeholder-white/30 outline-none transition-all duration-200 hover:border-white/25 focus:border-[#e3943f] focus:bg-[#1c1c1c] focus:ring-1 focus:ring-[#e3943f]/30"
@@ -8160,15 +8111,9 @@ export default function AdminPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-[11px] font-bold tracking-[0.14em] text-white/60 uppercase">
-                  Passcode / Security Key
+                  Password
                 </label>
-                <button
-                  type="button"
-                  onClick={fillDemoCredentials}
-                  className="text-[10.5px] font-semibold text-[#e3943f] hover:underline cursor-pointer"
-                >
-                  Auto-Fill Demo
-                </button>
+              
               </div>
               <div className="relative group">
                 <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35 transition-colors group-focus-within:text-[#e3943f]">
@@ -8217,7 +8162,7 @@ export default function AdminPage() {
                 />
                 <span className="text-[12px] text-white/60">Remember workstation</span>
               </label>
-              <span className="text-[11px] font-mono text-white/35">PORT 443</span>
+             
             </div>
 
             {/* Authenticate Action Button */}

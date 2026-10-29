@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { getStoredPortfolioConfig } from '../../data/portfolioConfig'
 import FilterDrawer from '../commercial/FilterDrawer'
-import banner1 from '../../assets/interiaor/258301_medium.mp4'
-import banner2 from '../../assets/interiaor/345893_medium.mp4'
-import banner3 from '../../assets/interiaor/362909_medium.mp4'
+const banner1 = '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4'
+const banner2 = '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png'
+const banner3 = '/website-assets/INTERIOR/INTERIOR%20MODERN/LIVING%20ROOM/A1.jpg'
 
 const defaultBannerVideos = [
   { id: 1, src: banner1 },
@@ -29,11 +29,12 @@ export default function InteriorPage({ lang = 'en' }) {
   }, [])
 
   const heroConfig = portfolioData.heroes?.['interior-design'] || {}
+  const isOld = (u) => !u || String(u).includes('/assets/interiaor') || String(u).includes('258301')
   const bannerVideos = useMemo(() => {
     return [
-      { id: 1, src: heroConfig.banner1 || banner1 },
-      { id: 2, src: heroConfig.banner2 || banner2 },
-      { id: 3, src: heroConfig.banner3 || banner3 },
+      { id: 1, src: !isOld(heroConfig.banner1) ? heroConfig.banner1 : banner1 },
+      { id: 2, src: !isOld(heroConfig.banner2) ? heroConfig.banner2 : banner2 },
+      { id: 3, src: !isOld(heroConfig.banner3) ? heroConfig.banner3 : banner3 },
     ]
   }, [heroConfig.banner1, heroConfig.banner2, heroConfig.banner3])
 
@@ -106,21 +107,30 @@ export default function InteriorPage({ lang = 'en' }) {
 
         {/* Background Videos with Smooth Opacity Crossfade */}
         <div className="absolute inset-0 z-0 overflow-hidden bg-black">
-          {bannerVideos.map((banner, idx) => (
-            <video
-              key={banner.id}
-              ref={(el) => (videoRefs.current[idx] = el)}
-              src={banner.src}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              className={`absolute inset-0 h-full w-full object-cover object-center scale-105 transition-opacity duration-1000 ease-in-out ${
-                idx === currentBanner ? 'opacity-100 z-[1]' : 'opacity-0 z-0 pointer-events-none'
-              }`}
-            />
-          ))}
+          {bannerVideos.map((banner, idx) => {
+            const isVid = banner.src && String(banner.src).endsWith('.mp4')
+            const activeClass = idx === currentBanner ? 'opacity-100 z-[1]' : 'opacity-0 z-0 pointer-events-none'
+            return isVid ? (
+              <video
+                key={banner.id}
+                ref={(el) => (videoRefs.current[idx] = el)}
+                src={banner.src}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                className={`absolute inset-0 h-full w-full object-cover object-center scale-105 transition-opacity duration-1000 ease-in-out ${activeClass}`}
+              />
+            ) : (
+              <img
+                key={banner.id}
+                src={banner.src}
+                alt=""
+                className={`absolute inset-0 h-full w-full object-cover object-center scale-105 transition-opacity duration-1000 ease-in-out ${activeClass}`}
+              />
+            )
+          })}
           <div className="absolute inset-0 z-[2] bg-gradient-to-t from-[#111111] via-black/40 to-black/60 pointer-events-none" />
           <div className="absolute inset-0 z-[2] bg-black/25 pointer-events-none" />
         </div>

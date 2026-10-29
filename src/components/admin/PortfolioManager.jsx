@@ -4,6 +4,7 @@ import {
   getStoredPortfolioConfig,
   setStoredPortfolioConfig,
 } from '../../data/portfolioConfig'
+import { getStoredPortfolioTree, setStoredPortfolioTree } from '../../data/portfolioTree'
 import LoopVideo from '../LoopVideo'
 
 const CATEGORY_KEYS = [
@@ -13,12 +14,28 @@ const CATEGORY_KEYS = [
   { id: 'commercial-design', label: 'Commercial Design', path: '/commercial-design' },
 ]
 
+function labelsFromTree(keys) {
+  const categories = getStoredPortfolioTree().categories || []
+  return keys.map((item) => {
+    const match = categories.find((category) => category.slug === item.id || category.id === item.id)
+    return match?.name ? { ...item, label: match.name } : item
+  })
+}
+
 export default function PortfolioManager({ token }) {
   const [activeTab, setActiveTab] = useState('nav') // 'nav' | 'heroes' | 'arch' | 'int' | 'comm'
   const [selectedCategory, setSelectedCategory] = useState('all-projects')
+  const [previewProjectId, setPreviewProjectId] = useState(null)
   const [config, setConfig] = useState(() => getStoredPortfolioConfig())
   const [loading, setLoading] = useState(false)
-  const [saveStatus, setSaveStatus] = useState(null) // 'saved' | 'error' | null
+  const [saveStatus, setSaveStatus] = useState(null)
+  const [categoryKeys, setCategoryKeys] = useState(() => labelsFromTree(CATEGORY_KEYS))
+
+  useEffect(() => {
+    const refreshLabels = () => setCategoryKeys(labelsFromTree(CATEGORY_KEYS))
+    window.addEventListener('portfolio-pages-config-changed', refreshLabels)
+    return () => window.removeEventListener('portfolio-pages-config-changed', refreshLabels)
+  }, []) // 'saved' | 'error' | null
 
   // Project Editor Modal State
   const [editingProject, setEditingProject] = useState(null) // null or project object
@@ -139,7 +156,7 @@ export default function PortfolioManager({ token }) {
     setIsNewProject(true)
     setEditingProject({
       id: `${discipline}-${Date.now().toString().slice(-4)}`,
-      image: '/architectural/dubai_villa.jpg',
+      image: discipline === 'interior' ? '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png' : discipline === 'commercial' ? '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png' : '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
       area: '1500 м²',
       type: discipline === 'architectural' ? 'Modern Villas' : discipline === 'interior' ? 'Penthouses' : 'Hotel',
       tone: 'Travertine & Bronze',
@@ -212,6 +229,8 @@ export default function PortfolioManager({ token }) {
       (p.type && p.type.toLowerCase().includes(q))
     )
   })
+  const previewProject =
+    filteredProjectsList.find((project) => project.id === previewProjectId) || filteredProjectsList[0]
 
   return (
     <div className="space-y-6 animate-fade-in text-white pb-24">
@@ -229,11 +248,11 @@ export default function PortfolioManager({ token }) {
                 </svg>
               </span>
               <div>
-                <h1 className="text-[20px] font-bold tracking-tight text-white uppercase">
-                  Portfolio & Category Pages Manager
+                <h1 className="text-[20px] font-bold tracking-tight text-white">
+                  Project cards
                 </h1>
-                <p className="text-[12px] text-white/50">
-                  Full control over All Projects, Architectural, Interior & Commercial portfolios, hero banners, and nav dropdown cards.
+                <p className="max-w-xl text-[13px] leading-relaxed text-white/55">
+                  These are the cards visitors see on the portfolio pages: photo, area, title, and 360 badge. Pick a tab, edit a card, then press Save. The menu names stay in the block above.
                 </p>
               </div>
             </div>
@@ -289,11 +308,11 @@ export default function PortfolioManager({ token }) {
       {/* MAIN NAVIGATION TABS */}
       <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-3">
         {[
-          { id: 'nav', label: '1. Nav & Dropdown Cards', badge: 'Header Menu' },
-          { id: 'heroes', label: '2. Page Hero Banners', badge: '4 Portals' },
-          { id: 'arch', label: '3. Architectural Projects', badge: `${config.architectural?.length || 0} Projects` },
-          { id: 'int', label: '4. Interior Projects', badge: `${config.interior?.length || 0} Projects` },
-          { id: 'comm', label: '5. Commercial Projects', badge: `${config.commercial?.length || 0} Projects` },
+          { id: 'nav', label: 'Menu cards', badge: 'Hover text' },
+          { id: 'heroes', label: 'Page banners', badge: 'Top of page' },
+          { id: 'arch', label: `${categoryKeys.find((item) => item.id === 'architectural-design')?.label || 'Architecture'} cards`, badge: `${config.architectural?.length || 0}` },
+          { id: 'int', label: `${categoryKeys.find((item) => item.id === 'interior-design')?.label || 'Interior'} cards`, badge: `${config.interior?.length || 0}` },
+          { id: 'comm', label: `${categoryKeys.find((item) => item.id === 'commercial-design')?.label || 'Business'} cards`, badge: `${config.commercial?.length || 0}` },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -326,13 +345,13 @@ export default function PortfolioManager({ token }) {
             <div className="space-y-6">
               <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-bold tracking-[0.18em] text-[#e3943f] uppercase">
-                    Select Category to Edit Nav Card
+                  <label className="block text-[13px] font-semibold text-white">
+                    Which portfolio page
                   </label>
-                  <span className="text-[11px] text-white/50">Shown on public header dropdown</span>
+                  <span className="text-[12px] text-white/45">Shown in the header menu</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {CATEGORY_KEYS.map((cat) => (
+                  {categoryKeys.map((cat) => (
                     <button
                       key={cat.id}
                       type="button"
@@ -352,28 +371,44 @@ export default function PortfolioManager({ token }) {
               {/* Edit Card Fields */}
               {(() => {
                 const card = config.navCards?.[selectedCategory] || {}
+                const selected = categoryKeys.find((item) => item.id === selectedCategory)
+                const menuName = selected?.label || card.title || ''
+                const renameCategory = (name) => {
+                  const tree = getStoredPortfolioTree()
+                  setStoredPortfolioTree({
+                    categories: (tree.categories || []).map((category) =>
+                      category.slug === selectedCategory || category.id === selectedCategory
+                        ? { ...category, name }
+                        : category
+                    ),
+                  })
+                  setCategoryKeys(labelsFromTree(CATEGORY_KEYS))
+                }
                 return (
                   <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-                    <h3 className="text-[13px] font-bold uppercase tracking-wider text-white">
-                      Nav Card Settings for <span className="text-[#e3943f]">{selectedCategory}</span>
+                    <h3 className="text-[14px] font-semibold text-white">
+                      Menu text for <span className="text-[#e3943f]">{menuName}</span>
                     </h3>
+                    <p className="text-[12px] text-white/45">Name, short line, and picture people see when they open Portfolio in the header.</p>
 
                     <div>
                       <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                        Category Menu Label:
+                        Name in the menu
                       </label>
                       <input
                         type="text"
-                        value={card.title || ''}
-                        onChange={(e) =>
+                        value={menuName}
+                        onChange={(e) => {
+                          const name = e.target.value
                           setConfig((prev) => ({
                             ...prev,
                             navCards: {
                               ...prev.navCards,
-                              [selectedCategory]: { ...card, title: e.target.value },
+                              [selectedCategory]: { ...card, title: name },
                             },
                           }))
-                        }
+                          renameCategory(name)
+                        }}
                         placeholder="e.g. ALL PROJECTS"
                         className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
                       />
@@ -381,7 +416,7 @@ export default function PortfolioManager({ token }) {
 
                     <div>
                       <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                        Hover Description / Caption:
+                        Short line under the name
                       </label>
                       <textarea
                         rows={2}
@@ -450,13 +485,13 @@ export default function PortfolioManager({ token }) {
             <div className="space-y-6">
               <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-bold tracking-[0.18em] text-[#e3943f] uppercase">
-                    Select Portfolio Page Hero to Customize
+                  <label className="block text-[13px] font-semibold text-white">
+                    Which page banner
                   </label>
-                  <span className="text-[11px] text-white/50">Full-width cinematic banner</span>
+                  <span className="text-[12px] text-white/45">Big picture at the top of that page</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {CATEGORY_KEYS.map((cat) => (
+                  {categoryKeys.map((cat) => (
                     <button
                       key={cat.id}
                       type="button"
@@ -478,14 +513,15 @@ export default function PortfolioManager({ token }) {
                 const hero = config.heroes?.[selectedCategory] || {}
                 return (
                   <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-                    <h3 className="text-[13px] font-bold uppercase tracking-wider text-white">
-                      Hero Banner for <span className="text-[#e3943f]">{selectedCategory}</span>
+                    <h3 className="text-[14px] font-semibold text-white">
+                      Banner for <span className="text-[#e3943f]">{categoryKeys.find((item) => item.id === selectedCategory)?.label || selectedCategory}</span>
                     </h3>
+                    <p className="text-[12px] text-white/45">Heading and background on that portfolio page. This is not the small hover picture in the menu.</p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                          Heading Lead:
+                          Heading:
                         </label>
                         <input
                           type="text"
@@ -597,13 +633,16 @@ export default function PortfolioManager({ token }) {
           {(activeTab === 'arch' || activeTab === 'int' || activeTab === 'comm') && (
             <div className="space-y-6">
               {/* Top Bar for Projects Tab */}
+              <p className="text-[13px] text-white/50">
+                Click a card to see it on the right. Edit changes the photo, area, and title on the public portfolio page.
+              </p>
               <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="flex-1 relative">
                   <input
                     type="text"
                     value={searchProjectQuery}
                     onChange={(e) => setSearchProjectQuery(e.target.value)}
-                    placeholder={`Search ${currentProjectsList.length} projects by city, tag, or title...`}
+                    placeholder="Search by city or title"
                     className="w-full rounded-xl border border-white/10 bg-[#181818] pl-9 pr-3.5 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
                   />
                   <svg
@@ -641,7 +680,10 @@ export default function PortfolioManager({ token }) {
                   filteredProjectsList.map((project, index) => (
                     <div
                       key={project.id || index}
-                      className="group rounded-2xl border border-white/10 bg-[#141414] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all hover:border-[#e3943f]/40 hover:bg-[#181818]"
+                      onClick={() => setPreviewProjectId(project.id)}
+                      className={`group cursor-pointer rounded-2xl border bg-[#141414] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all hover:border-[#e3943f]/40 hover:bg-[#181818] ${
+                        previewProjectId === project.id ? 'border-[#e3943f]' : 'border-white/10'
+                      }`}
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
                         {/* Thumbnail */}
@@ -729,21 +771,7 @@ export default function PortfolioManager({ token }) {
         {/* RIGHT COLUMN: INTERACTIVE LIVE PREVIEW */}
         <div className="lg:col-span-5 sticky top-6 space-y-4">
           <div className="rounded-2xl border border-white/10 bg-[#121212] p-5 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <span className="text-[11px] font-bold tracking-[0.2em] text-[#e3943f] uppercase flex items-center gap-2">
-                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                Live Studia 54 Public Preview
-              </span>
-              <span className="text-[10px] font-mono text-white/40 uppercase">
-                {activeTab === 'nav'
-                  ? 'Header Dropdown'
-                  : activeTab === 'heroes'
-                  ? 'Portal Hero'
-                  : 'Portfolio Grid'}
-              </span>
-            </div>
-
-            <div className="mt-4">
+            <div>
               {/* PREVIEW: NAV CARD */}
               {activeTab === 'nav' && (
                 <div className="space-y-4 flex flex-col items-center">
@@ -756,7 +784,7 @@ export default function PortfolioManager({ token }) {
                       />
                     </div>
                     <p className="mt-4 text-[12px] tracking-[0.16em] text-[#e3943f] uppercase font-bold">
-                      {config.navCards?.[selectedCategory]?.title || 'ALL PROJECTS'}
+                      {categoryKeys.find((item) => item.id === selectedCategory)?.label || 'All projects'}
                     </p>
                     <p className="mt-2 text-[13px] leading-snug text-white/80">
                       {config.navCards?.[selectedCategory]?.hover ||
@@ -795,7 +823,7 @@ export default function PortfolioManager({ token }) {
                     </div>
                   </div>
                   <span className="text-[10.5px] text-white/40 italic block text-center">
-                    * Top hero banner rendered at {selectedCategory} route.
+                    * Top banner for this page.
                   </span>
                 </div>
               )}
@@ -803,37 +831,37 @@ export default function PortfolioManager({ token }) {
               {/* PREVIEW: PROJECT CARD MOCKUP */}
               {(activeTab === 'arch' || activeTab === 'int' || activeTab === 'comm') && (
                 <div className="space-y-4">
-                  {filteredProjectsList[0] ? (
+                  {previewProject ? (
                     <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#161616] p-3 space-y-3">
                       <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-black">
                         <img
-                          src={filteredProjectsList[0].image}
+                          src={previewProject.image}
                           alt=""
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute top-2.5 right-2.5 rounded bg-black/60 backdrop-blur-md px-2 py-0.5 text-[9.5px] font-mono text-white">
-                          {filteredProjectsList[0].area}
+                          {previewProject.area}
                         </div>
-                        {filteredProjectsList[0].badge && (
+                        {previewProject.badge && (
                           <div className="absolute bottom-2.5 right-2.5 rounded-full bg-black/70 backdrop-blur-md px-2 py-0.5 text-[9px] font-bold text-[#e3943f] border border-[#e3943f]/30">
-                            {filteredProjectsList[0].badge}
+                            {previewProject.badge}
                           </div>
                         )}
-                        {filteredProjectsList[0].award && (
+                        {previewProject.award && (
                           <div className="absolute bottom-2.5 left-2.5 rounded bg-black/80 px-2 py-1 text-[8.5px] text-white/80 max-w-[200px] truncate">
-                            🏆 {filteredProjectsList[0].award}
+                            🏆 {previewProject.award}
                           </div>
                         )}
                       </div>
 
                       <div className="space-y-1 px-1">
                         <h4 className="text-[12px] font-bold uppercase tracking-tight text-white leading-snug">
-                          {filteredProjectsList[0].titlePre}{' '}
-                          <span className="text-[#e3943f]">{filteredProjectsList[0].location}</span>{' '}
-                          {filteredProjectsList[0].titlePost}
+                          {previewProject.titlePre}{' '}
+                          <span className="text-[#e3943f]">{previewProject.location}</span>{' '}
+                          {previewProject.titlePost}
                         </h4>
                         <p className="text-[10px] text-white/60 line-clamp-2 leading-relaxed">
-                          {filteredProjectsList[0].description}
+                          {previewProject.description}
                         </p>
                       </div>
                     </div>

@@ -191,7 +191,9 @@ export default function Discover({ lang = 'en' }) {
   const currentLang = lang === 'ru' ? 'ru' : 'en'
   const text = config?.[currentLang] || DEFAULT_DISCOVER_CONFIG[currentLang]
   const [open, setOpen] = useState(false)
-  const videoSrc = config?.mediaUrl || projects[7]?.video
+  const REAL_DISCOVER_VIDEO = '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4'
+  const isOld = (u) => !u || String(u).includes('/assets/') || String(u).includes('/video/')
+  const videoSrc = !isOld(config?.mediaUrl) ? config.mediaUrl : REAL_DISCOVER_VIDEO
 
   return (
     <section className="bg-[#141414] px-4 py-8 text-white sm:px-8 lg:px-10 lg:py-12">

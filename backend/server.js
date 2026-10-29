@@ -1,13 +1,18 @@
 import express from 'express'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { uploadMediaFile } from './controllers/uploadController.js'
+import { protectAdmin } from './middleware/authMiddleware.js'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import mongoose from 'mongoose'
 import { connectDB } from './config/db.js'
 import authRoutes from './routes/authRoutes.js'
 import inquiryRoutes from './routes/inquiryRoutes.js'
 import blogRoutes from './routes/blogRoutes.js'
 import { seedDefaultAdmin } from './controllers/authController.js'
 import { seedDefaultInquiries } from './controllers/inquiryController.js'
-import { seedDefaultBlogs } from './controllers/blogController.js'
+import { seedDefaultBlogs, seedDefaultProjectsAndServices } from './controllers/blogController.js'
 
 // Load environment variables
 dotenv.config()
@@ -23,8 +28,17 @@ app.use(
     credentials: true,
   })
 )
-app.use(express.json())
+app.post('/api/blogs/uploads', express.json({ limit: '200mb' }), protectAdmin, uploadMediaFile)
+app.use(express.json({ limit: '4mb' }))
 app.use(express.urlencoded({ extended: true }))
+app.use(
+  '/uploads',
+  express.static(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public/uploads'))
+)
+app.use(
+  '/website-assets',
+  express.static(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../website/website'))
+)
 
 // Request logger for security auditing
 app.use((req, res, next) => {
@@ -109,6 +123,7 @@ const startServer = async () => {
     await seedDefaultAdmin()
     await seedDefaultInquiries()
     await seedDefaultBlogs()
+    await seedDefaultProjectsAndServices()
 
     // 3. Listen on Port
     app.listen(PORT, () => {

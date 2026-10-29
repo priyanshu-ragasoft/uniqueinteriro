@@ -2,7 +2,7 @@ import app from '../backend/server.js'
 import { connectDB } from '../backend/config/db.js'
 import { seedDefaultAdmin } from '../backend/controllers/authController.js'
 import { seedDefaultInquiries } from '../backend/controllers/inquiryController.js'
-import { seedDefaultBlogs } from '../backend/controllers/blogController.js'
+import { seedDefaultBlogs, seedDefaultProjectsAndServices } from '../backend/controllers/blogController.js'
 import mongoose from 'mongoose'
 
 let isSeeded = false
@@ -16,6 +16,7 @@ export default async function handler(req, res) {
       await seedDefaultAdmin()
       await seedDefaultInquiries()
       await seedDefaultBlogs()
+      await seedDefaultProjectsAndServices()
       isSeeded = true
     }
   } catch (err) {

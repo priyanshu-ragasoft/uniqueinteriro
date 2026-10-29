@@ -34,7 +34,9 @@ export default function AboutStory({ lang }) {
     return { label: s.label || '', text: s.text || '' }
   })
 
-  const mediaSrc = storyConfig.mediaUrl?.trim() || aboutReels.bedroom
+  const DEFAULT_STORY_IMAGE = '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png'
+  const rawStoryMedia = storyConfig.mediaUrl?.trim()
+  const mediaSrc = rawStoryMedia || aboutReels.bedroom
   const isVideo = !mediaSrc.match(/\.(jpeg|jpg|png|gif|webp|svg)$/i)
   const activeStep = steps[activeStepIndex] || steps[0] || { label: '', text: '' }
 
@@ -48,7 +50,7 @@ export default function AboutStory({ lang }) {
           <p className="mt-2 text-[15px] text-white/70">{text.yearsText}</p>
         </div>
         <p className="text-center text-[92px] leading-none font-medium tracking-[-0.06em] text-white/90 sm:text-[120px]">
-          {text.bigNumber || '10+'}
+          {text.bigNumber || '15+'}
         </p>
       </div>
 
@@ -74,7 +76,14 @@ export default function AboutStory({ lang }) {
             {isVideo ? (
               <LoopVideo src={mediaSrc} className="h-[320px] w-full object-cover sm:h-[420px]" />
             ) : (
-              <img src={mediaSrc} alt="Process visual" className="h-[320px] w-full object-cover sm:h-[420px]" />
+              <img
+                src={mediaSrc}
+                alt="Process visual"
+                onError={(e) => {
+                  e.currentTarget.src = DEFAULT_STORY_IMAGE
+                }}
+                className="h-[320px] w-full object-cover sm:h-[420px]"
+              />
             )}
             <figcaption className="bg-[#1a1a1a] px-5 py-4 text-[13px] tracking-[0.08em] text-white/80 uppercase">
               {activeStep.text}

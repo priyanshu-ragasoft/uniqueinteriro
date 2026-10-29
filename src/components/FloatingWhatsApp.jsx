@@ -50,7 +50,7 @@ export default function FloatingWhatsApp() {
         role="dialog"
         aria-modal="true"
         aria-label="WhatsApp"
-        className={`absolute right-0 bottom-16 mb-3 w-[350px] origin-bottom-right rounded-[34px] bg-white p-7 text-black shadow-[0_25px_70px_-15px_rgba(0,0,0,0.35)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] sm:w-[400px] sm:p-8 ${
+        className={`absolute left-0 bottom-16 mb-3 w-[350px] origin-bottom-left rounded-[34px] bg-white p-7 text-black shadow-[0_25px_70px_-15px_rgba(0,0,0,0.35)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] sm:w-[400px] sm:p-8 ${
           open
             ? 'visible opacity-100 scale-100 translate-y-0 pointer-events-auto'
             : 'invisible opacity-0 scale-90 translate-y-4 pointer-events-none'

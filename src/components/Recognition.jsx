@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { FaInstagram, FaPinterest, FaVk, FaYoutube } from 'react-icons/fa'
-import reel from '../assets/Product/11593543-hd_1920_1080_30fps.mp4'
+const DEFAULT_REEL = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
 
 export const DEFAULT_RECOGNITION_CONFIG = {
   en: {
@@ -13,7 +13,7 @@ export const DEFAULT_RECOGNITION_CONFIG = {
     count: '2 000 000',
     text: 'человек следят за нашей работой в социальных сетях',
   },
-  mediaUrl: '',
+  mediaUrl: DEFAULT_REEL,
   socials: {
     instagram: 'https://instagram.com',
     pinterest: 'https://pinterest.com',
@@ -80,7 +80,8 @@ export default function Recognition({ lang = 'en', src }) {
 
   const currentLang = lang === 'ru' ? 'ru' : 'en'
   const text = config?.[currentLang] || DEFAULT_RECOGNITION_CONFIG[currentLang]
-  const backgroundMedia = config?.mediaUrl || src || reel
+  const isOldMedia = (u) => !u || String(u).includes('/assets/Product') || String(u).includes('11593543') || String(u).includes('/video/')
+  const backgroundMedia = !isOldMedia(config?.mediaUrl) ? config.mediaUrl : (src && !isOldMedia(src) ? src : DEFAULT_REEL)
 
   const socialLinks = [
     { name: 'Instagram', Icon: FaInstagram, url: config?.socials?.instagram || 'https://instagram.com' },
@@ -95,10 +96,12 @@ export default function Recognition({ lang = 'en', src }) {
         <video
           ref={video}
           src={backgroundMedia}
+          poster="/website-assets/architecture/AUTOMOTIVE%20GALLERY/9ea0e852-0904-49c5-b948-f8504d0ea7fb.png"
           muted
           loop
           playsInline
           autoPlay
+          preload="auto"
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-black/40" />

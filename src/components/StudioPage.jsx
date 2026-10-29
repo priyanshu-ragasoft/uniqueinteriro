@@ -5,24 +5,19 @@ import LoopVideo from './LoopVideo'
 import FilterDrawer, { SERVICE_DIRECTIONS } from './commercial/FilterDrawer'
 import { getStoredServicesConfig } from '../data/servicesConfig'
 
-// Dedicated Ultra-HD Video Banners from 'moree' directory
-import moreeBim from '../assets/moree/7311107-uhd_2160_4096_25fps.mp4'
-import moreeSupervision from '../assets/moree/14807010_3840_2160_25fps.mp4'
-import moreeConstruction from '../assets/moree/13002564-hd_1920_1080_24fps.mp4'
-import moreeProcurement from '../assets/moree/17224631-uhd_3840_2160_30fps.mp4'
-import moreeAllServices1 from '../assets/moree/17211936-hd_1920_1080_30fps.mp4'
-import moreeAllServices2 from '../assets/moree/17224730-hd_1920_1080_30fps.mp4'
-import moreeArchitecture from '../assets/moree/19728710-uhd_3840_2160_25fps.mp4'
-
-// Dedicated Video Banners for 2D/3D Design
-import video2d3d_1 from '../assets/2d3d/18531414-uhd_3840_2160_60fps.mp4'
-import video2d3d_2 from '../assets/2d3d/7490395-hd_1920_1080_30fps.mp4'
-import video2d3d_3 from '../assets/2d3d/2480790-hd_1920_1080_25fps.mp4'
-
-// Dedicated Video Banners for Walkthrough
-import videoWalkthrough_1 from '../assets/walkthrough/6789568-uhd_2160_3840_25fps.mp4'
-import videoWalkthrough_2 from '../assets/walkthrough/7480744-uhd_4096_2160_25fps.mp4'
-import videoWalkthrough_3 from '../assets/walkthrough/7484777-uhd_4096_2160_25fps.mp4'
+const moreeAllServices1 = '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
+const moreeAllServices2 = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
+const video2d3d_1 = '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4'
+const video2d3d_2 = '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4'
+const video2d3d_3 = '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4'
+const videoWalkthrough_1 = '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4'
+const videoWalkthrough_2 = '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
+const videoWalkthrough_3 = '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4'
+const moreeBim = '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4'
+const moreeSupervision = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
+const moreeConstruction = '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
+const moreeProcurement = '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4'
+const moreeArchitecture = '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
 
 const BANNERS_BY_SERVICE = {
   'all-services': [
