@@ -2,12 +2,8 @@ import { useEffect, useState } from 'react'
 import CompletedProjects from './components/CompletedProjects'
 import Clients from './components/Clients'
 import AboutPage from './components/about/AboutPage'
-import ServicePage from './components/services/ServicePage'
-import { getStoredPortfolioTree, setStoredPortfolioTree } from './data/portfolioTree'
-import CommercialPage from './components/commercial/CommercialPage'
-import InteriorPage from './components/interior/InteriorPage'
-import ArchitecturalPage from './components/architectural/ArchitecturalPage'
-import AllProjectsPage from './components/portfolio/AllProjectsPage'
+import ServiceEntryPage from './components/services/ServiceEntryPage'
+import PortfolioEntryPage from './components/portfolio/PortfolioEntryPage'
 import Closing from './components/Closing'
 import ContactPage from './components/contact/ContactPage'
 import Discover from './components/Discover'
@@ -62,10 +58,7 @@ export default function App() {
   const serviceOpen = route.page === 'service'
   const aboutOpen = route.page === 'about'
   const contactOpen = route.page === 'contacts'
-  const commercialOpen = route.page === 'commercial'
-  const interiorOpen = route.page === 'interior'
-  const architecturalOpen = route.page === 'architectural'
-  const allProjectsOpen = route.page === 'all-projects'
+  const portfolioCategoryOpen = route.page === 'portfolio-category' || route.page === 'portfolio-entry'
   const blogOpen = route.page === 'blog'
   const adminOpen = route.page === 'admin'
   const legalId = route.page === 'privacy' || route.page === 'terms' ? route.page : ''
@@ -74,13 +67,9 @@ export default function App() {
     projectId ||
     studioId ||
     serviceOpen ||
-    route.page === 'portfolio-item' ||
+    portfolioCategoryOpen ||
     aboutOpen ||
     contactOpen ||
-    commercialOpen ||
-    interiorOpen ||
-    architecturalOpen ||
-    allProjectsOpen ||
     blogOpen ||
     legalId ||
     noteId
@@ -114,21 +103,21 @@ export default function App() {
   return (
     <>
       <Navbar />
-      {innerPage ? <HomeButton lang={lang} /> : null}
+      {innerPage && !projectId ? <HomeButton lang={lang} /> : null}
       {projectId ? (
         <ProjectPage lang={lang} id={projectId} />
       ) : aboutOpen ? (
         <AboutPage lang={lang} />
       ) : contactOpen ? (
         <ContactPage lang={lang} />
-      ) : commercialOpen ? (
-        <CommercialPage lang={lang} />
-      ) : interiorOpen ? (
-        <InteriorPage lang={lang} />
-      ) : architecturalOpen ? (
-        <ArchitecturalPage lang={lang} />
-      ) : allProjectsOpen ? (
-        <AllProjectsPage lang={lang} />
+      ) : portfolioCategoryOpen ? (
+        <PortfolioEntryPage
+          key={`${route.category || ''}/${route.second || route.subcategory || ''}/${route.third || ''}`}
+          lang={lang}
+          categorySlug={route.category}
+          secondSlug={route.second || route.subcategory || ''}
+          thirdSlug={route.third || ''}
+        />
       ) : blogOpen ? (
         <BlogPage />
       ) : legalId ? (
@@ -136,15 +125,11 @@ export default function App() {
       ) : noteId ? (
         <StudioNote id={noteId} />
       ) : serviceOpen ? (
-        <ServicePage categorySlug={route.category} subcategorySlug={route.subcategory} />
-      ) : route.page === 'portfolio-item' ? (
-        <ServicePage
+        <ServiceEntryPage
+          key={`${route.category || ''}/${route.subcategory || ''}/${route.story || ''}`}
           categorySlug={route.category}
           subcategorySlug={route.subcategory}
-          readTree={getStoredPortfolioTree}
-          writeTree={setStoredPortfolioTree}
-          endpoint="/api/blogs/settings/portfolio-pages"
-          eventName="portfolio-pages-config-changed"
+          storySlug={route.story}
         />
       ) : studioId ? (
         <StudioPage lang={lang} id={studioId} />

@@ -35,11 +35,28 @@ export default function LoopVideo({ src, className = '', alt = '', poster = '' }
   }
 
   if (!isVideo) {
+    const looksLikeImage =
+      typeof src === 'string' &&
+      (src.startsWith('data:image') ||
+        src.startsWith('/') ||
+        /^https?:\/\//i.test(src) ||
+        /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(src))
+    if (!looksLikeImage) {
+      return (
+        <img
+          src={defaultPoster}
+          alt={alt}
+          loading="lazy"
+          className={`${className} object-cover`}
+        />
+      )
+    }
     return (
       <img
         src={hasError ? defaultPoster : src}
         alt={alt}
         loading="lazy"
+        onError={() => setHasError(true)}
         className={`${className} object-cover`}
       />
     )

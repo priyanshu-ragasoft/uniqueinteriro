@@ -21,11 +21,7 @@ export default function AboutBanner({ lang }) {
     }
   }, [])
 
-  const text =
-    bannerConfig[lang] ??
-    bannerConfig.en ??
-    DEFAULT_ABOUT_PAGE_CONFIG.banner[lang] ??
-    DEFAULT_ABOUT_PAGE_CONFIG.banner.en
+  const text = bannerConfig.en ?? DEFAULT_ABOUT_PAGE_CONFIG.banner.en
 
   const DEFAULT_BANNER_IMAGE = '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg'
   const rawMedia = bannerConfig.mediaUrl?.trim()

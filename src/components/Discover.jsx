@@ -24,31 +24,11 @@ export const DEFAULT_DISCOVER_CONFIG = {
     submit: "Request a manager's consultation",
     thanks: 'Thank you. Your request is noted on this page.',
   },
-  ru: {
-    line: 'Откройте',
-    accent: 'стиль Unique Graphics',
-    text: 'Мы строим дома и делаем интерьеры в своём стиле, собранном под ваш образ жизни',
-    percent: '98%',
-    recommend: 'клиентов рекомендуют нас',
-    button: 'Связаться с менеджером',
-    close: 'Закрыть',
-    step: 'Шагните',
-    world: 'в мир',
-    brand: 'Unique Graphics',
-    story:
-      'Место, где замысел обретает форму в видении студии. Мы готовы пройти этот путь вместе и довести проект до реализации.',
-    prompt: 'Заполните форму, и менеджер свяжется с вами',
-    name: 'Ваше имя',
-    phone: 'Телефон',
-    submit: 'Запросить консультацию менеджера',
-    thanks: 'Спасибо. Заявка отмечена на этой странице.',
-  },
   mediaUrl: '',
 }
 
 export const consultCopy = {
   en: DEFAULT_DISCOVER_CONFIG.en,
-  ru: DEFAULT_DISCOVER_CONFIG.ru,
 }
 
 export function ConsultModal({ text, onClose }) {
@@ -188,8 +168,7 @@ export default function Discover({ lang = 'en' }) {
     }
   }, [])
 
-  const currentLang = lang === 'ru' ? 'ru' : 'en'
-  const text = config?.[currentLang] || DEFAULT_DISCOVER_CONFIG[currentLang]
+  const text = config?.en || DEFAULT_DISCOVER_CONFIG.en
   const [open, setOpen] = useState(false)
   const REAL_DISCOVER_VIDEO = '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4'
   const isOld = (u) => !u || String(u).includes('/assets/') || String(u).includes('/video/')

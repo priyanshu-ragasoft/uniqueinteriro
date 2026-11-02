@@ -1,6 +1,8 @@
 import { architecturalProjects } from './architecturalProjects'
 import { commercialProjects } from './commercialProjects'
 import { interiorProjects } from './interiorProjects'
+import { getStoredPortfolioConfig } from './portfolioConfig'
+import { flattenPortfolioProjects, getStoredPortfolioTree } from './portfolioTree'
 
 export const categories = {
   en: [
@@ -11,15 +13,6 @@ export const categories = {
     ['bars-clubs', 'Bars & Night Clubs'],
     ['interior', 'Residential Interior'],
     ['office', 'Corporate Offices'],
-  ],
-  ru: [
-    ['all', 'Все проекты'],
-    ['architecture', 'Архитектура'],
-    ['commercial', 'Коммерческий дизайн'],
-    ['banquet', 'Банкетные залы'],
-    ['bars-clubs', 'Бары и Клубы'],
-    ['interior', 'Интерьеры'],
-    ['office', 'Офисы'],
   ],
 }
 
@@ -33,27 +26,60 @@ function mapDisciplineProject(p, defaultCat) {
   else if (type.includes('tower') || type.includes('landmark') || type.includes('campus') || type.includes('facade') || p.id.startsWith('arch-')) cat = 'architecture'
   else if (type.includes('interior') || type.includes('living') || type.includes('suite') || p.id.startsWith('interior-')) cat = 'interior'
 
+  const scope =
+    Array.isArray(p.scope) && p.scope.length
+      ? p.scope
+      : ['Architectural Design', 'Interior Architecture', '3D Visualization', 'Material Selection']
+
   return {
     id: p.id,
     cat,
     image: p.image,
     video: p.video || null,
-    gallery: p.gallery || [],
+    gallery: Array.isArray(p.gallery) ? p.gallery : [],
+    sections: Array.isArray(p.sections) ? p.sections : [],
+    tour360: p.tour360 || '',
+    area: p.area || '',
+    type: p.type || '',
+    tone: p.tone || '',
+    city: p.city || '',
+    country: p.country || '',
+    badge: p.badge || '',
+    award: p.award || '',
+    titlePre: p.titlePre || '',
+    location: p.location || '',
+    titlePost: p.titlePost || '',
+    description: p.description || '',
+    detail: p.detail || p.description || '',
+    scope,
+    aboutHeading: p.aboutHeading || 'About the project:',
+    featuresTitle: p.featuresTitle || 'Project features',
+    enquireLabel: p.enquireLabel || 'Enquire',
+    enquireLink: p.enquireLink || '/contacts',
+    tour360Heading: p.tour360Heading || '360° experience',
+    tocHeading: p.tocHeading || 'Table of contents:',
+    readAlsoHeading: p.readAlsoHeading || 'Read also:',
+    closingEyebrow: p.closingEyebrow || 'Unique Graphics®',
+    closingTitle: p.closingTitle || 'Step into the world of Unique Graphics®',
+    closingText:
+      p.closingText ||
+      'A place where your dreams take shape through the unique vision of our studio. We look forward to embarking on this inspiring journey with you.',
+    closingButtonLabel: p.closingButtonLabel || 'Discuss this project',
+    closingButtonLink: p.closingButtonLink || '/contacts',
     en: {
       category: p.type || 'Bespoke Design',
-      title: p.titlePre || p.id,
-      summary: (p.location ? p.location + ' • ' : '') + (p.area || '1 200 m²'),
-      scope: ['Architectural Design', 'Interior Architecture', '3D Visualization', 'Material Selection'],
-      detail: p.description || 'Bespoke architectural and interior design project crafted by Unique Graphics®.'
+      title: [p.titlePre, p.location, p.titlePost].filter(Boolean).join(' ') || p.id,
+      summary: p.summary || p.description || ((p.location ? p.location + ' • ' : '') + (p.area || '1 200 m²')),
+      scope,
+      detail: p.detail || p.description || 'Bespoke architectural and interior design project crafted by Unique Graphics®.',
     },
-    ru: {
-      category: p.type || 'Проект',
-      title: p.titlePre || p.id,
-      summary: (p.location ? p.location + ' • ' : '') + (p.area || '1 200 m²'),
-      scope: ['Архитектура', 'Интерьер', '3D визуализация'],
-      detail: p.description || 'Проект студии Unique Graphics®.'
-    }
   }
+}
+
+function disciplineCat(listKey) {
+  if (listKey === 'interior') return 'interior'
+  if (listKey === 'commercial') return 'commercial'
+  return 'architecture'
 }
 
 export const projects = [
@@ -62,7 +88,38 @@ export const projects = [
   ...interiorProjects.map((p) => mapDisciplineProject(p, 'interior')),
 ]
 
+function findInPortfolioConfig(id) {
+  try {
+    const fromTree = flattenPortfolioProjects(getStoredPortfolioTree()).find(
+      (project) => String(project.id) === String(id)
+    )
+    if (fromTree) return mapDisciplineProject(fromTree, fromTree.categorySlug || 'architecture')
+
+    const config = getStoredPortfolioConfig()
+    const lists = [
+      ['architectural', config.architectural],
+      ['interior', config.interior],
+      ['commercial', config.commercial],
+    ]
+    for (const [key, list] of lists) {
+      if (!Array.isArray(list)) continue
+      const found = list.find((project) => String(project.id) === String(id))
+      if (found) return mapDisciplineProject(found, disciplineCat(key))
+    }
+    const customLists = config.projectLists || {}
+    for (const [key, list] of Object.entries(customLists)) {
+      if (!Array.isArray(list)) continue
+      const found = list.find((project) => String(project.id) === String(id))
+      if (found) return mapDisciplineProject(found, key)
+    }
+  } catch {}
+  return null
+}
+
 export function findProject(id) {
+  const fromAdmin = findInPortfolioConfig(id)
+  if (fromAdmin) return fromAdmin
+
   const match = projects.find((project) => project.id === id)
   if (match) return match
 

@@ -20,11 +20,7 @@ export default function AboutConditions({ lang }) {
     }
   }, [])
 
-  const text =
-    conditionsConfig[lang] ??
-    conditionsConfig.en ??
-    DEFAULT_ABOUT_PAGE_CONFIG.conditions[lang] ??
-    DEFAULT_ABOUT_PAGE_CONFIG.conditions.en
+  const text = conditionsConfig.en ?? DEFAULT_ABOUT_PAGE_CONFIG.conditions.en
 
   // Normalize cards
   const rawCards = text.cards || DEFAULT_ABOUT_PAGE_CONFIG.conditions.en.cards

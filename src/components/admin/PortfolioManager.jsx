@@ -1,18 +1,132 @@
-import React, { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_PORTFOLIO_CONFIG,
   getStoredPortfolioConfig,
   setStoredPortfolioConfig,
+  getProjectsForCategory,
+  setProjectsForCategory,
+  seedPortfolioCategory,
+  resolveProjectListKey,
 } from '../../data/portfolioConfig'
 import { getStoredPortfolioTree, setStoredPortfolioTree } from '../../data/portfolioTree'
-import LoopVideo from '../LoopVideo'
 
-const CATEGORY_KEYS = [
+const BUILTIN_CATEGORY_KEYS = [
   { id: 'all-projects', label: 'All Projects', path: '/all-projects' },
   { id: 'architectural-design', label: 'Architectural Design', path: '/architectural-design' },
   { id: 'interior-design', label: 'Interior Design', path: '/interior-design' },
   { id: 'commercial-design', label: 'Commercial Design', path: '/commercial-design' },
 ]
+
+const BUILTIN_DISCIPLINES = [
+  { id: 'architectural', label: 'Architecture', tab: 'arch' },
+  { id: 'interior', label: 'Interior', tab: 'int' },
+  { id: 'commercial', label: 'Commercial', tab: 'comm' },
+]
+
+function buildCategoryKeysFromTree() {
+  const categories = getStoredPortfolioTree()?.categories || []
+  const base = [...BUILTIN_CATEGORY_KEYS]
+  const seen = new Set(base.map((c) => c.id))
+  for (const cat of categories) {
+    const id = cat.slug || cat.id
+    if (!id || seen.has(id) || id === 'all-projects') continue
+    seen.add(id)
+    base.push({
+      id,
+      label: cat.name || id,
+      path: `/portfolio/${id}`,
+    })
+  }
+  return labelsFromTree(base)
+}
+
+function buildDisciplinesFromTree() {
+  const categories = getStoredPortfolioTree()?.categories || []
+  const list = [...BUILTIN_DISCIPLINES]
+  const seen = new Set(list.map((d) => d.id))
+  for (const cat of categories) {
+    const slug = cat.slug || cat.id
+    if (!slug || slug === 'all-projects') continue
+    const listKey = resolveProjectListKey(slug)
+    if (!listKey || seen.has(listKey)) continue
+    seen.add(listKey)
+    list.push({
+      id: listKey,
+      label: cat.name || listKey,
+      tab: listKey.slice(0, 4),
+    })
+  }
+  return list
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Could not read that file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function uploadAnyFile(file, token) {
+  const dataUrl = await fileToDataUrl(file)
+  const res = await fetch('/api/blogs/uploads', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token || localStorage.getItem('ug_admin_token') || localStorage.getItem('token') || ''}`,
+    },
+    body: JSON.stringify({ filename: file.name, dataUrl }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || !data.url) throw new Error(data.message || 'Upload failed')
+  return data.url
+}
+
+function isVideoLike(src) {
+  const value = String(src || '').toLowerCase()
+  return value.startsWith('data:video') || /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/.test(value)
+}
+
+function uid(prefix = 'sec') {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+}
+
+function normalizeGalleryItem(item) {
+  if (!item) return { src: '', title: '', caption: '' }
+  if (typeof item === 'string') return { src: item, title: '', caption: '' }
+  return {
+    src: item.src || item.url || item.image || '',
+    title: item.title || item.tocTitle || item.label || '',
+    caption: item.caption || '',
+  }
+}
+
+function MediaPreview({ src }) {
+  if (!src) {
+    return (
+      <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded-xl border border-dashed border-white/15 bg-black/40 text-[10px] text-white/35">
+        No preview
+      </div>
+    )
+  }
+  return (
+    <div className="flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black">
+      {isVideoLike(src) ? (
+        <video src={src} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+      ) : (
+        <img src={src} alt="" className="h-full w-full object-cover" />
+      )}
+    </div>
+  )
+}
+
+const inputClass =
+  'w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]'
+const btnGhost =
+  'rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-[11px] font-bold tracking-wider text-white/75 uppercase hover:bg-white/[0.08] hover:text-white'
+const btnPrimary =
+  'rounded-xl bg-gradient-to-r from-[#e3943f] to-[#d68532] px-5 py-2.5 text-[11.5px] font-bold tracking-wider text-black uppercase shadow-md shadow-[#e3943f]/25 disabled:opacity-50'
 
 function labelsFromTree(keys) {
   const categories = getStoredPortfolioTree().categories || []
@@ -22,28 +136,85 @@ function labelsFromTree(keys) {
   })
 }
 
-export default function PortfolioManager({ token }) {
-  const [activeTab, setActiveTab] = useState('nav') // 'nav' | 'heroes' | 'arch' | 'int' | 'comm'
+function Field({ label, hint, children }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[10.5px] font-bold tracking-wider text-white/50 uppercase">{label}</span>
+      {hint ? <p className="mb-2 text-[12px] text-white/40">{hint}</p> : null}
+      {children}
+    </label>
+  )
+}
+
+function StepTabs({ step, onChange, projectCount }) {
+  const steps = [
+    { id: 'nav', label: '1. Menu cards', hint: 'Header hover cards' },
+    { id: 'heroes', label: '2. Page banners', hint: 'Top of each page' },
+    { id: 'projects', label: '3. Projects list', hint: `${projectCount} cards` },
+  ]
+  return (
+    <div className="flex flex-wrap gap-2">
+      {steps.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => onChange(item.id)}
+          className={`rounded-xl px-4 py-2.5 text-left transition-all ${
+            step === item.id
+              ? 'bg-[#e3943f] text-black shadow-md shadow-[#e3943f]/20'
+              : 'border border-white/10 bg-[#161616] text-white/70 hover:bg-white/[0.06] hover:text-white'
+          }`}
+        >
+          <span className="block text-[12px] font-bold tracking-wide uppercase">{item.label}</span>
+          <span className={`mt-0.5 block text-[10px] ${step === item.id ? 'text-black/60' : 'text-white/40'}`}>{item.hint}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function pushAdminProjectUrl({ mode, id, discipline }) {
+  if (typeof window === 'undefined') return
+  const next =
+    mode === 'new'
+      ? `/admin/portfolio/new?discipline=${encodeURIComponent(discipline || 'architectural')}`
+      : mode === 'edit' && id
+        ? `/admin/portfolio/edit/${encodeURIComponent(id)}?discipline=${encodeURIComponent(discipline || 'architectural')}`
+        : '/admin'
+  const current = `${window.location.pathname}${window.location.search}`
+  if (current === next) return
+  window.history.pushState({ adminPortfolioEditor: true }, '', next)
+}
+
+export default function PortfolioManager({ token, onEditingChange }) {
+  const [step, setStep] = useState('projects')
   const [selectedCategory, setSelectedCategory] = useState('all-projects')
+  const [discipline, setDiscipline] = useState('architectural')
   const [previewProjectId, setPreviewProjectId] = useState(null)
   const [config, setConfig] = useState(() => getStoredPortfolioConfig())
   const [loading, setLoading] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null)
-  const [categoryKeys, setCategoryKeys] = useState(() => labelsFromTree(CATEGORY_KEYS))
-
-  useEffect(() => {
-    const refreshLabels = () => setCategoryKeys(labelsFromTree(CATEGORY_KEYS))
-    window.addEventListener('portfolio-pages-config-changed', refreshLabels)
-    return () => window.removeEventListener('portfolio-pages-config-changed', refreshLabels)
-  }, []) // 'saved' | 'error' | null
-
-  // Project Editor Modal State
-  const [editingProject, setEditingProject] = useState(null) // null or project object
-  const [editingDiscipline, setEditingDiscipline] = useState('architectural') // 'architectural' | 'interior' | 'commercial'
+  const [categoryKeys, setCategoryKeys] = useState(() => buildCategoryKeysFromTree())
+  const [disciplines, setDisciplines] = useState(() => buildDisciplinesFromTree())
+  const [editingProject, setEditingProject] = useState(null)
+  const [editingDiscipline, setEditingDiscipline] = useState('architectural')
   const [isNewProject, setIsNewProject] = useState(false)
   const [searchProjectQuery, setSearchProjectQuery] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState('')
+  const [uploadError, setUploadError] = useState('')
+  const [galleryUrlDraft, setGalleryUrlDraft] = useState('')
+  const [modalStatus, setModalStatus] = useState('')
 
-  // Fetch backend settings on mount
+  useEffect(() => {
+    const refreshLabels = () => {
+      setCategoryKeys(buildCategoryKeysFromTree())
+      setDisciplines(buildDisciplinesFromTree())
+    }
+    window.addEventListener('portfolio-pages-config-changed', refreshLabels)
+    return () => window.removeEventListener('portfolio-pages-config-changed', refreshLabels)
+  }, [])
+
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -52,19 +223,29 @@ export default function PortfolioManager({ token }) {
         if (data.success && data.data) {
           setConfig((prev) => ({
             ...prev,
+            ...data.data,
             navCards: { ...prev.navCards, ...(data.data.navCards || {}) },
             heroes: { ...prev.heroes, ...(data.data.heroes || {}) },
-            architectural: Array.isArray(data.data.architectural) && data.data.architectural.length > 0
-              ? data.data.architectural
-              : prev.architectural,
-            interior: Array.isArray(data.data.interior) && data.data.interior.length > 0
-              ? data.data.interior
-              : prev.interior,
-            commercial: Array.isArray(data.data.commercial) && data.data.commercial.length > 0
-              ? data.data.commercial
-              : prev.commercial,
+            architectural:
+              Array.isArray(data.data.architectural) && data.data.architectural.length > 0
+                ? data.data.architectural
+                : prev.architectural,
+            interior:
+              Array.isArray(data.data.interior) && data.data.interior.length > 0
+                ? data.data.interior
+                : prev.interior,
+            commercial:
+              Array.isArray(data.data.commercial) && data.data.commercial.length > 0
+                ? data.data.commercial
+                : prev.commercial,
+            projectLists: {
+              ...(prev.projectLists || {}),
+              ...(data.data.projectLists || {}),
+            },
           }))
           setStoredPortfolioConfig(data.data)
+          setCategoryKeys(buildCategoryKeysFromTree())
+          setDisciplines(buildDisciplinesFromTree())
         }
       } catch (err) {
         console.error('Failed to load portfolio pages settings:', err)
@@ -73,21 +254,17 @@ export default function PortfolioManager({ token }) {
     fetchSettings()
   }, [])
 
-  // Auto-dismiss status messages
   useEffect(() => {
-    if (saveStatus) {
-      const timer = setTimeout(() => setSaveStatus(null), 3500)
-      return () => clearTimeout(timer)
-    }
+    if (!saveStatus) return undefined
+    const timer = setTimeout(() => setSaveStatus(null), 3500)
+    return () => clearTimeout(timer)
   }, [saveStatus])
 
-  // Save handler
   const handleSave = async () => {
     setLoading(true)
     setSaveStatus(null)
     try {
       setStoredPortfolioConfig(config)
-
       const res = await fetch('/api/blogs/settings/portfolio-pages', {
         method: 'PUT',
         headers: {
@@ -97,11 +274,7 @@ export default function PortfolioManager({ token }) {
         body: JSON.stringify(config),
       })
       const data = await res.json()
-      if (data.success) {
-        setSaveStatus('saved')
-      } else {
-        setSaveStatus('saved') // persisted in localStorage fallback
-      }
+      setSaveStatus(data.success === false ? 'error' : 'saved')
     } catch (err) {
       console.warn('Backend sync failed, saved locally:', err)
       setSaveStatus('saved')
@@ -110,19 +283,41 @@ export default function PortfolioManager({ token }) {
     }
   }
 
-  // Handle generic media upload
+  const authToken = token || (typeof localStorage !== 'undefined' ? localStorage.getItem('ug_admin_token') || localStorage.getItem('token') : '')
+
+  const storeFiles = async (files, apply) => {
+    const list = Array.from(files || []).filter(Boolean)
+    if (!list.length) return
+    setUploading(true)
+    setUploadError('')
+    setUploadProgress(`Uploading 0 of ${list.length}…`)
+    try {
+      const urls = []
+      for (let i = 0; i < list.length; i += 1) {
+        setUploadProgress(`Uploading ${i + 1} of ${list.length}…`)
+        urls.push(await uploadAnyFile(list[i], authToken))
+      }
+      apply(urls)
+      setUploadProgress(`${list.length} file${list.length === 1 ? '' : 's'} uploaded`)
+      setTimeout(() => setUploadProgress(''), 2500)
+    } catch (err) {
+      setUploadError(err.message || 'Upload failed. Try again with any photo or video.')
+      setUploadProgress('')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleMediaUpload = (targetKey, file) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const dataUrl = e.target.result
+    storeFiles([file], ([url]) => {
       if (targetKey.startsWith('nav.')) {
         const catId = targetKey.split('.')[1]
         setConfig((prev) => ({
           ...prev,
           navCards: {
             ...prev.navCards,
-            [catId]: { ...prev.navCards[catId], image: dataUrl },
+            [catId]: { ...prev.navCards[catId], image: url },
           },
         }))
       } else if (targetKey.startsWith('hero.')) {
@@ -131,93 +326,262 @@ export default function PortfolioManager({ token }) {
           ...prev,
           heroes: {
             ...prev.heroes,
-            [catId]: { ...prev.heroes[catId], [bannerField]: dataUrl },
+            [catId]: { ...prev.heroes[catId], [bannerField]: url },
           },
         }))
       } else if (targetKey === 'project') {
-        setEditingProject((prev) => ({ ...prev, image: dataUrl }))
+        setEditingProject((prev) => ({ ...prev, image: url }))
+      } else if (targetKey === 'project-video') {
+        // Hero media: image or video both OK
+        setEditingProject((prev) => ({ ...prev, video: url }))
+      } else if (targetKey === 'project-360') {
+        setEditingProject((prev) => ({ ...prev, tour360: url, badge: prev?.badge || '360°' }))
       }
-    }
-    reader.readAsDataURL(file)
+    })
   }
 
-  // Reset to default
   const handleResetToDefault = () => {
-    if (window.confirm('Reset all portfolio categories and projects to factory defaults?')) {
+    if (window.confirm('Reset all portfolio categories and projects to starter defaults? This cannot be undone.')) {
       setConfig(DEFAULT_PORTFOLIO_CONFIG)
       setStoredPortfolioConfig(DEFAULT_PORTFOLIO_CONFIG)
       setSaveStatus('saved')
     }
   }
 
-  // Open Project Modal
-  const openNewProjectModal = (discipline) => {
-    setEditingDiscipline(discipline)
-    setIsNewProject(true)
-    setEditingProject({
-      id: `${discipline}-${Date.now().toString().slice(-4)}`,
-      image: discipline === 'interior' ? '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png' : discipline === 'commercial' ? '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png' : '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
-      area: '1500 м²',
-      type: discipline === 'architectural' ? 'Modern Villas' : discipline === 'interior' ? 'Penthouses' : 'Hotel',
-      tone: 'Travertine & Bronze',
-      city: 'Dubai',
-      country: 'UAE',
-      badge: '360°',
-      award: '',
-      titlePre: 'MONUMENTAL CONTEMPORARY RESIDENCE',
-      location: 'IN DUBAI, UAE',
-      titlePost: 'WITH PRIVATE POOL',
-      description: 'Architectural masterpiece crafted with bespoke joinery, museum-grade architectural lighting, and sweeping panoramic views.',
-    })
-  }
+  const routeBootRef = useRef(false)
 
-  const openEditProjectModal = (discipline, project) => {
-    setEditingDiscipline(discipline)
-    setIsNewProject(false)
-    setEditingProject({ ...project })
-  }
+  useEffect(() => {
+    onEditingChange?.(Boolean(editingProject))
+  }, [editingProject, onEditingChange])
 
-  const saveProjectModal = () => {
-    if (!editingProject) return
-    const listKey = editingDiscipline
-    setConfig((prev) => {
-      const currentList = prev[listKey] || []
-      let updatedList
-      if (isNewProject) {
-        updatedList = [editingProject, ...currentList]
-      } else {
-        updatedList = currentList.map((p) => (p.id === editingProject.id ? editingProject : p))
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const onPop = () => {
+      const path = window.location.pathname
+      if (!path.startsWith('/admin/portfolio/')) {
+        setEditingProject(null)
       }
-      return { ...prev, [listKey]: updatedList }
-    })
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  const closeProjectEditor = () => {
     setEditingProject(null)
+    setModalStatus('')
+    pushAdminProjectUrl({ mode: 'list' })
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const deleteProject = (discipline, id) => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
-      setConfig((prev) => ({
-        ...prev,
-        [discipline]: (prev[discipline] || []).filter((p) => p.id !== id),
-      }))
+  const buildBlankProject = (listKey) => ({
+    id: `${listKey}-${Date.now().toString().slice(-4)}`,
+    image:
+      listKey === 'interior'
+        ? '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png'
+        : listKey === 'commercial'
+          ? '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png'
+          : '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
+    video: '',
+    gallery: [],
+    sections: [
+      {
+        id: uid('sec'),
+        title: 'The Unique Graphics® style',
+        text: 'Every space is crafted as a complete living world — architecture, light, and material in one continuous language.',
+        media: '',
+        caption: '',
+      },
+    ],
+    tour360: '',
+    area: '1500 m²',
+    type: listKey === 'architectural' ? 'Modern Villas' : listKey === 'interior' ? 'Penthouses' : 'Hotel',
+    tone: 'Travertine & Bronze',
+    city: 'Dubai',
+    country: 'UAE',
+    badge: '',
+    award: '',
+    titlePre: 'MONUMENTAL CONTEMPORARY RESIDENCE',
+    location: 'IN DUBAI, UAE',
+    titlePost: 'WITH PRIVATE POOL',
+    description:
+      'Architectural masterpiece crafted with bespoke joinery, museum-grade architectural lighting, and sweeping panoramic views.',
+    detail: '',
+    scope: ['Architectural Design', 'Interior Architecture', '3D Visualization', 'Material Selection'],
+    aboutHeading: 'About the project:',
+    featuresTitle: 'Project features',
+    enquireLabel: 'Enquire',
+    enquireLink: '/contacts',
+    tour360Heading: '360° experience',
+    tocHeading: 'Table of contents:',
+    readAlsoHeading: 'Read also:',
+    closingEyebrow: 'Unique Graphics®',
+    closingTitle: 'Step into the world of Unique Graphics®',
+    closingText:
+      'A place where your dreams take shape through the unique vision of our studio. We look forward to embarking on this inspiring journey with you.',
+    closingButtonLabel: 'Discuss this project',
+    closingButtonLink: '/contacts',
+  })
+
+  const openNewProjectModal = (listKey) => {
+    setStep('projects')
+    setEditingDiscipline(listKey)
+    setDiscipline(listKey)
+    setIsNewProject(true)
+    setGalleryUrlDraft('')
+    setUploadError('')
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    setEditingProject(buildBlankProject(listKey))
+    pushAdminProjectUrl({ mode: 'new', discipline: listKey })
+  }
+
+  const openEditProjectModal = (listKey, project) => {
+    setStep('projects')
+    setEditingDiscipline(listKey)
+    setDiscipline(listKey)
+    setIsNewProject(false)
+    setGalleryUrlDraft('')
+    setUploadError('')
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    setEditingProject({
+      video: '',
+      tour360: '',
+      detail: '',
+      aboutHeading: 'About the project:',
+      featuresTitle: 'Project features',
+      enquireLabel: 'Enquire',
+      enquireLink: '/contacts',
+      tour360Heading: '360° experience',
+      tocHeading: 'Table of contents:',
+      readAlsoHeading: 'Read also:',
+      closingEyebrow: 'Unique Graphics®',
+      closingTitle: 'Step into the world of Unique Graphics®',
+      closingText:
+        'A place where your dreams take shape through the unique vision of our studio. We look forward to embarking on this inspiring journey with you.',
+      closingButtonLabel: 'Discuss this project',
+      closingButtonLink: '/contacts',
+      ...project,
+      gallery: Array.isArray(project.gallery) ? project.gallery.map(normalizeGalleryItem) : [],
+      sections: Array.isArray(project.sections)
+        ? project.sections.map((section) => ({
+            id: section.id || uid('sec'),
+            title: section.title || '',
+            text: section.text || '',
+            media: section.media || section.image || '',
+            caption: section.caption || '',
+          }))
+        : [],
+      scope: Array.isArray(project.scope) ? [...project.scope] : [],
+    })
+    pushAdminProjectUrl({ mode: 'edit', id: project.id, discipline: listKey })
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || routeBootRef.current) return
+    const path = window.location.pathname
+    if (!path.startsWith('/admin/portfolio/')) {
+      routeBootRef.current = true
+      return
+    }
+    const params = new URLSearchParams(window.location.search)
+    const listKey = params.get('discipline') || 'architectural'
+    if (path === '/admin/portfolio/new' || path.startsWith('/admin/portfolio/new')) {
+      routeBootRef.current = true
+      openNewProjectModal(listKey)
+      return
+    }
+    const editMatch = path.match(/^\/admin\/portfolio\/edit\/([^/]+)/)
+    if (!editMatch) {
+      routeBootRef.current = true
+      return
+    }
+    const id = decodeURIComponent(editMatch[1])
+    const project = getProjectsForCategory(config, listKey).find((p) => String(p.id) === String(id))
+    if (project) {
+      routeBootRef.current = true
+      openEditProjectModal(listKey, project)
+    }
+  }, [config])
+
+  const buildUpdatedConfig = (prev) => {
+    const listKey = editingDiscipline
+    const currentList = getProjectsForCategory(prev, listKey)
+    const updatedList = isNewProject
+      ? [editingProject, ...currentList]
+      : currentList.map((p) => (p.id === editingProject.id ? editingProject : p))
+    return setProjectsForCategory(prev, listKey, updatedList)
+  }
+
+  const saveProjectModal = (publish = false) => {
+    if (!editingProject) return
+    if (JSON.stringify(editingProject).includes('data:')) {
+      setUploadError('A file is still local only. Upload it first, then Apply.')
+      return
+    }
+    const next = buildUpdatedConfig(config)
+    setConfig(next)
+    setStoredPortfolioConfig(next)
+    setPreviewProjectId(editingProject.id)
+    setIsNewProject(false)
+    setModalStatus(publish ? 'publishing' : 'applied')
+
+    if (!publish) {
+      closeProjectEditor()
+      setSaveStatus('saved')
+      return
+    }
+
+    setLoading(true)
+    fetch('/api/blogs/settings/portfolio-pages', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken || ''}`,
+      },
+      body: JSON.stringify(next),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setSaveStatus(data.success === false ? 'error' : 'saved')
+        closeProjectEditor()
+      })
+      .catch(() => {
+        setSaveStatus('saved')
+        closeProjectEditor()
+      })
+      .finally(() => {
+        setLoading(false)
+        setModalStatus('')
+      })
+  }
+
+  const deleteProject = (listKey, id) => {
+    if (window.confirm('Delete this project card?')) {
+      setConfig((prev) =>
+        setProjectsForCategory(
+          prev,
+          listKey,
+          getProjectsForCategory(prev, listKey).filter((p) => p.id !== id)
+        )
+      )
     }
   }
 
-  const duplicateProject = (discipline, project) => {
+  const duplicateProject = (listKey, project) => {
     const copy = {
       ...project,
       id: `${project.id}-copy-${Date.now().toString().slice(-3)}`,
       titlePre: `${project.titlePre || ''} (COPY)`,
     }
-    setConfig((prev) => ({
-      ...prev,
-      [discipline]: [copy, ...(prev[discipline] || [])],
-    }))
+    setConfig((prev) =>
+      setProjectsForCategory(prev, listKey, [copy, ...getProjectsForCategory(prev, listKey)])
+    )
   }
 
-  // Current active projects list for the project tabs
-  const currentDisciplineKey =
-    activeTab === 'arch' ? 'architectural' : activeTab === 'int' ? 'interior' : 'commercial'
-  const currentProjectsList = config[currentDisciplineKey] || []
+  const projectCount = disciplines.reduce(
+    (sum, item) => sum + getProjectsForCategory(config, item.id).length,
+    0
+  )
+  const currentProjectsList = getProjectsForCategory(config, discipline)
   const filteredProjectsList = currentProjectsList.filter((p) => {
     const q = searchProjectQuery.toLowerCase().trim()
     if (!q) return true
@@ -232,897 +596,1195 @@ export default function PortfolioManager({ token }) {
   const previewProject =
     filteredProjectsList.find((project) => project.id === previewProjectId) || filteredProjectsList[0]
 
+  const card = config.navCards?.[selectedCategory] || {}
+  const hero = config.heroes?.[selectedCategory] || {}
+  const selectedLabel = categoryKeys.find((item) => item.id === selectedCategory)?.label || selectedCategory
+
+  const renameCategory = (name) => {
+    const tree = getStoredPortfolioTree()
+    setStoredPortfolioTree({
+      categories: (tree.categories || []).map((category) =>
+        category.slug === selectedCategory || category.id === selectedCategory
+          ? { ...category, name }
+          : category
+      ),
+    })
+    setCategoryKeys(buildCategoryKeysFromTree())
+    setDisciplines(buildDisciplinesFromTree())
+  }
+
+  const ensureCategorySeeded = (catId) => {
+    if (!catId || catId === 'all-projects') return
+    setConfig((prev) => {
+      if (prev.heroes?.[catId] && prev.navCards?.[catId]) return prev
+      const label = categoryKeys.find((c) => c.id === catId)?.label || catId
+      return seedPortfolioCategory(prev, { slug: catId, name: label })
+    })
+  }
+
+
   return (
-    <div className="space-y-6 animate-fade-in text-white pb-24">
-      {/* HEADER BAR */}
-      <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 shadow-xl backdrop-blur-md">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 pb-24 text-white">
+      {!editingProject ? (
+      <>
+      <div className="rounded-2xl border border-white/10 bg-[#121212] p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#e3943f] to-[#b36c20] text-black shadow-lg shadow-[#e3943f]/20">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <rect x="3" y="3" width="7" height="7" />
-                  <rect x="14" y="3" width="7" height="7" />
-                  <rect x="14" y="14" width="7" height="7" />
-                  <rect x="3" y="14" width="7" height="7" />
-                </svg>
-              </span>
-              <div>
-                <h1 className="text-[20px] font-bold tracking-tight text-white">
-                  Project cards
-                </h1>
-                <p className="max-w-xl text-[13px] leading-relaxed text-white/55">
-                  These are the cards visitors see on the portfolio pages: photo, area, title, and 360 badge. Pick a tab, edit a card, then press Save. The menu names stay in the block above.
+            <h1 className="text-[20px] font-bold tracking-tight text-white">Project cards</h1>
+            <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-white/55">
+              Category page banner → <strong className="text-white">2. Page banners</strong> (pick <em>test</em> etc).
+              Project pages → <strong className="text-white">3. Projects list</strong> → Add project → Apply &amp; Publish.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={handleResetToDefault} className={btnGhost}>
+              Reset starter
+            </button>
+            <button type="button" onClick={handleSave} disabled={loading} className={btnPrimary}>
+              {loading ? 'Saving…' : 'Save / Publish'}
+            </button>
+          </div>
+        </div>
+
+        {saveStatus === 'saved' ? (
+          <p className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[12px] text-emerald-400">
+            Saved. Portfolio pages on the live website are updated.
+          </p>
+        ) : null}
+        {saveStatus === 'error' ? (
+          <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-[12px] text-red-300">
+            Could not save to server. Changes are kept on this computer — try Save again.
+          </p>
+        ) : null}
+      </div>
+
+      <StepTabs step={step} onChange={setStep} projectCount={projectCount} />
+
+      {step === 'nav' || step === 'heroes' ? (
+        <div className="rounded-2xl border border-white/10 bg-[#141414] p-4">
+          <p className="mb-3 text-[12px] text-white/45">Which portfolio page?</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {categoryKeys.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => {
+                  setSelectedCategory(cat.id)
+                  ensureCategorySeeded(cat.id)
+                }}
+                className={`rounded-xl border p-3 text-left text-[11.5px] font-bold tracking-wider uppercase transition-all ${
+                  selectedCategory === cat.id
+                    ? 'border-[#e3943f] bg-[#e3943f]/15 text-[#e3943f]'
+                    : 'border-white/10 bg-[#1a1a1a] text-white/60 hover:text-white'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {step === 'nav' ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="space-y-4 rounded-2xl border border-white/10 bg-[#141414] p-5 lg:col-span-7">
+            <div>
+              <h2 className="text-[15px] font-semibold">Menu card — {selectedLabel}</h2>
+              <p className="text-[12px] text-white/45">Name, short line, and picture in the Portfolio header menu.</p>
+            </div>
+            <Field label="Menu name">
+              <input
+                type="text"
+                value={selectedLabel}
+                onChange={(e) => {
+                  const name = e.target.value
+                  setConfig((prev) => ({
+                    ...prev,
+                    navCards: {
+                      ...prev.navCards,
+                      [selectedCategory]: { ...card, title: name },
+                    },
+                  }))
+                  renameCategory(name)
+                }}
+                placeholder="e.g. ALL PROJECTS"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Hover text" hint="Short line under the name.">
+              <textarea
+                rows={2}
+                value={card.hover || ''}
+                onChange={(e) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    navCards: {
+                      ...prev.navCards,
+                      [selectedCategory]: { ...card, hover: e.target.value },
+                    },
+                  }))
+                }
+                placeholder="e.g. Houses and rooms from the full portfolio."
+                className={`${inputClass} resize-none`}
+              />
+            </Field>
+            <Field label="Card picture" hint="Upload a photo, or paste an image URL.">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="text"
+                  value={card.image || ''}
+                  onChange={(e) =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      navCards: {
+                        ...prev.navCards,
+                        [selectedCategory]: { ...card, image: e.target.value },
+                      },
+                    }))
+                  }
+                  placeholder="/nav/portfolio-card.jpg"
+                  className={inputClass}
+                />
+                <label className={`${btnGhost} inline-flex cursor-pointer items-center justify-center gap-2 shrink-0`}>
+                  Upload
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={(e) => handleMediaUpload(`nav.${selectedCategory}`, e.target.files?.[0])}
+                  />
+                </label>
+              </div>
+            </Field>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button type="button" className={btnGhost} onClick={() => setStep('heroes')}>
+                Next: Page banners →
+              </button>
+              <button type="button" onClick={handleSave} disabled={loading} className={btnPrimary}>
+                {loading ? 'Saving…' : 'Save / Publish'}
+              </button>
+            </div>
+          </div>
+
+          <div className="lg:col-span-5">
+            <div className="rounded-2xl border border-white/10 bg-[#121212] p-5">
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-white/40">Preview</p>
+              <div className="mx-auto w-full max-w-[260px] rounded-[26px] border border-white/10 bg-[#161616] p-4">
+                <div className="aspect-square overflow-hidden rounded-[20px] border border-white/10 bg-black">
+                  {card.image ? (
+                    <img src={card.image} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-[11px] text-white/30">No image</div>
+                  )}
+                </div>
+                <p className="mt-4 text-[12px] font-bold uppercase tracking-[0.16em] text-[#e3943f]">{selectedLabel}</p>
+                <p className="mt-2 text-[13px] leading-snug text-white/80">
+                  {card.hover || 'Houses and rooms from the full portfolio.'}
                 </p>
               </div>
             </div>
           </div>
+        </div>
+      ) : null}
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleResetToDefault}
-              className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[11.5px] font-bold tracking-wider text-white/70 uppercase transition-all hover:bg-white/[0.08] hover:text-white"
-            >
-              Reset Defaults
+      {step === 'heroes' ? (
+        <div className="space-y-4 rounded-2xl border border-white/10 bg-[#141414] p-5">
+          <div>
+            <h2 className="text-[15px] font-semibold">Page banner — {selectedLabel}</h2>
+            <p className="text-[12px] text-white/45">Big heading and background at the top of that portfolio page.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Title">
+              <input
+                type="text"
+                value={hero.titleLead || ''}
+                onChange={(e) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    heroes: {
+                      ...prev.heroes,
+                      [selectedCategory]: { ...hero, titleLead: e.target.value },
+                    },
+                  }))
+                }
+                placeholder="e.g. Architectural design"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Accent line">
+              <input
+                type="text"
+                value={hero.titleAccent || ''}
+                onChange={(e) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    heroes: {
+                      ...prev.heroes,
+                      [selectedCategory]: { ...hero, titleAccent: e.target.value },
+                    },
+                  }))
+                }
+                placeholder="e.g. by Unique Graphics®"
+                className={`${inputClass} font-bold text-[#e3943f]`}
+              />
+            </Field>
+          </div>
+          <Field label="Description">
+            <textarea
+              rows={3}
+              value={hero.description || ''}
+              onChange={(e) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  heroes: {
+                    ...prev.heroes,
+                    [selectedCategory]: { ...hero, description: e.target.value },
+                  },
+                }))
+              }
+              placeholder="Short intro under the heading…"
+              className={`${inputClass} resize-none`}
+            />
+          </Field>
+          <div className="space-y-3 border-t border-white/10 pt-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#e3943f]">Background clips (optional)</p>
+            {['banner1', 'banner2', 'banner3'].map((bKey, idx) => (
+              <Field key={bKey} label={`Clip ${idx + 1}`}>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="text"
+                    value={hero[bKey] || ''}
+                    onChange={(e) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        heroes: {
+                          ...prev.heroes,
+                          [selectedCategory]: { ...hero, [bKey]: e.target.value },
+                        },
+                      }))
+                    }
+                    placeholder={`Video or image URL ${idx + 1}`}
+                    className={inputClass}
+                  />
+                  <label className={`${btnGhost} inline-flex cursor-pointer items-center justify-center shrink-0`}>
+                    Upload
+                    <input
+                      type="file"
+                      accept="video/*,image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        handleMediaUpload(`hero.${selectedCategory}.${bKey}`, e.target.files?.[0])
+                      }
+                    />
+                  </label>
+                </div>
+              </Field>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <button type="button" className={btnGhost} onClick={() => setStep('nav')}>
+              ← Back
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={loading}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#e3943f] to-[#d68532] px-6 py-2.5 text-[12px] font-bold tracking-wider text-black uppercase shadow-lg shadow-[#e3943f]/25 transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <span>Save & Publish Live</span>
-                </>
-              )}
+            <button type="button" className={btnGhost} onClick={() => setStep('projects')}>
+              Next: Projects list →
+            </button>
+            <button type="button" onClick={handleSave} disabled={loading} className={btnPrimary}>
+              {loading ? 'Saving…' : 'Save / Publish'}
             </button>
           </div>
         </div>
+      ) : null}
 
-        {/* STATUS ALERT */}
-        {saveStatus === 'saved' && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[12px] font-medium text-emerald-400 animate-fade-in">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-            <span>Portfolio configuration saved and published live to public website!</span>
+      {step === 'projects' ? (
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {disciplines.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setDiscipline(item.id)
+                  setPreviewProjectId(null)
+                  ensureCategorySeeded(
+                    item.id === 'architectural'
+                      ? 'architectural-design'
+                      : item.id === 'interior'
+                        ? 'interior-design'
+                        : item.id === 'commercial'
+                          ? 'commercial-design'
+                          : item.id
+                  )
+                }}
+                className={`rounded-xl px-4 py-2 text-[12px] font-bold tracking-wider uppercase ${
+                  discipline === item.id
+                    ? 'bg-[#e3943f] text-black'
+                    : 'border border-white/10 bg-[#161616] text-white/70 hover:text-white'
+                }`}
+              >
+                {item.label} ({getProjectsForCategory(config, item.id).length})
+              </button>
+            ))}
           </div>
-        )}
-      </div>
 
-      {/* MAIN NAVIGATION TABS */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-3">
-        {[
-          { id: 'nav', label: 'Menu cards', badge: 'Hover text' },
-          { id: 'heroes', label: 'Page banners', badge: 'Top of page' },
-          { id: 'arch', label: `${categoryKeys.find((item) => item.id === 'architectural-design')?.label || 'Architecture'} cards`, badge: `${config.architectural?.length || 0}` },
-          { id: 'int', label: `${categoryKeys.find((item) => item.id === 'interior-design')?.label || 'Interior'} cards`, badge: `${config.interior?.length || 0}` },
-          { id: 'comm', label: `${categoryKeys.find((item) => item.id === 'commercial-design')?.label || 'Business'} cards`, badge: `${config.commercial?.length || 0}` },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-[12px] font-bold tracking-wider uppercase transition-all cursor-pointer ${
-              activeTab === tab.id
-                ? 'bg-[#e3943f] text-black shadow-md shadow-[#e3943f]/20'
-                : 'border border-white/10 bg-[#161616] text-white/70 hover:bg-white/[0.06] hover:text-white'
-            }`}
-          >
-            <span>{tab.label}</span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[9.5px] font-mono ${
-                activeTab === tab.id ? 'bg-black/20 text-black' : 'bg-white/10 text-white/50'
-              }`}
-            >
-              {tab.badge}
-            </span>
-          </button>
-        ))}
-      </div>
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141414] p-4 sm:flex-row sm:items-center">
+            <input
+              type="text"
+              value={searchProjectQuery}
+              onChange={(e) => setSearchProjectQuery(e.target.value)}
+              placeholder="Search by city or title"
+              className={`${inputClass} flex-1`}
+            />
+            <button type="button" onClick={() => openNewProjectModal(discipline)} className={btnPrimary}>
+              ADD PROJECT
+            </button>
+          </div>
 
-      {/* CONTENT GRID: 2 COLUMNS (CONTROLS LEFT, LIVE PREVIEW RIGHT) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: EDIT CONTROLS */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* TAB 1: NAVIGATION & DROPDOWN CARDS (Screenshot 1) */}
-          {activeTab === 'nav' && (
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[13px] font-semibold text-white">
-                    Which portfolio page
-                  </label>
-                  <span className="text-[12px] text-white/45">Shown in the header menu</span>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <div className="space-y-3 lg:col-span-7">
+              {filteredProjectsList.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-[13px] text-white/45">
+                  No projects yet — Add one
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {categoryKeys.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setSelectedCategory(cat.id)}
-                      className={`rounded-xl p-3 text-left transition-all border text-[11.5px] font-bold uppercase tracking-wider ${
-                        selectedCategory === cat.id
-                          ? 'border-[#e3943f] bg-[#e3943f]/15 text-[#e3943f]'
-                          : 'border-white/10 bg-[#1a1a1a] text-white/60 hover:text-white'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Edit Card Fields */}
-              {(() => {
-                const card = config.navCards?.[selectedCategory] || {}
-                const selected = categoryKeys.find((item) => item.id === selectedCategory)
-                const menuName = selected?.label || card.title || ''
-                const renameCategory = (name) => {
-                  const tree = getStoredPortfolioTree()
-                  setStoredPortfolioTree({
-                    categories: (tree.categories || []).map((category) =>
-                      category.slug === selectedCategory || category.id === selectedCategory
-                        ? { ...category, name }
-                        : category
-                    ),
-                  })
-                  setCategoryKeys(labelsFromTree(CATEGORY_KEYS))
-                }
-                return (
-                  <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-                    <h3 className="text-[14px] font-semibold text-white">
-                      Menu text for <span className="text-[#e3943f]">{menuName}</span>
-                    </h3>
-                    <p className="text-[12px] text-white/45">Name, short line, and picture people see when they open Portfolio in the header.</p>
-
-                    <div>
-                      <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                        Name in the menu
-                      </label>
-                      <input
-                        type="text"
-                        value={menuName}
-                        onChange={(e) => {
-                          const name = e.target.value
-                          setConfig((prev) => ({
-                            ...prev,
-                            navCards: {
-                              ...prev.navCards,
-                              [selectedCategory]: { ...card, title: name },
-                            },
-                          }))
-                          renameCategory(name)
-                        }}
-                        placeholder="e.g. ALL PROJECTS"
-                        className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                        Short line under the name
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={card.hover || ''}
-                        onChange={(e) =>
-                          setConfig((prev) => ({
-                            ...prev,
-                            navCards: {
-                              ...prev.navCards,
-                              [selectedCategory]: { ...card, hover: e.target.value },
-                            },
-                          }))
-                        }
-                        placeholder="e.g. Houses and rooms from the full portfolio."
-                        className="w-full rounded-xl border border-white/10 bg-[#181818] p-3 text-[12px] text-white outline-none focus:border-[#e3943f] resize-none"
-                      />
-                    </div>
-
-                    {/* Image / Video File */}
-                    <div className="space-y-2">
-                      <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider">
-                        Card Thumbnail Image / Video URL:
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={card.image || ''}
-                          onChange={(e) =>
-                            setConfig((prev) => ({
-                              ...prev,
-                              navCards: {
-                                ...prev.navCards,
-                                [selectedCategory]: { ...card, image: e.target.value },
-                              },
-                            }))
-                          }
-                          placeholder="/nav/portfolio-card.jpg or URL"
-                          className="flex-1 rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
-                        />
-                        <label className="rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2.5 text-[11.5px] font-bold tracking-wider text-white uppercase hover:bg-white/[0.1] transition-all cursor-pointer flex items-center gap-2 shrink-0">
-                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" y1="3" x2="12" y2="15" />
-                          </svg>
-                          <span>Upload</span>
-                          <input
-                            type="file"
-                            accept="image/*,video/*"
-                            className="hidden"
-                            onChange={(e) =>
-                              handleMediaUpload(`nav.${selectedCategory}`, e.target.files?.[0])
-                            }
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-          )}
-
-          {/* TAB 2: PAGE HERO HEADERS & BANNERS (Screenshots 2, 3, 4, 5) */}
-          {activeTab === 'heroes' && (
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[13px] font-semibold text-white">
-                    Which page banner
-                  </label>
-                  <span className="text-[12px] text-white/45">Big picture at the top of that page</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {categoryKeys.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setSelectedCategory(cat.id)}
-                      className={`rounded-xl p-3 text-left transition-all border text-[11.5px] font-bold uppercase tracking-wider ${
-                        selectedCategory === cat.id
-                          ? 'border-[#e3943f] bg-[#e3943f]/15 text-[#e3943f]'
-                          : 'border-white/10 bg-[#1a1a1a] text-white/60 hover:text-white'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Edit Hero Fields */}
-              {(() => {
-                const hero = config.heroes?.[selectedCategory] || {}
-                return (
-                  <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 space-y-4">
-                    <h3 className="text-[14px] font-semibold text-white">
-                      Banner for <span className="text-[#e3943f]">{categoryKeys.find((item) => item.id === selectedCategory)?.label || selectedCategory}</span>
-                    </h3>
-                    <p className="text-[12px] text-white/45">Heading and background on that portfolio page. This is not the small hover picture in the menu.</p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                          Heading:
-                        </label>
-                        <input
-                          type="text"
-                          value={hero.titleLead || ''}
-                          onChange={(e) =>
-                            setConfig((prev) => ({
-                              ...prev,
-                              heroes: {
-                                ...prev.heroes,
-                                [selectedCategory]: { ...hero, titleLead: e.target.value },
-                              },
-                            }))
-                          }
-                          placeholder="e.g. Architectural design"
-                          className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-[#e3943f] uppercase tracking-wider mb-1">
-                          Heading Accent:
-                        </label>
-                        <input
-                          type="text"
-                          value={hero.titleAccent || ''}
-                          onChange={(e) =>
-                            setConfig((prev) => ({
-                              ...prev,
-                              heroes: {
-                                ...prev.heroes,
-                                [selectedCategory]: { ...hero, titleAccent: e.target.value },
-                              },
-                            }))
-                          }
-                          placeholder="e.g. by Unique Graphics®"
-                          className="w-full rounded-xl border border-[#e3943f]/40 bg-[#181818] px-3.5 py-2.5 text-[12.5px] font-bold text-[#e3943f] outline-none focus:border-[#e3943f]"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                        Hero Description / Philosophy:
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={hero.description || ''}
-                        onChange={(e) =>
-                          setConfig((prev) => ({
-                            ...prev,
-                            heroes: {
-                              ...prev.heroes,
-                              [selectedCategory]: { ...hero, description: e.target.value },
-                            },
-                          }))
-                        }
-                        placeholder="Monumental architectural forms created in harmony with natural landscapes..."
-                        className="w-full rounded-xl border border-white/10 bg-[#181818] p-3 text-[12px] text-white outline-none focus:border-[#e3943f] resize-none"
-                      />
-                    </div>
-
-                    {/* 3 Video Banners */}
-                    <div className="space-y-3 pt-2 border-t border-white/10">
-                      <label className="block text-[11px] font-bold text-[#e3943f] uppercase tracking-wider">
-                        Background Video Loops (Rotates every 7s)
-                      </label>
-
-                      {['banner1', 'banner2', 'banner3'].map((bKey, idx) => (
-                        <div key={bKey} className="flex gap-2 items-center">
-                          <span className="text-[10px] font-mono text-white/40 uppercase w-16 shrink-0">
-                            Reel {idx + 1}:
-                          </span>
-                          <input
-                            type="text"
-                            value={hero[bKey] || ''}
-                            onChange={(e) =>
-                              setConfig((prev) => ({
-                                ...prev,
-                                heroes: {
-                                  ...prev.heroes,
-                                  [selectedCategory]: { ...hero, [bKey]: e.target.value },
-                                },
-                              }))
-                            }
-                            placeholder={`Default: Cinematic Studio Video Loop ${idx + 1}`}
-                            className="flex-1 rounded-xl border border-white/10 bg-[#181818] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
-                          />
-                          <label className="rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-[10.5px] font-bold text-white uppercase hover:bg-white/[0.1] transition-all cursor-pointer shrink-0">
-                            <span>Upload</span>
-                            <input
-                              type="file"
-                              accept="video/*,image/*"
-                              className="hidden"
-                              onChange={(e) =>
-                                handleMediaUpload(`hero.${selectedCategory}.${bKey}`, e.target.files?.[0])
-                              }
-                            />
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-          )}
-
-          {/* TAB 3, 4, 5: PROJECTS LIST MANAGEMENT */}
-          {(activeTab === 'arch' || activeTab === 'int' || activeTab === 'comm') && (
-            <div className="space-y-6">
-              {/* Top Bar for Projects Tab */}
-              <p className="text-[13px] text-white/50">
-                Click a card to see it on the right. Edit changes the photo, area, and title on the public portfolio page.
-              </p>
-              <div className="rounded-2xl border border-white/10 bg-[#141414] p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={searchProjectQuery}
-                    onChange={(e) => setSearchProjectQuery(e.target.value)}
-                    placeholder="Search by city or title"
-                    className="w-full rounded-xl border border-white/10 bg-[#181818] pl-9 pr-3.5 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
-                  />
-                  <svg
-                    className="absolute left-3 top-2.5 h-4 w-4 text-white/40"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
+              ) : (
+                filteredProjectsList.map((project) => (
+                  <div
+                    key={project.id}
+                    className={`flex flex-col gap-3 rounded-2xl border bg-[#141414] p-4 sm:flex-row sm:items-center sm:justify-between ${
+                      previewProject?.id === project.id ? 'border-[#e3943f]' : 'border-white/10'
+                    }`}
                   >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewProjectId(project.id)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <div className="h-14 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black sm:h-16 sm:w-20">
+                        {project.image ? (
+                          <img src={project.image} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-[9px] text-white/30">No image</div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-[12.5px] font-bold uppercase text-white">
+                          {project.titlePre || 'Untitled'}{' '}
+                          <span className="text-[#e3943f]">{project.location || ''}</span>
+                        </p>
+                        <p className="mt-1 truncate text-[11px] text-white/45">
+                          {[project.city, project.country, project.type].filter(Boolean).join(' · ') || 'No details yet'}
+                        </p>
+                      </div>
+                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className={btnGhost} onClick={() => openEditProjectModal(discipline, project)}>
+                        Edit
+                      </button>
+                      <button type="button" className={btnGhost} onClick={() => duplicateProject(discipline, project)}>
+                        Copy
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-2 text-[11px] font-bold tracking-wider text-red-300 uppercase hover:bg-red-500 hover:text-white"
+                        onClick={() => deleteProject(discipline, project.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
 
-                <button
-                  type="button"
-                  onClick={() => openNewProjectModal(currentDisciplineKey)}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[#e3943f] px-4 py-2 text-[11.5px] font-bold text-black uppercase tracking-wider hover:brightness-110 shrink-0"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  <span>Add Project</span>
-                </button>
-              </div>
-
-              {/* Projects Cards List */}
-              <div className="space-y-3">
-                {filteredProjectsList.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 p-10 text-center text-white/40 text-[12px]">
-                    No projects found matching your search. Click "Add Project" to create one.
+            <div className="lg:col-span-5">
+              <div className="sticky top-6 rounded-2xl border border-white/10 bg-[#121212] p-5">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-white/40">Preview</p>
+                {previewProject ? (
+                  <div className="space-y-3">
+                    <div className="aspect-[16/10] overflow-hidden rounded-xl border border-white/10 bg-black">
+                      {previewProject.image ? (
+                        <img src={previewProject.image} alt="" className="h-full w-full object-cover" />
+                      ) : null}
+                    </div>
+                    <h4 className="text-[12px] font-bold uppercase leading-snug text-white">
+                      {previewProject.titlePre}{' '}
+                      <span className="text-[#e3943f]">{previewProject.location}</span> {previewProject.titlePost}
+                    </h4>
+                    <p className="text-[11px] leading-relaxed text-white/55 line-clamp-3">{previewProject.description}</p>
                   </div>
                 ) : (
-                  filteredProjectsList.map((project, index) => (
-                    <div
-                      key={project.id || index}
-                      onClick={() => setPreviewProjectId(project.id)}
-                      className={`group cursor-pointer rounded-2xl border bg-[#141414] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all hover:border-[#e3943f]/40 hover:bg-[#181818] ${
-                        previewProjectId === project.id ? 'border-[#e3943f]' : 'border-white/10'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        {/* Thumbnail */}
-                        <div className="h-16 w-20 rounded-xl overflow-hidden bg-black shrink-0 relative border border-white/10">
-                          {project.image ? (
-                            <img
-                              src={project.image}
-                              alt=""
-                              className="h-full w-full object-cover group-hover:scale-105 transition-transform"
-                            />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center text-[9px] text-white/30">
-                              No Image
-                            </div>
-                          )}
-                          {project.badge && (
-                            <span className="absolute top-1 right-1 rounded bg-[#e3943f] px-1 text-[8px] font-bold text-black uppercase">
-                              {project.badge}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Info */}
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="rounded-md bg-white/[0.07] px-2 py-0.5 text-[9.5px] font-mono text-[#e3943f]">
-                              {project.area || '1500 м²'}
-                            </span>
-                            <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider">
-                              {project.type || 'Residence'}
-                            </span>
-                            <span className="text-[10px] text-white/40">•</span>
-                            <span className="text-[10px] text-white/60">
-                              {project.city || ''}, {project.country || ''}
-                            </span>
-                          </div>
-
-                          <h4 className="text-[12.5px] font-bold uppercase tracking-tight text-white line-clamp-1">
-                            {project.titlePre || ''}{' '}
-                            <span className="text-[#e3943f]">{project.location || ''}</span>{' '}
-                            {project.titlePost || ''}
-                          </h4>
-
-                          <p className="text-[11px] text-white/50 line-clamp-1 max-w-[480px]">
-                            {project.description || ''}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-                        <button
-                          type="button"
-                          onClick={() => openEditProjectModal(currentDisciplineKey, project)}
-                          className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10.5px] font-bold uppercase tracking-wider text-white/80 hover:bg-[#e3943f] hover:text-black transition-colors"
-                          title="Edit Project"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => duplicateProject(currentDisciplineKey, project)}
-                          className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10.5px] font-bold uppercase tracking-wider text-white/60 hover:bg-white/10 hover:text-white transition-colors"
-                          title="Duplicate Project"
-                        >
-                          Copy
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteProject(currentDisciplineKey, project.id)}
-                          className="rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1.5 text-[10.5px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-500 hover:text-white transition-colors"
-                          title="Delete Project"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                  <p className="py-8 text-center text-[12px] text-white/40">No project selected</p>
                 )}
               </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* RIGHT COLUMN: INTERACTIVE LIVE PREVIEW */}
-        <div className="lg:col-span-5 sticky top-6 space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-[#121212] p-5 shadow-2xl">
-            <div>
-              {/* PREVIEW: NAV CARD */}
-              {activeTab === 'nav' && (
-                <div className="space-y-4 flex flex-col items-center">
-                  <div className="w-full max-w-[280px] bg-[#161616] p-4 rounded-[26px] border border-white/10 shadow-xl">
-                    <div className="aspect-square w-full rounded-[20px] overflow-hidden bg-black relative border border-white/10">
-                      <img
-                        src={config.navCards?.[selectedCategory]?.image || '/nav/portfolio-card.jpg'}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <p className="mt-4 text-[12px] tracking-[0.16em] text-[#e3943f] uppercase font-bold">
-                      {categoryKeys.find((item) => item.id === selectedCategory)?.label || 'All projects'}
-                    </p>
-                    <p className="mt-2 text-[13px] leading-snug text-white/80">
-                      {config.navCards?.[selectedCategory]?.hover ||
-                        'Houses and rooms from the full portfolio.'}
-                    </p>
-                  </div>
-                  <span className="text-[10.5px] text-white/40 italic">
-                    * Appears on desktop navbar when hovering over portfolio menus.
-                  </span>
-                </div>
-              )}
-
-              {/* PREVIEW: PAGE HERO BANNER */}
-              {activeTab === 'heroes' && (
-                <div className="space-y-3">
-                  <div className="rounded-2xl overflow-hidden border border-white/10 aspect-video relative bg-black flex flex-col justify-end p-5">
-                    {/* Background Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/30 z-[1]" />
-                    <img
-                      src="/architectural/dubai_villa.jpg"
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover scale-105"
-                    />
-
-                    <div className="relative z-10 space-y-1.5">
-                      <div className="text-[10px] text-white/60">‹ Home</div>
-                      <h2 className="text-[17px] font-bold uppercase leading-tight tracking-tight">
-                        {config.heroes?.[selectedCategory]?.titleLead || 'All projects'}{' '}
-                        <span className="text-[#e3943f]">
-                          {config.heroes?.[selectedCategory]?.titleAccent || 'by Unique Graphics®'}
-                        </span>
-                      </h2>
-                      <p className="text-[10px] text-white/70 line-clamp-2 leading-relaxed">
-                        {config.heroes?.[selectedCategory]?.description}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-[10.5px] text-white/40 italic block text-center">
-                    * Top banner for this page.
-                  </span>
-                </div>
-              )}
-
-              {/* PREVIEW: PROJECT CARD MOCKUP */}
-              {(activeTab === 'arch' || activeTab === 'int' || activeTab === 'comm') && (
-                <div className="space-y-4">
-                  {previewProject ? (
-                    <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#161616] p-3 space-y-3">
-                      <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-black">
-                        <img
-                          src={previewProject.image}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute top-2.5 right-2.5 rounded bg-black/60 backdrop-blur-md px-2 py-0.5 text-[9.5px] font-mono text-white">
-                          {previewProject.area}
-                        </div>
-                        {previewProject.badge && (
-                          <div className="absolute bottom-2.5 right-2.5 rounded-full bg-black/70 backdrop-blur-md px-2 py-0.5 text-[9px] font-bold text-[#e3943f] border border-[#e3943f]/30">
-                            {previewProject.badge}
-                          </div>
-                        )}
-                        {previewProject.award && (
-                          <div className="absolute bottom-2.5 left-2.5 rounded bg-black/80 px-2 py-1 text-[8.5px] text-white/80 max-w-[200px] truncate">
-                            🏆 {previewProject.award}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-1 px-1">
-                        <h4 className="text-[12px] font-bold uppercase tracking-tight text-white leading-snug">
-                          {previewProject.titlePre}{' '}
-                          <span className="text-[#e3943f]">{previewProject.location}</span>{' '}
-                          {previewProject.titlePost}
-                        </h4>
-                        <p className="text-[10px] text-white/60 line-clamp-2 leading-relaxed">
-                          {previewProject.description}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center text-white/40 py-8 text-[11px]">
-                      No projects available in this discipline.
-                    </div>
-                  )}
-                  <span className="text-[10.5px] text-white/40 italic block text-center">
-                    * Interactive project card with area, awards, 360° tour, and gold highlights.
-                  </span>
-                </div>
-              )}
-            </div>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" className={btnGhost} onClick={() => setStep('heroes')}>
+              ← Back
+            </button>
+            <button type="button" onClick={handleSave} disabled={loading} className={btnPrimary}>
+              {loading ? 'Saving…' : 'Save / Publish'}
+            </button>
           </div>
         </div>
-      </div>
+      ) : null}
+      </>
+      ) : null}
 
-      {/* PROJECT EDIT MODAL / DRAWER */}
-      {editingProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#161616] p-6 shadow-2xl space-y-4 my-8">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h3 className="text-[15px] font-bold uppercase tracking-wider text-white">
-                {isNewProject ? 'Add New Project' : 'Edit Project'}{' '}
-                <span className="text-[#e3943f]">({editingDiscipline})</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setEditingProject(null)}
-                className="rounded-lg p-1 text-white/60 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-              {/* Image URL & Upload */}
-              <div className="space-y-2">
-                <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider">
-                  Project Image / Visual URL:
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={editingProject.image || ''}
-                    onChange={(e) =>
-                      setEditingProject((prev) => ({ ...prev, image: e.target.value }))
-                    }
-                    placeholder="/architectural/dubai_villa.jpg or https://..."
-                    className="flex-1 rounded-xl border border-white/10 bg-[#121212] px-3.5 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
-                  />
-                  <label className="rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2 text-[11px] font-bold text-white uppercase hover:bg-white/10 cursor-pointer shrink-0">
-                    <span>Upload</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleMediaUpload('project', e.target.files?.[0])}
-                    />
-                  </label>
-                </div>
+      {editingProject ? (
+        <div className="min-h-[75vh] space-y-5 pb-28 text-white">
+          <div className="sticky top-0 z-20 border-b border-white/10 bg-[#0b0b0b]/95 py-4 backdrop-blur-md">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <button
+                  type="button"
+                  onClick={closeProjectEditor}
+                  className="mb-3 inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-white/50 transition-colors hover:text-[#e3943f]"
+                >
+                  <span aria-hidden="true">‹</span>
+                  Back to projects list
+                </button>
+                <h1 className="text-[22px] font-bold tracking-tight text-white uppercase sm:text-[26px]">
+                  {isNewProject ? 'Add project details' : 'Edit project details'}
+                </h1>
+                <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-white/50">
+                  Full-page editor — title, about text, TOC sections, captions, gallery, 360°, labels, and
+                  bottom CTA. Scroll the page, then Apply &amp; Publish.
+                </p>
+                {editingProject.titlePre ? (
+                  <p className="mt-2 truncate text-[12px] uppercase tracking-wide text-[#e3943f]">
+                    {editingProject.titlePre} {editingProject.location || ''}
+                  </p>
+                ) : null}
               </div>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button type="button" className={btnGhost} onClick={closeProjectEditor}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={btnGhost}
+                  disabled={uploading || loading}
+                  onClick={() => saveProjectModal(false)}
+                >
+                  Apply
+                </button>
+                <button
+                  type="button"
+                  className={btnPrimary}
+                  disabled={uploading || loading}
+                  onClick={() => saveProjectModal(true)}
+                >
+                  {loading ? 'Publishing…' : 'Apply & Publish'}
+                </button>
+              </div>
+            </div>
+            {uploading || uploadProgress ? (
+              <p className="mt-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-[13px]">
+                {uploadProgress || 'Uploading… please wait.'}
+              </p>
+            ) : null}
+            {uploadError ? (
+              <p className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-[13px] text-red-300">
+                {uploadError}
+              </p>
+            ) : null}
+            {modalStatus === 'publishing' ? (
+              <p className="mt-3 rounded-xl border border-[#e3943f]/30 bg-[#e3943f]/10 px-4 py-2.5 text-[13px] text-[#e3943f]">
+                Publishing to live site…
+              </p>
+            ) : null}
+          </div>
 
-              {/* Title 3 Parts */}
-              <div className="space-y-2">
-                <label className="block text-[10.5px] font-bold text-[#e3943f] uppercase tracking-wider">
-                  Project Title Composition:
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <span className="block text-[9.5px] text-white/40 uppercase mb-1">Prefix:</span>
+          <div className="mx-auto max-w-4xl space-y-5">
+
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#e3943f]">1. Project text (About)</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Field label="Title">
                     <input
                       type="text"
                       value={editingProject.titlePre || ''}
-                      onChange={(e) =>
-                        setEditingProject((prev) => ({ ...prev, titlePre: e.target.value }))
-                      }
-                      placeholder="e.g. MONUMENTAL VILLA"
-                      className="w-full rounded-xl border border-white/10 bg-[#121212] px-3 py-2 text-[11.5px] text-white outline-none focus:border-[#e3943f]"
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, titlePre: e.target.value }))}
+                      className={inputClass}
                     />
-                  </div>
-                  <div>
-                    <span className="block text-[9.5px] text-[#e3943f] uppercase mb-1">
-                      Location (Gold Highlight):
-                    </span>
+                  </Field>
+                  <Field label="Location (gold on banner)">
                     <input
                       type="text"
                       value={editingProject.location || ''}
-                      onChange={(e) =>
-                        setEditingProject((prev) => ({ ...prev, location: e.target.value }))
-                      }
-                      placeholder="e.g. ON PALM JUMEIRAH, DUBAI"
-                      className="w-full rounded-xl border border-[#e3943f]/40 bg-[#121212] px-3 py-2 text-[11.5px] font-bold text-[#e3943f] outline-none focus:border-[#e3943f]"
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, location: e.target.value }))}
+                      className={`${inputClass} font-bold text-[#e3943f]`}
                     />
-                  </div>
-                  <div>
-                    <span className="block text-[9.5px] text-white/40 uppercase mb-1">Suffix:</span>
+                  </Field>
+                  <Field label="Title end">
                     <input
                       type="text"
                       value={editingProject.titlePost || ''}
-                      onChange={(e) =>
-                        setEditingProject((prev) => ({ ...prev, titlePost: e.target.value }))
-                      }
-                      placeholder="e.g. WITH PRIVATE DOCK"
-                      className="w-full rounded-xl border border-white/10 bg-[#121212] px-3 py-2 text-[11.5px] text-white outline-none focus:border-[#e3943f]"
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, titlePost: e.target.value }))}
+                      className={inputClass}
                     />
-                  </div>
+                  </Field>
                 </div>
-              </div>
-
-              {/* Area, Category Tag, Materials */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                    Area (m²):
-                  </label>
-                  <input
-                    type="text"
-                    value={editingProject.area || ''}
-                    onChange={(e) =>
-                      setEditingProject((prev) => ({ ...prev, area: e.target.value }))
-                    }
-                    placeholder="e.g. 2800 м²"
-                    className="w-full rounded-xl border border-white/10 bg-[#121212] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
-                  />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Field label="Area">
+                    <input
+                      type="text"
+                      value={editingProject.area || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, area: e.target.value }))}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Project type">
+                    <input
+                      type="text"
+                      value={editingProject.type || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, type: e.target.value }))}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Materials & tone">
+                    <input
+                      type="text"
+                      value={editingProject.tone || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, tone: e.target.value }))}
+                      className={inputClass}
+                    />
+                  </Field>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                    Category Tag:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingProject.type || ''}
-                    onChange={(e) =>
-                      setEditingProject((prev) => ({ ...prev, type: e.target.value }))
-                    }
-                    placeholder="e.g. Modern Villas, Penthouses, Hotel"
-                    className="w-full rounded-xl border border-white/10 bg-[#121212] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
-                  />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="City">
+                    <input
+                      type="text"
+                      value={editingProject.city || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, city: e.target.value }))}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Country">
+                    <input
+                      type="text"
+                      value={editingProject.country || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, country: e.target.value }))}
+                      className={inputClass}
+                    />
+                  </Field>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                    Materials & Tone:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingProject.tone || ''}
-                    onChange={(e) =>
-                      setEditingProject((prev) => ({ ...prev, tone: e.target.value }))
-                    }
-                    placeholder="e.g. Travertine & Bronze"
-                    className="w-full rounded-xl border border-white/10 bg-[#121212] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
-                  />
-                </div>
-              </div>
-
-              {/* City & Country */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                    City:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingProject.city || ''}
-                    onChange={(e) =>
-                      setEditingProject((prev) => ({ ...prev, city: e.target.value }))
-                    }
-                    placeholder="e.g. Dubai"
-                    className="w-full rounded-xl border border-white/10 bg-[#121212] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                    Country:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingProject.country || ''}
-                    onChange={(e) =>
-                      setEditingProject((prev) => ({ ...prev, country: e.target.value }))
-                    }
-                    placeholder="e.g. UAE"
-                    className="w-full rounded-xl border border-white/10 bg-[#121212] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
-                  />
-                </div>
-              </div>
-
-              {/* 360° Badge & Award */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                    360° Tour Badge:
-                  </label>
-                  <select
-                    value={editingProject.badge || ''}
-                    onChange={(e) =>
-                      setEditingProject((prev) => ({ ...prev, badge: e.target.value || null }))
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-[#121212] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
-                  >
-                    <option value="">No Badge</option>
-                    <option value="360°">360° Tour Available</option>
-                    <option value="FEATURED">FEATURED</option>
-                    <option value="NEW">NEW</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                    Award Badge (Leave empty if none):
-                  </label>
+                <Field label="Award (optional)">
                   <input
                     type="text"
                     value={editingProject.award || ''}
-                    onChange={(e) =>
-                      setEditingProject((prev) => ({ ...prev, award: e.target.value || null }))
-                    }
-                    placeholder="e.g. Best Architecture Residence 2025"
-                    className="w-full rounded-xl border border-white/10 bg-[#121212] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
+                    onChange={(e) => setEditingProject((prev) => ({ ...prev, award: e.target.value }))}
+                    className={inputClass}
                   />
+                </Field>
+                <Field label="Short description" hint="First paragraph under About the project.">
+                  <textarea
+                    rows={3}
+                    value={editingProject.description || ''}
+                    onChange={(e) => setEditingProject((prev) => ({ ...prev, description: e.target.value }))}
+                    className={`${inputClass} resize-none`}
+                  />
+                </Field>
+                <Field label="Full detail text" hint="Second paragraph on the project page.">
+                  <textarea
+                    rows={4}
+                    value={editingProject.detail || ''}
+                    onChange={(e) => setEditingProject((prev) => ({ ...prev, detail: e.target.value }))}
+                    className={`${inputClass} resize-none`}
+                  />
+                </Field>
+                <Field
+                  label="Project features"
+                  hint="One per line — shows as overlay card on the About image."
+                >
+                  <textarea
+                    rows={4}
+                    value={(editingProject.scope || []).join('\n')}
+                    onChange={(e) =>
+                      setEditingProject((prev) => ({
+                        ...prev,
+                        scope: e.target.value
+                          .split('\n')
+                          .map((line) => line.trim())
+                          .filter(Boolean),
+                      }))
+                    }
+                    placeholder={'3 bedrooms\n2 terraces\n1 winter garden'}
+                    className={`${inputClass} resize-none`}
+                  />
+                </Field>
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#e3943f]">2. Cover media</p>
+                <Field
+                  label="Main cover (image or video)"
+                  hint="Card thumbnail + fallback hero. JPG, PNG, WebP, MP4, WebM — sab OK."
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <MediaPreview src={editingProject.image} />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <input
+                        type="text"
+                        value={editingProject.image || ''}
+                        onChange={(e) => setEditingProject((prev) => ({ ...prev, image: e.target.value }))}
+                        placeholder="Paste image or video URL"
+                        className={inputClass}
+                      />
+                      <label className={`${btnGhost} inline-flex cursor-pointer items-center justify-center`}>
+                        Upload image / video
+                        <input
+                          type="file"
+                          accept="image/*,video/*"
+                          className="hidden"
+                          onChange={(e) => handleMediaUpload('project', e.target.files?.[0])}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </Field>
+                <Field
+                  label="Hero media (optional — image or video)"
+                  hint="If set, this shows first on the project page (plays if video, full-bleed if image)."
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <input
+                      type="text"
+                      value={editingProject.video || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, video: e.target.value }))}
+                      placeholder="Image or video URL"
+                      className={inputClass}
+                    />
+                    <label className={`${btnGhost} inline-flex cursor-pointer items-center justify-center shrink-0`}>
+                      Upload
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        className="hidden"
+                        onChange={(e) => handleMediaUpload('project-video', e.target.files?.[0])}
+                      />
+                    </label>
+                  </div>
+                </Field>
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#e3943f]">3. 360° view</p>
+                <Field
+                  label="360 media"
+                  hint="Upload image, video, or paste any URL / embed link. No format lock."
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <MediaPreview src={editingProject.tour360} />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <input
+                        type="text"
+                        value={editingProject.tour360 || ''}
+                        onChange={(e) =>
+                          setEditingProject((prev) => ({
+                            ...prev,
+                            tour360: e.target.value,
+                            badge: e.target.value ? prev.badge || '360°' : prev.badge,
+                          }))
+                        }
+                        placeholder="360 image / video / tour URL"
+                        className={inputClass}
+                      />
+                      <label className={`${btnGhost} inline-flex cursor-pointer items-center justify-center`}>
+                        Upload 360 file
+                        <input
+                          type="file"
+                          accept="image/*,video/*"
+                          className="hidden"
+                          onChange={(e) => handleMediaUpload('project-360', e.target.files?.[0])}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </Field>
+                <Field label="Badge on card">
+                  <input
+                    type="text"
+                    value={editingProject.badge || ''}
+                    onChange={(e) => setEditingProject((prev) => ({ ...prev, badge: e.target.value }))}
+                    placeholder="360° / FEATURED / NEW / custom"
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#e3943f]">
+                    4. Story sections (Table of Contents)
+                  </p>
+                  <button
+                    type="button"
+                    className={btnPrimary}
+                    onClick={() =>
+                      setEditingProject((prev) => ({
+                        ...prev,
+                        sections: [
+                          ...(prev.sections || []),
+                          { id: uid('sec'), title: 'New section', text: '', media: '', caption: '' },
+                        ],
+                      }))
+                    }
+                  >
+                    Add section
+                  </button>
+                </div>
+                <p className="text-[12px] text-white/45">
+                  Section title = left TOC label (e.g. Visual 1 → rename to anything). Fill text,
+                  media, and caption under the image.
+                </p>
+                {(editingProject.sections || []).length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-[12px] text-white/40">
+                    No story sections yet — Add section
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {(editingProject.sections || []).map((section, index) => (
+                      <div key={section.id || index} className="space-y-3 rounded-xl border border-white/10 bg-black/30 p-3">
+                        <Field label={`TOC label / section ${index + 1} title`}>
+                          <input
+                            type="text"
+                            value={section.title || ''}
+                            onChange={(e) => {
+                              const next = [...(editingProject.sections || [])]
+                              next[index] = { ...next[index], title: e.target.value }
+                              setEditingProject((prev) => ({ ...prev, sections: next }))
+                            }}
+                            className={inputClass}
+                            placeholder="e.g. Visual 1, Courtyard, Lobby…"
+                          />
+                        </Field>
+                        <Field label="Section text" hint="Paragraph under the section title on the project page.">
+                          <textarea
+                            rows={4}
+                            value={section.text || ''}
+                            onChange={(e) => {
+                              const next = [...(editingProject.sections || [])]
+                              next[index] = { ...next[index], text: e.target.value }
+                              setEditingProject((prev) => ({ ...prev, sections: next }))
+                            }}
+                            className={`${inputClass} resize-none`}
+                            placeholder="Write the story for this section…"
+                          />
+                        </Field>
+                        <Field label="Section media">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <MediaPreview src={section.media} />
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <input
+                                type="text"
+                                value={section.media || ''}
+                                onChange={(e) => {
+                                  const next = [...(editingProject.sections || [])]
+                                  next[index] = { ...next[index], media: e.target.value }
+                                  setEditingProject((prev) => ({ ...prev, sections: next }))
+                                }}
+                                className={inputClass}
+                                placeholder="Image / video URL"
+                              />
+                              <label className={`${btnGhost} inline-flex cursor-pointer items-center justify-center`}>
+                                Upload
+                                <input
+                                  type="file"
+                                  accept="image/*,video/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (!file) return
+                                    storeFiles([file], ([url]) => {
+                                      const next = [...(editingProject.sections || [])]
+                                      next[index] = { ...next[index], media: url }
+                                      setEditingProject((prev) => ({ ...prev, sections: next }))
+                                    })
+                                    e.target.value = ''
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        </Field>
+                        <Field label="Caption under media">
+                          <input
+                            type="text"
+                            value={section.caption || ''}
+                            onChange={(e) => {
+                              const next = [...(editingProject.sections || [])]
+                              next[index] = { ...next[index], caption: e.target.value }
+                              setEditingProject((prev) => ({ ...prev, sections: next }))
+                            }}
+                            className={inputClass}
+                            placeholder="Short caption under the image"
+                          />
+                        </Field>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className={btnGhost}
+                            disabled={index === 0}
+                            onClick={() => {
+                              const next = [...(editingProject.sections || [])]
+                              if (index === 0) return
+                              ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
+                              setEditingProject((prev) => ({ ...prev, sections: next }))
+                            }}
+                          >
+                            Up
+                          </button>
+                          <button
+                            type="button"
+                            className={btnGhost}
+                            disabled={index === (editingProject.sections || []).length - 1}
+                            onClick={() => {
+                              const next = [...(editingProject.sections || [])]
+                              if (index >= next.length - 1) return
+                              ;[next[index + 1], next[index]] = [next[index], next[index + 1]]
+                              setEditingProject((prev) => ({ ...prev, sections: next }))
+                            }}
+                          >
+                            Down
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-2 text-[11px] font-bold tracking-wider text-red-300 uppercase hover:bg-red-500 hover:text-white"
+                            onClick={() =>
+                              setEditingProject((prev) => ({
+                                ...prev,
+                                sections: (prev.sections || []).filter((_, i) => i !== index),
+                              }))
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#e3943f]">
+                    5. Extra gallery — unlimited
+                  </p>
+                  <span className="text-[12px] text-white/40">
+                    {(editingProject.gallery || []).length} file{(editingProject.gallery || []).length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <p className="text-[12px] text-white/45">
+                  Extra photos/videos. Set TOC label (Visual 1, Courtyard…) + caption under image.
+                  Multi-upload supported — no limit. If story sections are empty, gallery TOC labels show on the left.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="text"
+                    value={galleryUrlDraft}
+                    onChange={(e) => setGalleryUrlDraft(e.target.value)}
+                    placeholder="Paste image/video URL then Add"
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    className={btnGhost}
+                    onClick={() => {
+                      const url = galleryUrlDraft.trim()
+                      if (!url) return
+                      setEditingProject((prev) => ({
+                        ...prev,
+                        gallery: [...(prev.gallery || []), { src: url, title: '', caption: '' }],
+                      }))
+                      setGalleryUrlDraft('')
+                    }}
+                  >
+                    Add URL
+                  </button>
+                  <label className={`${btnPrimary} inline-flex cursor-pointer items-center justify-center`}>
+                    Upload many
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,video/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        storeFiles(e.target.files, (urls) => {
+                          setEditingProject((prev) => ({
+                            ...prev,
+                            gallery: [
+                              ...(prev.gallery || []),
+                              ...urls.map((src) => ({ src, title: '', caption: '' })),
+                            ],
+                          }))
+                        })
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {(editingProject.gallery || []).length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-[12px] text-white/40">
+                    No gallery files yet — add unlimited images or videos
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(editingProject.gallery || []).map((item, index) => {
+                      const row = normalizeGalleryItem(item)
+                      return (
+                        <div
+                          key={`${row.src}-${index}`}
+                          className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/30 p-3"
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <MediaPreview src={row.src} />
+                            <input
+                              type="text"
+                              value={row.src}
+                              onChange={(e) => {
+                                const next = [...(editingProject.gallery || [])].map(normalizeGalleryItem)
+                                next[index] = { ...next[index], src: e.target.value }
+                                setEditingProject((prev) => ({ ...prev, gallery: next }))
+                              }}
+                              className={`${inputClass} flex-1`}
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <input
+                              type="text"
+                              value={row.title}
+                              onChange={(e) => {
+                                const next = [...(editingProject.gallery || [])].map(normalizeGalleryItem)
+                                next[index] = { ...next[index], title: e.target.value }
+                                setEditingProject((prev) => ({ ...prev, gallery: next }))
+                              }}
+                              placeholder={`TOC label (e.g. Visual ${index + 1})`}
+                              className={inputClass}
+                            />
+                            <input
+                              type="text"
+                              value={row.caption}
+                              onChange={(e) => {
+                                const next = [...(editingProject.gallery || [])].map(normalizeGalleryItem)
+                                next[index] = { ...next[index], caption: e.target.value }
+                                setEditingProject((prev) => ({ ...prev, gallery: next }))
+                              }}
+                              placeholder="Caption under this image"
+                              className={inputClass}
+                            />
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className={btnGhost}
+                              disabled={index === 0}
+                              onClick={() => {
+                                const next = [...(editingProject.gallery || [])]
+                                if (index === 0) return
+                                ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
+                                setEditingProject((prev) => ({ ...prev, gallery: next }))
+                              }}
+                            >
+                              Up
+                            </button>
+                            <button
+                              type="button"
+                              className={btnGhost}
+                              disabled={index === (editingProject.gallery || []).length - 1}
+                              onClick={() => {
+                                const next = [...(editingProject.gallery || [])]
+                                if (index >= next.length - 1) return
+                                ;[next[index + 1], next[index]] = [next[index], next[index + 1]]
+                                setEditingProject((prev) => ({ ...prev, gallery: next }))
+                              }}
+                            >
+                              Down
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-2 text-[11px] font-bold tracking-wider text-red-300 uppercase hover:bg-red-500 hover:text-white"
+                              onClick={() =>
+                                setEditingProject((prev) => ({
+                                  ...prev,
+                                  gallery: (prev.gallery || []).filter((_, i) => i !== index),
+                                }))
+                              }
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#e3943f]">
+                  6. Page labels & buttons
+                </p>
+                <p className="text-[12px] text-white/45">
+                  Every heading and CTA on the public project page can be changed here.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="About heading">
+                    <input
+                      type="text"
+                      value={editingProject.aboutHeading || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, aboutHeading: e.target.value }))}
+                      className={inputClass}
+                      placeholder="About the project:"
+                    />
+                  </Field>
+                  <Field label="Features card title">
+                    <input
+                      type="text"
+                      value={editingProject.featuresTitle || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, featuresTitle: e.target.value }))}
+                      className={inputClass}
+                      placeholder="Project features"
+                    />
+                  </Field>
+                  <Field label="Enquire button">
+                    <input
+                      type="text"
+                      value={editingProject.enquireLabel || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, enquireLabel: e.target.value }))}
+                      className={inputClass}
+                      placeholder="Enquire"
+                    />
+                  </Field>
+                  <Field label="Enquire link">
+                    <input
+                      type="text"
+                      value={editingProject.enquireLink || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, enquireLink: e.target.value }))}
+                      className={inputClass}
+                      placeholder="/contacts"
+                    />
+                  </Field>
+                  <Field label="TOC heading">
+                    <input
+                      type="text"
+                      value={editingProject.tocHeading || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, tocHeading: e.target.value }))}
+                      className={inputClass}
+                      placeholder="Table of contents:"
+                    />
+                  </Field>
+                  <Field label="360° heading">
+                    <input
+                      type="text"
+                      value={editingProject.tour360Heading || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, tour360Heading: e.target.value }))}
+                      className={inputClass}
+                      placeholder="360° experience"
+                    />
+                  </Field>
+                  <Field label="Read also heading">
+                    <input
+                      type="text"
+                      value={editingProject.readAlsoHeading || ''}
+                      onChange={(e) => setEditingProject((prev) => ({ ...prev, readAlsoHeading: e.target.value }))}
+                      className={inputClass}
+                      placeholder="Read also:"
+                    />
+                  </Field>
                 </div>
               </div>
 
-              {/* Full Description */}
-              <div>
-                <label className="block text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">
-                  Full Description:
-                </label>
-                <textarea
-                  rows={3}
-                  value={editingProject.description || ''}
-                  onChange={(e) =>
-                    setEditingProject((prev) => ({ ...prev, description: e.target.value }))
-                  }
-                  placeholder="Architectural masterpiece featuring dramatic cantilevered travertine..."
-                  className="w-full rounded-xl border border-white/10 bg-[#121212] p-3 text-[12px] text-white outline-none focus:border-[#e3943f] resize-none"
-                />
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#e3943f]">
+                  7. Bottom CTA block
+                </p>
+                <Field label="Eyebrow">
+                  <input
+                    type="text"
+                    value={editingProject.closingEyebrow || ''}
+                    onChange={(e) => setEditingProject((prev) => ({ ...prev, closingEyebrow: e.target.value }))}
+                    className={inputClass}
+                    placeholder="Unique Graphics®"
+                  />
+                </Field>
+                <Field label="CTA title">
+                  <input
+                    type="text"
+                    value={editingProject.closingTitle || ''}
+                    onChange={(e) => setEditingProject((prev) => ({ ...prev, closingTitle: e.target.value }))}
+                    className={inputClass}
+                    placeholder="Step into the world of Unique Graphics®"
+                  />
+                </Field>
+                <Field label="CTA text">
+                  <textarea
+                    rows={3}
+                    value={editingProject.closingText || ''}
+                    onChange={(e) => setEditingProject((prev) => ({ ...prev, closingText: e.target.value }))}
+                    className={`${inputClass} resize-none`}
+                  />
+                </Field>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="CTA button label">
+                    <input
+                      type="text"
+                      value={editingProject.closingButtonLabel || ''}
+                      onChange={(e) =>
+                        setEditingProject((prev) => ({ ...prev, closingButtonLabel: e.target.value }))
+                      }
+                      className={inputClass}
+                      placeholder="Discuss this project"
+                    />
+                  </Field>
+                  <Field label="CTA button link">
+                    <input
+                      type="text"
+                      value={editingProject.closingButtonLink || ''}
+                      onChange={(e) =>
+                        setEditingProject((prev) => ({ ...prev, closingButtonLink: e.target.value }))
+                      }
+                      className={inputClass}
+                      placeholder="/contacts"
+                    />
+                  </Field>
+                </div>
               </div>
-            </div>
+          </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
-              <button
-                type="button"
-                onClick={() => setEditingProject(null)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white/70 hover:bg-white/10 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveProjectModal}
-                className="rounded-xl bg-[#e3943f] px-5 py-2 text-[11px] font-bold uppercase tracking-wider text-black hover:brightness-110 shadow-lg shadow-[#e3943f]/20"
-              >
-                Apply Project Changes
-              </button>
+          <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[#0b0b0b]/95 px-4 py-3 backdrop-blur-md lg:left-[280px]">
+            <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
+              <p className="text-[12px] text-white/40">
+                Apply saves here. Apply &amp; Publish updates the live project page.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className={btnGhost} onClick={closeProjectEditor}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={btnGhost}
+                  disabled={uploading || loading}
+                  onClick={() => saveProjectModal(false)}
+                >
+                  Apply
+                </button>
+                <button
+                  type="button"
+                  className={btnPrimary}
+                  disabled={uploading || loading}
+                  onClick={() => saveProjectModal(true)}
+                >
+                  {loading ? 'Publishing…' : 'Apply & Publish'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

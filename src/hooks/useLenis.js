@@ -4,8 +4,11 @@ import { gsap, ScrollTrigger } from '../animations/gsapConfig'
 import { isAppPath, legacyHashPath, queueSection, setScroller } from '../routes'
 
 function openPath(path) {
-  if (window.location.pathname === path && !window.location.hash) return false
-  history.pushState(null, '', path)
+  const next = new URL(path, window.location.origin)
+  const current = `${window.location.pathname}${window.location.search}`
+  const target = `${next.pathname}${next.search}`
+  if (current === target && !window.location.hash) return false
+  history.pushState(null, '', target)
   window.dispatchEvent(new PopStateEvent('popstate'))
   return true
 }
@@ -58,9 +61,27 @@ export function useLenis() {
         return
       }
 
-      if (href.startsWith('/') && isAppPath(href)) {
+      if (href.startsWith('/') && isAppPath(href.split('?')[0].split('#')[0])) {
         event.preventDefault()
-        const path = new URL(href, window.location.origin).pathname
+        const url = new URL(href, window.location.origin)
+        const path = `${url.pathname}${url.search}`
+        // Project Enquire → Contact: stash banner media before SPA navigation
+        const enquireMedia = link.getAttribute('data-enquire-media')
+        if (enquireMedia) {
+          try {
+            sessionStorage.setItem(
+              'ug_enquire_project',
+              JSON.stringify({
+                mediaUrl: enquireMedia,
+                posterUrl: link.getAttribute('data-enquire-poster') || '',
+                title: link.getAttribute('data-enquire-title') || '',
+                id: link.getAttribute('data-enquire-id') || '',
+              })
+            )
+          } catch {
+            /* ignore */
+          }
+        }
         sessionStorage.setItem('prev_scroll_y', String(Math.round(window.scrollY)))
         sessionStorage.setItem('prev_path', window.location.pathname)
         if (!openPath(path)) lenis.scrollTo(0, { immediate: true })

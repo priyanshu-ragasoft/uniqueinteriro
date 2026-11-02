@@ -8,11 +8,6 @@ export const DEFAULT_COMPLETED_PROJECTS_CONFIG = {
       count: '650',
       tail: 'completed projects',
     },
-    ru: {
-      lead: 'Более',
-      count: '650',
-      tail: 'реализованных проектов',
-    },
   },
   categories: defaultCategories,
   projects: defaultProjects,
@@ -137,9 +132,8 @@ export default function CompletedProjects({ lang = 'en' }) {
     }
   }, [])
 
-  const currentLang = lang === 'ru' ? 'ru' : 'en'
-  const text = config?.copy?.[currentLang] || DEFAULT_COMPLETED_PROJECTS_CONFIG.copy[currentLang]
-  const labels = defaultCategories[currentLang] || defaultCategories.en
+  const text = config?.copy?.en || DEFAULT_COMPLETED_PROJECTS_CONFIG.copy.en
+  const labels = defaultCategories.en
   const currentProjects = (Array.isArray(config?.projects) && config.projects.length >= defaultProjects.length && !config.projects.some((p) => p.id === 'day-living'))
     ? config.projects
     : defaultProjects
@@ -196,7 +190,7 @@ export default function CompletedProjects({ lang = 'en' }) {
 
         <div className="no-scrollbar mt-9 flex gap-4 overflow-x-auto pb-2">
           {visible.map((project) => {
-            const info = project[currentLang] ?? project.en ?? { title: project.title || 'Untitled' }
+            const info = project[lang] ?? project.en ?? { title: project.title || 'Untitled' }
             return (
               <a key={project.id} href={`/project/${project.id}`} className="shrink-0">
                 <HoverClip video={project.video} image={project.image} className="h-[190px] w-[250px] rounded-[18px] sm:h-[230px] sm:w-[300px] transition-transform hover:scale-[1.03]">

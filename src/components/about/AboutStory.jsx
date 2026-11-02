@@ -7,7 +7,7 @@ export default function AboutStory({ lang }) {
   const [storyConfig, setStoryConfig] = useState(() => {
     return getStoredAboutConfig().story
   })
-  const [activeStepIndex, setActiveStepIndex] = useState(3) // default to 'Site'
+  const [activeStepIndex, setActiveStepIndex] = useState(3)
 
   useEffect(() => {
     const onUpdate = () => {
@@ -21,11 +21,7 @@ export default function AboutStory({ lang }) {
     }
   }, [])
 
-  const text =
-    storyConfig[lang] ??
-    storyConfig.en ??
-    DEFAULT_ABOUT_PAGE_CONFIG.story[lang] ??
-    DEFAULT_ABOUT_PAGE_CONFIG.story.en
+  const text = storyConfig.en ?? DEFAULT_ABOUT_PAGE_CONFIG.story.en
 
   // Normalize steps to array of { label, text }
   const rawSteps = text.steps || DEFAULT_ABOUT_PAGE_CONFIG.story.en.steps
@@ -63,9 +59,8 @@ export default function AboutStory({ lang }) {
                 <button
                   type="button"
                   onClick={() => setActiveStepIndex(idx)}
-                  className={`text-[13px] tracking-[0.14em] uppercase text-left transition-colors cursor-pointer ${
-                    activeStepIndex === idx ? 'text-[#e3943f] font-semibold' : 'text-white/60 hover:text-white'
-                  }`}
+                  className={`text-[13px] tracking-[0.14em] uppercase text-left transition-colors cursor-pointer ${activeStepIndex === idx ? 'text-[#e3943f] font-semibold' : 'text-white/60 hover:text-white'
+                    }`}
                 >
                   {s.label}
                 </button>

@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
-import { categoryPath, findServicePage, getStoredServiceTree, setStoredServiceTree, subcategoryPath, SUBCATEGORY_MEDIA_MAP } from '../../data/serviceTree'
-import { getRichPageForSlug } from '../../data/serviceDetailsConfig'
+import {
+  categoryPath,
+  findServicePage,
+  getStoredServiceTree,
+  serviceGalleryPath,
+  serviceHighlightPath,
+  setStoredServiceTree,
+  subcategoryPath,
+  SUBCATEGORY_MEDIA_MAP,
+} from '../../data/serviceTree'
 
 function visibleImages(images) {
   return (images || []).map((src) => String(src || '').trim()).filter(Boolean).slice(0, 3)
@@ -9,6 +17,25 @@ function visibleImages(images) {
 function isVideoSource(src) {
   const value = String(src || '').toLowerCase()
   return value.startsWith('data:video') || /\.(mp4|webm|ogg|mov)(\?|#|$)/.test(value)
+}
+
+function Media({ src, className, alt = '', fallback = '' }) {
+  if (!src) return null
+  if (isVideoSource(src)) {
+    return <video src={src} muted loop playsInline autoPlay className={className} />
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={(event) => {
+        if (!fallback) return
+        event.currentTarget.onerror = null
+        event.currentTarget.src = fallback
+      }}
+      className={className}
+    />
+  )
 }
 
 export default function ServicePage({
@@ -20,8 +47,6 @@ export default function ServicePage({
   eventName = 'services-pages-config-changed',
 }) {
   const [tree, setTree] = useState(() => readTree())
-  const [bannerIndex, setBannerIndex] = useState(0)
-  const [openHighlight, setOpenHighlight] = useState(null)
 
   useEffect(() => {
     const apply = (next) => setTree(next?.categories ? next : readTree())
@@ -40,12 +65,9 @@ export default function ServicePage({
   }, [endpoint, eventName, readTree, writeTree])
 
   const match = findServicePage(tree, categorySlug, subcategorySlug)
-  const slugKey = subcategorySlug || categorySlug
-  const richFallback = getRichPageForSlug(slugKey, match?.subcategory?.name || match?.category?.name)
   const rawPage = match?.page || {}
-
-  const defaultHighlightMedia =
-    SUBCATEGORY_MEDIA_MAP[slugKey] ||
+  const fallbackMedia =
+    SUBCATEGORY_MEDIA_MAP[subcategorySlug || categorySlug] ||
     '/website-assets/architecture/The%20Romania%20-%20Luxury%20Wedding%20Spaces%20BANQUET%20HALL/Golden%20Arch%20Banquet%20Hall%20at%20Night-6.png'
 
   const isBadMedia = (src) => {
@@ -54,40 +76,20 @@ export default function ServicePage({
     if (s === '/hero.jpg' || s.includes('hero.jpg')) return true
     if (s.includes('services-card.jpg')) return true
     if (s.includes('/uploads/1792')) return true
-    if (s.includes('09.jpg') || s.includes('01.jpg')) return true
     if (s.includes('iphone') || s.includes('mockup')) return true
     return false
   }
 
-  const sanitizeMedia = (src) => {
-    return isBadMedia(src) ? defaultHighlightMedia : src
-  }
-
-  const rawImages = visibleImages(rawPage?.banner?.images).filter((src) => !isBadMedia(src))
-  const images = rawImages.length
-    ? rawImages
-    : (richFallback?.banner?.images?.length
-      ? richFallback.banner.images.filter((src) => !isBadMedia(src))
-      : [defaultHighlightMedia])
-
-  useEffect(() => {
-    setBannerIndex(0)
-  }, [categorySlug, subcategorySlug, images.length])
-
-  useEffect(() => {
-    if (images.length < 2) return undefined
-    const timer = setInterval(() => {
-      setBannerIndex((current) => (current + 1) % images.length)
-    }, 5000)
-    return () => clearInterval(timer)
-  }, [images.length, categorySlug, subcategorySlug])
+  const images = visibleImages(rawPage?.banner?.images).filter((src) => !isBadMedia(src))
+  const heroImage = images[0] || ''
+  const extraBanners = images.slice(1)
 
   if (!match) {
     return (
       <main className="min-h-screen bg-[#111111] px-6 pt-40 pb-24 text-white">
         <div className="mx-auto max-w-[1600px]">
           <h1 className="text-4xl">Page not found</h1>
-          <a href="/all-services" className="mt-4 inline-block text-[#e3943f] underline">
+          <a href="/services" className="mt-4 inline-block text-[#e3943f] underline">
             Back to all services
           </a>
         </div>
@@ -95,263 +97,238 @@ export default function ServicePage({
     )
   }
 
-  const banner = {
-    show: true,
-    ...(richFallback?.banner || {}),
-    ...(rawPage.banner || {}),
-  }
-  if (!banner.subtitle && richFallback?.banner?.subtitle) {
-    banner.subtitle = richFallback.banner.subtitle
-  }
-  if (!banner.label && richFallback?.banner?.label) {
-    banner.label = richFallback.banner.label
-  }
-
-  const intro = {
-    show: true,
-    ...(richFallback?.intro || {}),
-    ...(rawPage.intro || {}),
-  }
-  if (!intro.heading && richFallback?.intro?.heading) intro.heading = richFallback.intro.heading
-  if (!intro.paragraph1 && richFallback?.intro?.paragraph1) intro.paragraph1 = richFallback.intro.paragraph1
-  if (!intro.paragraph2 && richFallback?.intro?.paragraph2) intro.paragraph2 = richFallback.intro.paragraph2
-
-  const rawHighlights = (rawPage.highlights?.items || [])
-    .filter((item) => item.title || item.text)
-    .map((item) => ({
-      ...item,
-      image: sanitizeMedia(item.image),
-    }))
-  const highlights = (rawHighlights.length ? rawHighlights : (richFallback?.highlights?.items || [])).map((item) => ({
-    ...item,
-    image: sanitizeMedia(item.image),
-  }))
-
-  const rawSteps = (rawPage.steps?.items || []).filter((item) => item.title || item.text)
-  const steps = rawSteps.length ? rawSteps : (richFallback?.steps?.items || [])
-
-  const rawGallery = (rawPage.gallery?.items || [])
-    .filter((item) => item.image)
-    .map((item) => ({
-      ...item,
-      image: sanitizeMedia(item.image),
-    }))
-  const gallery = (rawGallery.length ? rawGallery : (richFallback?.gallery?.items || [])).map((item) => ({
-    ...item,
-    image: sanitizeMedia(item.image),
-  }))
-
-  const closing = {
-    show: true,
-    ...(richFallback?.closing || {}),
-    ...(rawPage.closing || {}),
-  }
-  if (!closing.heading && richFallback?.closing?.heading) closing.heading = richFallback.closing.heading
-  if (!closing.paragraph && richFallback?.closing?.paragraph) closing.paragraph = richFallback.closing.paragraph
-
-  const slides = images.length ? images : [defaultHighlightMedia]
-  const parentHref = match.kind === 'subcategory' ? categoryPath(match.category) : '/all-services'
+  const banner = rawPage.banner || { show: true }
+  const intro = rawPage.intro || {}
+  const highlights = (rawPage.highlights?.show === false ? [] : rawPage.highlights?.items || [])
+    .filter((item) => item.published !== false && (item.title || item.text || item.image))
+    .map((item) => ({ ...item, image: item.image && !isBadMedia(item.image) ? item.image : '' }))
+  const steps = (rawPage.steps?.show === false ? [] : rawPage.steps?.items || []).filter((item) => item.title || item.text)
+  const gallery = (rawPage.gallery?.show === false ? [] : rawPage.gallery?.items || [])
+    .filter((item) => item.published !== false && item.image && !isBadMedia(item.image))
+  const closing = rawPage.closing || {}
+  const showIntro = intro.show !== false && (intro.heading || intro.paragraph1 || intro.paragraph2)
+  const showClosing = closing.show !== false && (closing.heading || closing.paragraph || closing.buttonLabel)
+  const title = banner.title || match.subcategory?.name || match.category.name
+  const parentHref = match.kind === 'subcategory' ? categoryPath(match.category) : '/services'
   const parentLabel = match.kind === 'subcategory' ? match.category.name : 'Services'
+  const introVisual = highlights.find((item) => item.image) || null
+  const featureList = highlights.filter((item) => item !== introVisual)
+  const subs = (match.kind === 'category' ? match.category.subcategories : []).filter((sub) => sub.published && sub.showInMenu !== false)
+  const used = new Set([heroImage, introVisual?.image].filter(Boolean))
+  const widePhotos = [
+    ...gallery,
+    ...extraBanners.map((src, index) => ({ id: `banner-extra-${index}`, image: src, caption: '', title: '' })),
+  ].filter((item) => {
+    if (!item.image || used.has(item.image)) return false
+    used.add(item.image)
+    return true
+  })
+  const midPhoto = widePhotos[0]
+  const landscapePhotos = widePhotos.slice(1)
+  const closingPhoto = landscapePhotos[landscapePhotos.length - 1]?.image || midPhoto?.image || extraBanners[0] || ''
 
   return (
     <main className="min-h-screen bg-[#111111] text-white">
-      {banner.show ? (
-        <section className="relative flex min-h-[75vh] w-full flex-col justify-end overflow-hidden px-6 pt-32 pb-12 sm:px-10 lg:min-h-[85vh] lg:px-16 lg:pt-40 lg:pb-16">
+      {banner.show !== false ? (
+        <section className="relative flex min-h-[88svh] w-full flex-col justify-end overflow-hidden px-6 pb-16 pt-32 sm:px-10 lg:min-h-[92svh] lg:px-16 lg:pb-24">
           <div className="absolute inset-0 z-0 overflow-hidden bg-black">
-            {slides.map((src, index) => (
-              isVideoSource(src) ? (
-                <video
-                  key={`${src.slice(0, 48)}-${index}`}
-                  src={src}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className={`absolute inset-0 h-full w-full object-cover object-center scale-105 transition-opacity duration-1000 ease-in-out ${
-                    index === bannerIndex ? 'opacity-100 z-[1]' : 'opacity-0 z-0'
-                  }`}
-                />
-              ) : (
-                <img
-                  key={`${src.slice(0, 48)}-${index}`}
-                  src={src}
-                  alt=""
-                  onError={(e) => {
-                    e.currentTarget.onerror = null
-                    e.currentTarget.src = defaultHighlightMedia
-                  }}
-                  className={`absolute inset-0 h-full w-full object-cover object-center scale-105 transition-opacity duration-1000 ease-in-out ${
-                    index === bannerIndex ? 'opacity-100 z-[1]' : 'opacity-0 z-0'
-                  }`}
-                />
-              )
-            ))}
-            <div className="absolute inset-0 z-[2] bg-gradient-to-t from-[#111111] via-black/40 to-black/60" />
-            <div className="absolute inset-0 z-[2] bg-black/25" />
+            {heroImage ? (
+              <Media src={heroImage} fallback={fallbackMedia} className="absolute inset-0 h-full w-full object-cover object-center" />
+            ) : null}
+            <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-black/25 to-black/15" />
           </div>
-          <div className="relative z-10 mx-auto w-full max-w-[1600px]">
-            <a href={parentHref} className="mb-4 inline-flex items-center gap-2 text-[13px] font-medium text-white/70 hover:text-[#e3943f]">
+          <div className="relative z-10 mx-auto w-full max-w-[1180px]">
+            <a
+              href={parentHref}
+              className="mb-10 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-[13px] text-white/85 backdrop-blur-sm hover:bg-white/20"
+            >
               <span>‹</span>
               <span>{parentLabel}</span>
             </a>
             {banner.label ? (
-              <p className="text-[12px] tracking-[0.2em] text-[#e3943f] uppercase">{banner.label}</p>
+              <p className="mb-4 text-[12px] tracking-[0.22em] text-white/55 uppercase">{banner.label}</p>
             ) : null}
-            <h1 className="mt-3 text-[40px] leading-[0.95] font-bold tracking-[-0.02em] uppercase sm:text-[56px] lg:text-[72px]">
-              <span className="block">{banner.title || match.subcategory?.name || match.category.name}</span>
-              {banner.accent ? (
-                <span className="mt-1 block text-[28px] text-[#e3943f] sm:text-[40px] lg:text-[52px]">{banner.accent}</span>
-              ) : null}
-            </h1>
+            {title ? (
+              <h1 className="max-w-[18ch] text-[32px] font-light leading-[1.08] tracking-[-0.03em] sm:text-[46px] lg:text-[56px]">
+                {title}
+                {banner.accent ? ` ${banner.accent}` : ''}
+              </h1>
+            ) : null}
             {banner.subtitle ? (
-              <p className="mt-5 max-w-[85ch] text-[15px] leading-relaxed text-white/80 sm:text-[17px]">{banner.subtitle}</p>
+              <p className="mt-6 max-w-[60ch] text-[16px] leading-relaxed text-white/80 sm:text-[18px]">{banner.subtitle}</p>
             ) : null}
           </div>
         </section>
       ) : null}
 
-      <section className="mx-auto max-w-[1600px] px-6 py-16 sm:px-10 lg:px-16 lg:py-24">
-        {intro.heading || intro.paragraph1 || intro.paragraph2 ? (
-          <div className="max-w-[820px]">
-            {intro.heading ? <h2 className="text-[28px] font-medium tracking-tight sm:text-[38px]">{intro.heading}</h2> : null}
-            {intro.paragraph1 ? <p className="mt-6 text-[16px] leading-relaxed text-white/80">{intro.paragraph1}</p> : null}
-            {intro.paragraph2 ? <p className="mt-4 text-[16px] leading-relaxed text-white/80">{intro.paragraph2}</p> : null}
-          </div>
-        ) : null}
+      {showIntro || introVisual ? (
+        <section className="mx-auto grid max-w-[1180px] items-center gap-12 px-6 py-20 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:px-16 lg:py-28">
+          {showIntro ? (
+            <div>
+              {intro.heading ? (
+                <h2 className="max-w-[18ch] text-[28px] font-light leading-[1.15] tracking-[-0.03em] sm:text-[40px]">
+                  {intro.heading}
+                </h2>
+              ) : null}
+              {intro.paragraph1 ? <p className="mt-6 text-[16px] leading-relaxed text-white/70">{intro.paragraph1}</p> : null}
+              {intro.paragraph2 ? <p className="mt-4 text-[16px] leading-relaxed text-white/70">{intro.paragraph2}</p> : null}
+              {showClosing && closing.buttonLabel ? (
+                <a
+                  href={closing.buttonLink || '/contacts'}
+                  className="mt-8 inline-flex rounded-full bg-white px-6 py-3 text-[13px] text-black hover:bg-[#e3943f]"
+                >
+                  {closing.buttonLabel}
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+          {introVisual ? (
+            <a
+              href={serviceHighlightPath(match.category, match.subcategory, introVisual)}
+              className="flex min-h-[360px] items-center justify-center rounded-[28px] bg-black/40 p-6 lg:min-h-[480px]"
+            >
+              <Media
+                src={introVisual.image}
+                fallback={fallbackMedia}
+                alt={introVisual.title || ''}
+                className="max-h-[460px] w-full object-contain"
+              />
+            </a>
+          ) : extraBanners[0] ? (
+            <Media src={extraBanners[0]} fallback={fallbackMedia} className="w-full rounded-[28px] object-cover lg:min-h-[420px]" />
+          ) : null}
+        </section>
+      ) : null}
 
-        {highlights.length ? (
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {highlights.map((item) => (
-              <button
+      {featureList.length ? (
+        <section className="mx-auto max-w-[1180px] px-6 pb-20 sm:px-10 lg:px-16">
+          <div className="grid gap-x-16 gap-y-12 sm:grid-cols-2">
+            {featureList.map((item) => (
+              <a
                 key={item.id}
-                type="button"
-                onClick={() => {
-                  setOpenHighlight(item)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                className="rounded-[20px] border border-white/10 bg-[#161616] p-4 text-left transition hover:border-[#e3943f]/50"
+                href={serviceHighlightPath(match.category, match.subcategory, item)}
+                className="group flex items-start gap-5"
               >
                 {item.image ? (
-                  isVideoSource(item.image) ? (
-                    <video src={item.image} muted loop playsInline autoPlay className="aspect-[16/10] w-full rounded-[14px] object-cover" />
-                  ) : (
-                    <img
-                      src={item.image}
-                      alt=""
-                      onError={(e) => {
-                        e.currentTarget.onerror = null
-                        e.currentTarget.src = defaultHighlightMedia
-                      }}
-                      className="aspect-[16/10] w-full rounded-[14px] object-cover"
-                    />
-                  )
-                ) : null}
-                {item.title ? <h3 className="mt-4 text-[17px] font-bold">{item.title}</h3> : null}
-                {item.text ? <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-white/70">{item.text}</p> : null}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {openHighlight ? (
-          <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#111111]">
-            <div className="mx-auto max-w-[1100px] px-6 py-8 sm:px-10">
-              <button
-                type="button"
-                onClick={() => setOpenHighlight(null)}
-                className="text-[14px] text-white/70 hover:text-[#e3943f]"
-              >
-                ‹ Back
-              </button>
-              {openHighlight.image ? (
-                isVideoSource(openHighlight.image) ? (
-                  <video src={openHighlight.image} controls autoPlay muted loop playsInline className="mt-6 max-h-[70vh] w-full rounded-[20px] bg-black object-contain" />
+                  <Media src={item.image} fallback={fallbackMedia} className="mt-0.5 h-14 w-14 shrink-0 rounded-xl object-cover" />
                 ) : (
-                  <img
-                    src={openHighlight.image}
-                    alt=""
-                    onError={(e) => {
-                      e.currentTarget.onerror = null
-                      e.currentTarget.src = defaultHighlightMedia
-                    }}
-                    className="mt-6 max-h-[70vh] w-full rounded-[20px] bg-black object-contain"
-                  />
-                )
-              ) : null}
-              {openHighlight.title ? <h2 className="mt-8 text-[32px] font-semibold sm:text-[44px]">{openHighlight.title}</h2> : null}
-              {openHighlight.text ? <p className="mt-4 max-w-[75ch] whitespace-pre-wrap text-[16px] leading-relaxed text-white/80">{openHighlight.text}</p> : null}
-            </div>
-          </div>
-        ) : null}
-
-        {steps.length ? (
-          <div className="mt-16">
-            <h3 className="text-[12px] tracking-[0.2em] text-white/50 uppercase">Implementation process</h3>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {steps.map((step) => (
-                <article key={step.id} className="rounded-[18px] border border-white/10 bg-[#161616] p-5">
-                  <span className="text-[18px] font-bold text-[#e3943f]">{step.number}</span>
-                  <h4 className="mt-2 text-[15px] font-bold">{step.title}</h4>
-                  {step.text ? <p className="mt-1.5 text-[12.5px] leading-relaxed text-white/70">{step.text}</p> : null}
-                </article>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {gallery.length ? (
-          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {gallery.map((item) => (
-              <figure key={item.id} className="overflow-hidden rounded-[18px] border border-white/10 bg-[#161616]">
-                {isVideoSource(item.image) ? (
-                  <video src={item.image} muted loop playsInline autoPlay className="aspect-[4/3] w-full object-cover" />
-                ) : (
-                  <img
-                    src={item.image}
-                    alt={item.caption || ''}
-                    onError={(e) => {
-                      e.currentTarget.onerror = null
-                      e.currentTarget.src = defaultHighlightMedia
-                    }}
-                    className="aspect-[4/3] w-full object-cover"
-                  />
+                  <span className="mt-0.5 h-14 w-14 shrink-0 rounded-xl bg-white/5" />
                 )}
-                {item.caption ? <figcaption className="px-4 py-3 text-[13px] text-white/70">{item.caption}</figcaption> : null}
-              </figure>
+                <div>
+                  {item.title ? (
+                    <h3 className="text-[20px] font-light leading-tight group-hover:text-[#e3943f]">{item.title}</h3>
+                  ) : null}
+                  {item.text ? <p className="mt-2 text-[14px] leading-relaxed text-white/60">{item.text}</p> : null}
+                </div>
+              </a>
             ))}
           </div>
-        ) : null}
+        </section>
+      ) : null}
 
-        {closing.heading || closing.paragraph ? (
-          <div className="mt-16 flex flex-col items-start justify-between gap-6 rounded-[24px] border border-[#e3943f]/30 bg-[#161616] p-8 sm:p-12 md:flex-row md:items-center">
-            <div>
-              {closing.heading ? <h3 className="text-[24px] font-bold sm:text-[30px]">{closing.heading}</h3> : null}
-              {closing.paragraph ? <p className="mt-2 max-w-[65ch] text-[15px] text-white/75">{closing.paragraph}</p> : null}
-            </div>
-            {closing.buttonLabel ? (
-              <a href={closing.buttonLink || '/contacts'} className="shrink-0 rounded-full bg-[#e3943f] px-8 py-4 text-[13px] font-bold tracking-[0.14em] text-black uppercase">
+      {steps.length ? (
+        <section className="mx-auto max-w-[1180px] px-6 pb-20 sm:px-10 lg:px-16">
+          <div className="grid gap-x-16 gap-y-10 sm:grid-cols-2">
+            {steps.map((step) => (
+              <article key={step.id} className="flex items-start gap-5">
+                <span className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/5 text-[13px] text-white/50">
+                  {step.number || ''}
+                </span>
+                <div>
+                  <h4 className="text-[20px] font-light">{step.title}</h4>
+                  {step.text ? <p className="mt-2 text-[14px] leading-relaxed text-white/60">{step.text}</p> : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {midPhoto ? (
+        <section className="relative my-6 overflow-hidden">
+          <Media
+            src={midPhoto.image}
+            fallback={fallbackMedia}
+            alt={midPhoto.caption || midPhoto.title || ''}
+            className="h-[42vw] min-h-[260px] max-h-[520px] w-full object-cover"
+          />
+          {showClosing && closing.buttonLabel ? (
+            <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/70 to-transparent px-6 py-10 sm:px-10 lg:px-16">
+              <a
+                href={closing.buttonLink || '/contacts'}
+                className="rounded-full bg-white px-6 py-3 text-[13px] text-black hover:bg-[#e3943f]"
+              >
                 {closing.buttonLabel}
               </a>
-            ) : null}
-          </div>
-        ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
-        {match.kind === 'category' && match.category.subcategories.some((sub) => sub.published) ? (
-          <div className="mt-16">
-            <h3 className="text-[12px] tracking-[0.2em] text-[#e3943f] uppercase">Within {match.category.name}</h3>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {match.category.subcategories
-                .filter((sub) => sub.published)
-                .map((sub) => (
-                  <a key={sub.id} href={subcategoryPath(match.category, sub)} className="rounded-[18px] border border-white/10 bg-[#161616] p-5 hover:border-[#e3943f]/60">
-                    <p className="text-[16px] font-bold">{sub.name}</p>
-                    {sub.menuDescription ? <p className="mt-2 text-[13px] text-white/70">{sub.menuDescription}</p> : null}
-                  </a>
-                ))}
+      {landscapePhotos.length ? (
+        <section className="space-y-8 py-10">
+          {landscapePhotos.map((item) => (
+            <a
+              key={item.id}
+              href={item.slug ? serviceGalleryPath(match.category, match.subcategory, item) : serviceGalleryPath(match.category, match.subcategory, item)}
+              className="block"
+            >
+              <Media
+                src={item.image}
+                fallback={fallbackMedia}
+                alt={item.caption || item.title || ''}
+                className="h-[46vw] min-h-[240px] max-h-[580px] w-full object-cover"
+              />
+              {item.caption || item.title ? (
+                <p className="mx-auto max-w-[1180px] px-6 pt-3 text-[14px] text-white/55 sm:px-10 lg:px-16">
+                  {item.caption || item.title}
+                </p>
+              ) : null}
+            </a>
+          ))}
+        </section>
+      ) : null}
+
+      {subs.length ? (
+        <section className="mx-auto max-w-[1180px] px-6 pb-16 sm:px-10 lg:px-16">
+          <div className="grid gap-x-12 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+            {subs.map((sub) => (
+              <a key={sub.id} href={subcategoryPath(match.category, sub)} className="group">
+                <p className="text-[20px] font-light group-hover:text-[#e3943f]">{sub.name}</p>
+                {sub.menuDescription ? <p className="mt-2 text-[14px] text-white/55">{sub.menuDescription}</p> : null}
+              </a>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {showClosing ? (
+        <section className="relative overflow-hidden">
+          {closingPhoto ? (
+            <Media src={closingPhoto} fallback={fallbackMedia} className="absolute inset-0 h-full w-full object-cover" />
+          ) : null}
+          <div className={`relative px-6 py-24 sm:px-10 lg:px-16 ${closingPhoto ? 'bg-black/55' : ''}`}>
+            <div className="mx-auto max-w-[1180px]">
+              {closing.heading ? (
+                <h3 className="max-w-[18ch] text-[32px] font-light leading-[1.1] tracking-[-0.03em] sm:text-[44px]">
+                  {closing.heading}
+                </h3>
+              ) : null}
+              {closing.paragraph ? (
+                <p className="mt-5 max-w-[60ch] text-[16px] leading-relaxed text-white/75">{closing.paragraph}</p>
+              ) : null}
+              {closing.buttonLabel ? (
+                <a
+                  href={closing.buttonLink || '/contacts'}
+                  className="mt-8 inline-flex rounded-full bg-white px-7 py-3 text-[14px] text-black hover:bg-[#e3943f]"
+                >
+                  {closing.buttonLabel}
+                </a>
+              ) : null}
             </div>
           </div>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
     </main>
   )
 }

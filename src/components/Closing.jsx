@@ -8,11 +8,6 @@ export const DEFAULT_CLOSING_CONFIG = {
     title: 'Built around the way you live.',
     text: 'Plans, rooms, and the work on site. One studio from the first sketch to the last fitting.',
   },
-  ru: {
-    mark: 'Unique Graphics',
-    title: 'Собрано вокруг того, как вы живёте.',
-    text: 'Планы, комнаты и работа на площадке. Одна студия от первого эскиза до последней примерки.',
-  },
 }
 
 export default function Closing({ lang }) {
@@ -62,7 +57,7 @@ export default function Closing({ lang }) {
     }
   }, [])
 
-  const text = config[lang] ?? config.en ?? DEFAULT_CLOSING_CONFIG[lang] ?? DEFAULT_CLOSING_CONFIG.en
+  const text = config?.en || DEFAULT_CLOSING_CONFIG.en
   const logoUrl = config?.logoUrl || DEFAULT_CLOSING_CONFIG.logoUrl || '/closing_logo.png'
   const showLogo = config?.showLogo !== undefined ? config.showLogo : true
 

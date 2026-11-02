@@ -10,10 +10,14 @@ const MIME = {
   '.png': 'image/png',
   '.webp': 'image/webp',
   '.gif': 'image/gif',
+  '.avif': 'image/avif',
+  '.svg': 'image/svg+xml',
   '.mp4': 'video/mp4',
   '.webm': 'video/webm',
   '.ogg': 'video/ogg',
   '.mov': 'video/quicktime',
+  '.m4v': 'video/x-m4v',
+  '.bin': 'application/octet-stream',
 }
 
 function extOf(name) {

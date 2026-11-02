@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { menuPages } from '../data/menuPages'
+import { portfolioCategoryPath, portfolioSubcategoryPath } from '../data/portfolioTree'
 import { reelForPage } from '../data/reels'
 import LoopVideo from './LoopVideo'
-import { FaInstagram, FaPinterest, FaVk, FaYoutube } from 'react-icons/fa'
+import { FaInstagram, FaPinterest, FaLinkedin, FaYoutube } from 'react-icons/fa'
+
+function clearEnquireProjectMedia() {
+  try {
+    sessionStorage.removeItem('ug_enquire_project')
+  } catch {
+    /* ignore */
+  }
+}
 
 const copy = {
   en: {
@@ -15,13 +24,11 @@ const copy = {
     menu: 'Menu',
     search: 'Search',
     portfolioLinks: [
-      ['all-projects', 'All projects'],
       ['architectural-design', 'Architectural design'],
       ['interior-design', 'Interior design'],
       ['commercial-design', 'Commercial design'],
     ],
     serviceLinks: [
-      ['all-services', 'All services'],
       ['architecture', 'Architecture'],
       ['interiors', 'Interiors'],
       ['commercial-interiors', 'Commercial interiors'],
@@ -31,34 +38,6 @@ const copy = {
       ['design-supervision', 'Design supervision'],
       ['construction-management', 'Construction management'],
       ['procurement', 'Procurement'],
-    ],
-  },
-  ru: {
-    contact: 'Связаться',
-    about: 'О нас',
-    portfolio: 'Портфолио',
-    contacts: 'Контакты',
-    services: 'Услуги',
-    blog: 'Блог',
-    menu: 'Меню',
-    search: 'Поиск',
-    portfolioLinks: [
-      ['all-projects', 'Все проекты'],
-      ['architectural-design', 'Архитектурное проектирование'],
-      ['interior-design', 'Дизайн интерьера'],
-      ['commercial-design', 'Коммерческий дизайн'],
-    ],
-    serviceLinks: [
-      ['all-services', 'Все услуги'],
-      ['architecture', 'Архитектура'],
-      ['interiors', 'Интерьеры'],
-      ['commercial-interiors', 'Коммерческие интерьеры'],
-      ['2d-3d-design', '2D / 3D дизайн'],
-      ['walkthrough', '3D Видеотур (Walkthrough)'],
-      ['bim-engineering', 'BIM проектирование'],
-      ['design-supervision', 'Авторский надзор'],
-      ['construction-management', 'Управление строительством'],
-      ['procurement', 'Комплектация'],
     ],
   },
 }
@@ -127,9 +106,9 @@ function PinIcon() {
   )
 }
 
-import { getStoredPortfolioConfig } from '../data/portfolioConfig'
+import { getStoredPortfolioConfig, setStoredPortfolioConfig } from '../data/portfolioConfig'
 import { getStoredServicesConfig } from '../data/servicesConfig'
-import { categoryPath, getStoredServiceTree, menuCategories, setStoredServiceTree, subcategoryPath, SUBCATEGORY_MEDIA_MAP, sanitizeMediaUrl, slugify } from '../data/serviceTree'
+import { categoryPath, getStoredServiceTree, menuCategories, setStoredServiceTree, subcategoryPath, SUBCATEGORY_MEDIA_MAP, sanitizeMediaUrl, isRealMediaUrl, isRealVideoUrl, slugify } from '../data/serviceTree'
 import { getStoredPortfolioTree, setStoredPortfolioTree } from '../data/portfolioTree'
 
 function MenuLinks({ items, onNavigate, onHover, activeId }) {
@@ -177,15 +156,23 @@ function MenuLinks({ items, onNavigate, onHover, activeId }) {
 function hoverCard(item) {
   const slug = slugify(item?.slug || item?.id || item?.name)
   const cleanImage = sanitizeMediaUrl(item?.menuImage, slug)
+  const video = isRealVideoUrl(item?.menuVideo) ? String(item.menuVideo).trim() : ''
   return {
     title: item?.name || '',
     caption: item?.menuDescription || '',
-    image: cleanImage || SUBCATEGORY_MEDIA_MAP[slug] || '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
-    video: item?.menuVideo || '',
+    image:
+      cleanImage ||
+      SUBCATEGORY_MEDIA_MAP[slug] ||
+      '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
+    video,
   }
 }
 
-function ServiceMenu({ categories, onNavigate, activeSlug, onHover, nested }) {
+function portfolioCategoryHref(item) {
+  return portfolioCategoryPath(item)
+}
+
+function ServiceMenu({ categories, onNavigate, activeSlug, onHover, nested, mode = 'services' }) {
   const [openSlug, setOpenSlug] = useState('')
   const openCategory = categories.find((item) => item.slug === openSlug && item.subcategories?.length)
 
@@ -194,11 +181,12 @@ function ServiceMenu({ categories, onNavigate, activeSlug, onHover, nested }) {
       {categories.map((item) => {
         const subs = item.subcategories || []
         const open = openSlug === item.slug
+        const href = mode === 'portfolio' ? portfolioCategoryHref(item) : item.href || categoryPath(item)
         return (
           <li key={item.id}>
             <div className="flex items-center gap-3">
               <a
-                href={item.href || categoryPath(item)}
+                href={href}
                 onClick={onNavigate}
                 onMouseEnter={() => {
                   setOpenSlug(subs.length ? item.slug : '')
@@ -230,7 +218,7 @@ function ServiceMenu({ categories, onNavigate, activeSlug, onHover, nested }) {
                 {subs.map((sub) => (
                   <li key={sub.id}>
                     <a
-                      href={sub.href || subcategoryPath(item, sub)}
+                      href={mode === 'portfolio' ? portfolioSubcategoryPath(item, sub) : sub.href || subcategoryPath(item, sub)}
                       onClick={onNavigate}
                       onMouseEnter={() => onHover?.(hoverCard(sub))}
                       className="text-[13px] tracking-[0.12em] text-white/85 uppercase hover:text-[#e3943f]"
@@ -257,7 +245,7 @@ function ServiceMenu({ categories, onNavigate, activeSlug, onHover, nested }) {
           {openCategory.subcategories.map((sub) => (
             <li key={sub.id}>
               <a
-                href={sub.href || subcategoryPath(openCategory, sub)}
+                href={mode === 'portfolio' ? portfolioSubcategoryPath(openCategory, sub) : sub.href || subcategoryPath(openCategory, sub)}
                 onClick={onNavigate}
                 onMouseEnter={() => onHover?.(hoverCard(sub))}
                 className={`text-[13px] tracking-[0.14em] uppercase transition-colors hover:text-[#e3943f] ${activeSlug === sub.name ? 'text-[#e3943f]' : 'text-white'}`}
@@ -311,19 +299,30 @@ function MenuPreview({ id, fallback }) {
   )
 }
 
+const PREVIEW_FALLBACK =
+  '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg'
+
 function PreviewCard({ image, focus, title, caption, video }) {
+  const safeImage = isRealMediaUrl(image) ? image : PREVIEW_FALLBACK
+  const [imgSrc, setImgSrc] = useState(safeImage)
+  useEffect(() => {
+    setImgSrc(isRealMediaUrl(image) ? image : PREVIEW_FALLBACK)
+  }, [image])
+  const showVideo = isRealVideoUrl(video)
   return (
     <div className="w-full max-w-[280px]">
-      {video ? (
+      {showVideo ? (
         <LoopVideo
           src={video}
+          poster={imgSrc || PREVIEW_FALLBACK}
           className="aspect-square w-full rounded-[22px] object-cover shadow-[0_18px_40px_rgba(0,0,0,0.28)]"
         />
       ) : (
         <img
-          src={image}
+          src={imgSrc || PREVIEW_FALLBACK}
           alt=""
           style={{ objectPosition: focus }}
+          onError={() => setImgSrc(PREVIEW_FALLBACK)}
           className="aspect-square w-full rounded-[22px] object-cover shadow-[0_18px_40px_rgba(0,0,0,0.28)]"
         />
       )}
@@ -348,7 +347,9 @@ export default function Navbar() {
   const [serviceTree, setServiceTree] = useState(() => getStoredServiceTree())
   const [portfolioTree, setPortfolioTree] = useState(() => getStoredPortfolioTree())
   const services = menuCategories(serviceTree)
-  const portfolioItems = menuCategories(portfolioTree)
+  const portfolioItems = menuCategories(portfolioTree).filter(
+    (item) => item.slug !== 'all-projects' && item.id !== 'all-projects'
+  )
   const activeMenu = openMenu ? menus[openMenu] : null
 
   useEffect(() => {
@@ -358,14 +359,7 @@ export default function Navbar() {
       .then((res) => res.json())
       .then((data) => {
         if (data?.success && Array.isArray(data.data?.categories) && data.data.categories.length) {
-          const defaultTree = getStoredServiceTree()
-          const hasAstro = data.data.categories.some((c) => c.slug === 'astro-vastu' || c.id === 'astro-vastu')
-          let finalCategories = data.data.categories
-          if (!hasAstro) {
-            const astroCat = defaultTree.categories.find((c) => c.slug === 'astro-vastu')
-            if (astroCat) finalCategories = [...finalCategories, astroCat]
-          }
-          setStoredServiceTree({ categories: finalCategories })
+          setStoredServiceTree({ categories: data.data.categories })
           setServiceTree(getStoredServiceTree())
         }
       })
@@ -379,8 +373,9 @@ export default function Navbar() {
     fetch('/api/blogs/settings/portfolio-pages')
       .then((res) => res.json())
       .then((data) => {
-        if (data?.success && Array.isArray(data.data?.categories) && data.data.categories.length) {
-          setStoredPortfolioTree({ categories: data.data.categories })
+        if (data?.success && data.data) {
+          const current = getStoredPortfolioConfig()
+          setStoredPortfolioConfig({ ...current, ...data.data })
           setPortfolioTree(getStoredPortfolioTree())
         }
       })
@@ -503,7 +498,10 @@ export default function Navbar() {
               <a
                 href="/contacts"
                 className="hidden items-center gap-2.5 text-[13px] tracking-[0.2em] uppercase md:flex transition-opacity hover:opacity-75"
-                onClick={closeAll}
+                onClick={() => {
+                  clearEnquireProjectMedia()
+                  closeAll()
+                }}
               >
                 {text.contact}
                 <PinIcon />
@@ -512,7 +510,10 @@ export default function Navbar() {
                 href="/contacts"
                 className="flex size-10 items-center justify-center md:hidden"
                 aria-label={text.contact}
-                onClick={closeAll}
+                onClick={() => {
+                  clearEnquireProjectMedia()
+                  closeAll()
+                }}
               >
                 <ChatIcon />
               </a>
@@ -543,35 +544,43 @@ export default function Navbar() {
                 <a href="/about" className={linkClass} onMouseEnter={() => setOpenMenu(null)} onClick={closeAll}>
                   {text.about}
                 </a>
-                <button
-                  type="button"
+                <a
+                  href="/all-projects"
                   className={`${linkClass} inline-flex items-center gap-2`}
                   aria-expanded={openMenu === 'portfolio'}
                   aria-controls="portfolio-menu"
                   onMouseEnter={() => showMenu('portfolio')}
-                  onClick={() => toggleMenu('portfolio')}
+                  onClick={closeAll}
                 >
                   <span className={openMenu === 'portfolio' ? 'underline decoration-white underline-offset-[10px]' : ''}>
                     {text.portfolio}
                   </span>
                   <Chevron open={openMenu === 'portfolio'} />
-                </button>
-                <a href="/contacts" className={linkClass} onMouseEnter={() => setOpenMenu(null)} onClick={closeAll}>
+                </a>
+                <a
+                  href="/contacts"
+                  className={linkClass}
+                  onMouseEnter={() => setOpenMenu(null)}
+                  onClick={() => {
+                    clearEnquireProjectMedia()
+                    closeAll()
+                  }}
+                >
                   {text.contacts}
                 </a>
-                <button
-                  type="button"
+                <a
+                  href="/services"
                   className={`${linkClass} inline-flex items-center gap-2`}
                   aria-expanded={openMenu === 'services'}
                   aria-controls="services-menu"
                   onMouseEnter={() => showMenu('services')}
-                  onClick={() => toggleMenu('services')}
+                  onClick={closeAll}
                 >
                   <span className={openMenu === 'services' ? 'underline decoration-white underline-offset-[10px]' : ''}>
                     {text.services}
                   </span>
                   <Chevron open={openMenu === 'services'} />
-                </button>
+                </a>
                 <a href="/blog" className={linkClass} onMouseEnter={() => setOpenMenu(null)} onClick={closeAll}>
                   {text.blog}
                 </a>
@@ -585,6 +594,7 @@ export default function Navbar() {
                 {openMenu === 'services' || openMenu === 'portfolio' ? (
                   <ServiceMenu
                     categories={openMenu === 'services' ? services : portfolioItems}
+                    mode={openMenu === 'portfolio' ? 'portfolio' : 'services'}
                     onNavigate={closeAll}
                     onHover={setPreviewCard}
                     activeSlug={previewCard?.title}
@@ -636,35 +646,52 @@ export default function Navbar() {
             <a href="/about" className={mobileItem('/about')} onClick={closeAll}>
               {text.about}
             </a>
-            <button
-              type="button"
-              className={`${mobileItem()} inline-flex items-center gap-3 self-start`}
-              aria-expanded={openMenu === 'portfolio'}
-              onClick={() => toggleMenu('portfolio')}
-            >
-              {text.portfolio}
-              <Chevron open={openMenu === 'portfolio'} />
-            </button>
+            <div className="flex items-center gap-3 self-start">
+              <a href="/all-projects" className={mobileItem()} onClick={closeAll}>
+                {text.portfolio}
+              </a>
+              <button
+                type="button"
+                className="flex items-center text-white/70"
+                aria-label="Portfolio categories"
+                aria-expanded={openMenu === 'portfolio'}
+                onClick={() => toggleMenu('portfolio')}
+              >
+                <Chevron open={openMenu === 'portfolio'} />
+              </button>
+            </div>
             {openMenu === 'portfolio' ? (
               <div className="-mt-2 pl-1">
-                <ServiceMenu nested categories={portfolioItems} onNavigate={closeAll} onHover={setPreviewCard} activeSlug={previewCard?.title} />
+                <ServiceMenu nested mode="portfolio" categories={portfolioItems} onNavigate={closeAll} onHover={setPreviewCard} activeSlug={previewCard?.title} />
               </div>
             ) : null}
-            <a href="/contacts" className="text-[16px] tracking-[0.14em] text-[#e3943f] uppercase" onClick={closeAll}>
+            <a
+              href="/contacts"
+              className="text-[16px] tracking-[0.14em] text-[#e3943f] uppercase"
+              onClick={() => {
+                clearEnquireProjectMedia()
+                closeAll()
+              }}
+            >
               {text.contacts}
             </a>
-            <button
-              type="button"
-              className={`${mobileItem()} inline-flex items-center gap-3 self-start`}
-              aria-expanded={openMenu === 'services'}
-              onClick={() => toggleMenu('services')}
-            >
-              {text.services}
-              <Chevron open={openMenu === 'services'} />
-            </button>
+            <div className="flex items-center gap-3 self-start">
+              <a href="/services" className={mobileItem()} onClick={closeAll}>
+                {text.services}
+              </a>
+              <button
+                type="button"
+                className="flex items-center text-white/70"
+                aria-label="Services categories"
+                aria-expanded={openMenu === 'services'}
+                onClick={() => toggleMenu('services')}
+              >
+                <Chevron open={openMenu === 'services'} />
+              </button>
+            </div>
             {openMenu === 'services' ? (
               <div className="-mt-2 pl-1">
-                <ServiceMenu nested categories={services} onNavigate={closeAll} onHover={setPreviewCard} activeSlug={previewCard?.title} />
+                <ServiceMenu nested mode="services" categories={services} onNavigate={closeAll} onHover={setPreviewCard} activeSlug={previewCard?.title} />
               </div>
             ) : null}
             <a href="/career" className={mobileItem('/career')} onClick={closeAll}>
@@ -696,13 +723,13 @@ export default function Navbar() {
                 <FaPinterest className="h-5 w-5" />
               </a>
               <a
-                href="https://vk.com"
+                href="https://linkedin.com"
                 target="_blank"
                 rel="noreferrer"
-                aria-label="VKontakte"
+                aria-label="LinkedIn"
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white/80 transition-all duration-300 hover:scale-110 hover:border-[#e3943f] hover:bg-[#e3943f] hover:text-black"
               >
-                <FaVk className="h-5 w-5" />
+                <FaLinkedin className="h-5 w-5" />
               </a>
               <a
                 href="https://youtube.com"

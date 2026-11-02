@@ -6,11 +6,6 @@ export const DEFAULT_CLIENTS_CONFIG = {
     accent: 'who strive for excellence',
     after: ' — among our clients:',
   },
-  ru: {
-    before: 'Нас выбирают те, ',
-    accent: 'кто стремится к совершенству',
-    after: ' — среди наших клиентов:',
-  },
   brands: [
     { type: 'text', name: 'MR GROUP', bold: true },
     { type: 'hilton', name: 'Hilton', sub: 'HOTELS & RESORTS' },
@@ -18,13 +13,24 @@ export const DEFAULT_CLIENTS_CONFIG = {
     { type: 'badge', name: 'ENGEC' },
     { type: 'italic', name: 'DAMAC' },
     { type: 'mandarin', name: 'MANDARIN ORIENTAL', sub: 'THE HOTEL GROUP' },
-    { type: 'euro', name: 'ЕВРОСТРОЙ' },
+    { type: 'euro', name: 'EUROSTROY' },
   ],
 }
 
-function RenderBrand({ brand }) {
+export function RenderBrand({ brand }) {
+  if (!brand) return null
   if (typeof brand === 'string') {
     return <span className="shrink-0 text-[24px] font-bold tracking-wider">{brand}</span>
+  }
+  if (brand.image || brand.logo || brand.type === 'image') {
+    const src = brand.image || brand.logo
+    return (
+      <img
+        src={src}
+        alt={brand.name || 'Brand Logo'}
+        className="h-8 max-h-9 w-auto max-w-[150px] object-contain brightness-0 invert opacity-90 hover:opacity-100 transition-opacity shrink-0"
+      />
+    )
   }
   if (brand.type === 'hilton') {
     return (
@@ -71,17 +77,18 @@ function RenderBrand({ brand }) {
     )
   }
   if (brand.type === 'euro') {
+    const brandName = (!brand.name || brand.name === '\u0415\u0412\u0420\u041E\u0421\u0422\u0420\u041E\u0419') ? 'EUROSTROY' : brand.name
     return (
       <span className="flex shrink-0 items-center gap-2 text-[20px] font-bold">
         <span className="text-[18px] leading-none">≡</span>
-        {brand.name || 'ЕВРОСТРОЙ'}
+        {brandName}
       </span>
     )
   }
   return <span className="shrink-0 text-[24px] font-bold tracking-wider">{brand.name}</span>
 }
 
-export default function Clients({ lang = 'en' }) {
+export default function Clients({ lang = 'en', runnerOnly = false, className = '' }) {
   const [config, setConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('ug_brand_sections_config')
@@ -128,20 +135,27 @@ export default function Clients({ lang = 'en' }) {
     }
   }, [])
 
-  const currentLang = lang === 'ru' ? 'ru' : 'en'
-  const text = config?.[currentLang] || DEFAULT_CLIENTS_CONFIG[currentLang]
-  const brandsList = (Array.isArray(config?.brands) && config.brands.length > 0)
+  const text = config?.en || DEFAULT_CLIENTS_CONFIG.en
+  const rawBrands = (Array.isArray(config?.brands) && config.brands.length > 0)
     ? config.brands
     : DEFAULT_CLIENTS_CONFIG.brands
+  const brandsList = rawBrands.map((b) => {
+    if (!b) return b
+    if (typeof b === 'string') return b === '\u0415\u0412\u0420\u041E\u0421\u0422\u0420\u041E\u0419' ? 'EUROSTROY' : b
+    if (b.name === '\u0415\u0412\u0420\u041E\u0421\u0422\u0420\u041E\u0419') return { ...b, name: 'EUROSTROY' }
+    return b
+  })
 
   return (
-    <section className="w-full overflow-hidden bg-[#141414] py-10 text-white">
-      <h2 className="px-4 text-center text-[16px] leading-snug font-medium tracking-[0.04em] uppercase sm:text-[22px]">
-        {text.before || DEFAULT_CLIENTS_CONFIG.en.before}
-        <span className="text-[#e3943f]">{text.accent || DEFAULT_CLIENTS_CONFIG.en.accent}</span>
-        {text.after || DEFAULT_CLIENTS_CONFIG.en.after}
-      </h2>
-      <div className="no-scrollbar mt-8 w-full overflow-hidden">
+    <section className={`w-full overflow-hidden bg-[#141414] py-10 text-white ${className}`}>
+      {runnerOnly ? null : (
+        <h2 className="px-4 text-center text-[16px] leading-snug font-medium tracking-[0.04em] uppercase sm:text-[22px]">
+          {text.before || DEFAULT_CLIENTS_CONFIG.en.before}
+          <span className="text-[#e3943f]">{text.accent || DEFAULT_CLIENTS_CONFIG.en.accent}</span>
+          {text.after || DEFAULT_CLIENTS_CONFIG.en.after}
+        </h2>
+      )}
+      <div className={`no-scrollbar w-full overflow-hidden ${runnerOnly ? '' : 'mt-8'}`}>
         <div className="logo-run flex w-max items-center gap-16">
           {brandsList.map((brand, i) => (
             <RenderBrand key={`b1-${i}`} brand={brand} />

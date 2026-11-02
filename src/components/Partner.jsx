@@ -82,85 +82,6 @@ const services = {
       },
     ],
   },
-  ru: {
-    title: 'Unique Graphics — партнёр на долгие годы',
-    lead: 'Сервис, собранный под требовательного заказчика',
-    close: 'Закрыть',
-    items: [
-      {
-        id: 'premium',
-        title: 'Привычный премиальный сервис',
-        text: 'Живите как привыкли, пока мы воплощаем ваш замысел',
-        icon: 'diamond',
-        image: '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png',
-        modalTitle: 'Unique Graphics берёт на себя полный цикл реализации проекта',
-        intro: 'Команда студии ведёт:',
-        points: ['архитектуру', 'интерьер', 'инженерные решения'],
-        detail: 'Вы получаете реализованный проект и не погружаетесь в технические процессы.',
-        button: 'Обсудить реализацию проекта',
-      },
-      {
-        id: 'expert',
-        title: 'Личный эксперт по архитектуре и дизайну',
-        text: 'Ваш постоянный советник в Unique Graphics',
-        icon: 'advisor',
-        image: '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
-        modalTitle: 'Один человек ведёт проект с первого разговора',
-        intro: 'Эксперт берёт на себя:',
-        points: ['бриф и ваш образ жизни', 'решения по ходу проекта', 'связь между вами и площадкой'],
-        detail: 'Вас не передают из отдела в отдел. Один человек знает проект и отвечает за него.',
-        button: 'Поговорить с экспертом',
-      },
-      {
-        id: 'bespoke',
-        title: 'Индивидуальный дизайн',
-        text: 'Проект рисуется только для вас, по отдельным эскизам',
-        icon: 'lock',
-        image: '/website-assets/INTERIOR/INTERIOR%20MODERN/LIVING%20ROOM/A1.jpg',
-        modalTitle: 'Дизайн делается для этого дома и ни для какого другого',
-        intro: 'Мы готовим:',
-        points: ['эскизы по вашему брифу', 'планы под комнаты, которыми вы пользуетесь', 'материалы именно этого проекта'],
-        detail: 'Ничего не берётся готовым набором. Чертежи начинаются с того, как вы живёте.',
-        button: 'Начать индивидуальный проект',
-      },
-      {
-        id: 'roadmap',
-        title: 'Дорожная карта',
-        text: 'Точная система ведения проекта с ясными точками согласования',
-        icon: 'pins',
-        image: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png',
-        modalTitle: 'Каждый этап согласуется до начала следующего',
-        intro: 'На карте отмечены:',
-        points: ['согласование концепции', 'чертежи и спецификации', 'этапы площадки, которые вы принимаете'],
-        detail: 'Видно, что дальше, что ждёт вашего решения и что уже сделано.',
-        button: 'Как устроена дорожная карта',
-      },
-      {
-        id: 'reporting',
-        title: 'Система отчётов',
-        text: 'Ход строительства можно смотреть онлайн',
-        icon: 'report',
-        image: '/website-assets/architecture/The%20Romania%20-%20Luxury%20Wedding%20Spaces%20BANQUET%20HALL/Golden%20Arch%20Banquet%20Hall%20at%20Night-6.png',
-        modalTitle: 'Прогресс площадки виден без визита каждую неделю',
-        intro: 'В отчёте:',
-        points: ['что завершено', 'что в работе', 'какое решение нужно от вас'],
-        detail: 'Фото и короткая заметка держат работу в поле зрения, пока вы на своём месте.',
-        button: 'Спросить про отчёты',
-      },
-      {
-        id: 'transparency',
-        title: 'Прозрачность',
-        text: 'Подробные сроки по вашему проекту',
-        icon: 'chart',
-        image: '/website-assets/architecture/AL%20REHMAN%20TOWER%20KOLKATA/7e4f4312-846d-4e35-9f2b-af632b7dfc0a.png',
-        modalTitle: 'Сроки записаны, а не держатся в чьей-то голове',
-        intro: 'Можно следить за:',
-        points: ['порядком работ', 'датами каждого этапа', 'тем, куда сядет задержка'],
-        detail: 'Если дата сдвигается, это видно в графике раньше, чем станет сюрпризом на площадке.',
-        button: 'Обсудить сроки',
-      },
-    ],
-  },
 }
 
 const partnerReels = {
@@ -305,7 +226,7 @@ function ServiceModal({ item, onClose, closeLabel }) {
 }
 
 export default function Partner({ lang }) {
-  const text = services[lang] ?? services.en
+  const text = services.en
   const [openId, setOpenId] = useState(null)
   const open = text.items.find((item) => item.id === openId) ?? null
 

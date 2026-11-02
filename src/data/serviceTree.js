@@ -54,6 +54,112 @@ export function emptyPage(partial = {}) {
   }
 }
 
+function uniqueStorySlug(raw, fallback, reserved, used) {
+  let slug = slugify(raw) || fallback
+  if (!slug) slug = fallback
+  let candidate = slug
+  let index = 2
+  while (reserved.has(candidate) || used.has(candidate)) {
+    candidate = `${slug}-${index}`
+    index += 1
+  }
+  used.add(candidate)
+  return candidate
+}
+
+function storyDetailHasContent(detail) {
+  if (!detail || typeof detail !== 'object') return false
+  const banner = detail.banner || {}
+  return Boolean(
+    banner.title ||
+      banner.subtitle ||
+      (banner.images || []).some(Boolean) ||
+      detail.intro?.heading ||
+      detail.intro?.paragraph1 ||
+      (Array.isArray(detail.sections) && detail.sections.length) ||
+      (Array.isArray(detail.gallery) && detail.gallery.length) ||
+      detail.closing?.heading
+  )
+}
+
+function seedStoryDetail(item) {
+  if (storyDetailHasContent(item?.detail)) return item.detail
+  const title = String(item?.title || item?.caption || '').trim()
+  const text = String(item?.text || item?.caption || '').trim()
+  const image = String(item?.image || '').trim()
+  return {
+    banner: {
+      show: true,
+      label: '',
+      title,
+      accent: 'by Unique Graphics®',
+      subtitle: text,
+      images: [image, '', ''],
+    },
+    intro: {
+      show: true,
+      heading: title,
+      paragraph1: text,
+      paragraph2: '',
+    },
+    sections: [],
+    gallery: [],
+    closing: {
+      show: true,
+      heading: title ? `Continue ${title.toLowerCase()}.` : 'Discuss this space.',
+      paragraph: text || 'Share the brief and how the space should work.',
+      buttonLabel: 'Discuss a project',
+      buttonLink: '/contacts',
+    },
+  }
+}
+
+function normalizeHighlightEntry(raw, index, reserved, used) {
+  const title = String(raw?.title || '').trim()
+  const slug = uniqueStorySlug(raw?.slug || title || raw?.id || `highlight-${index + 1}`, `highlight-${index + 1}`, reserved, used)
+  return {
+    id: raw?.id || `hl-${index + 1}`,
+    title,
+    text: String(raw?.text || ''),
+    image: String(raw?.image || ''),
+    slug,
+    published: raw?.published !== false,
+    detail: seedStoryDetail({ ...raw, title }),
+  }
+}
+
+function normalizeGalleryEntry(raw, index, reserved, used) {
+  const caption = String(raw?.caption || '').trim()
+  const title = String(raw?.title || caption).trim()
+  const slug = uniqueStorySlug(raw?.slug || title || raw?.id || `gallery-${index + 1}`, `gallery-${index + 1}`, reserved, used)
+  return {
+    id: raw?.id || `gal-${index + 1}`,
+    image: String(raw?.image || ''),
+    caption,
+    title,
+    slug,
+    published: raw?.published !== false,
+    detail: seedStoryDetail({ ...raw, title, caption, text: raw?.text || caption }),
+  }
+}
+
+export function normalizeServicePage(partial, reservedSlugs = []) {
+  const page = emptyPage(partial || {})
+  const reserved = new Set((reservedSlugs || []).map((value) => String(value || '').trim()).filter(Boolean))
+  const used = new Set()
+  return {
+    ...page,
+    highlights: {
+      ...page.highlights,
+      items: (page.highlights?.items || []).map((item, index) => normalizeHighlightEntry(item, index, reserved, used)),
+    },
+    gallery: {
+      ...page.gallery,
+      items: (page.gallery?.items || []).map((item, index) => normalizeGalleryEntry(item, index, reserved, used)),
+    },
+  }
+}
+
 function pageFromDiscipline(id) {
   const cfg = DEFAULT_SERVICES_CONFIG
   const hero = cfg.heroes[id] || {}
@@ -151,15 +257,33 @@ export function isBadMedia(src) {
   if (!s) return true
   if (s === '/hero.jpg' || s.includes('hero.jpg')) return true
   if (s.includes('services-card.jpg')) return true
-  if (s.includes('/uploads/1792')) return true
-  if (s.includes('09.jpg') || s.includes('01.jpg')) return true
   if (s.includes('iphone') || s.includes('mockup')) return true
+  // Plain junk like "tetx" (no path / protocol / file extension)
+  if (!/[\\/]/.test(s) && !s.startsWith('data:') && !/^https?:/.test(s) && !/\.(jpe?g|png|webp|gif|avif|mp4|webm|mov|m4v)(\?|#|$)/i.test(s)) {
+    return true
+  }
   return false
 }
 
+export function isRealMediaUrl(src) {
+  const s = String(src || '').trim()
+  if (!s || isBadMedia(s)) return false
+  if (s.startsWith('data:image') || s.startsWith('data:video')) return true
+  if (s.startsWith('/uploads/') || s.startsWith('/website-assets/') || s.startsWith('/nav/')) return true
+  if (/^https?:\/\//i.test(s)) return true
+  if (/\.(jpe?g|png|webp|gif|avif|mp4|webm|mov|m4v)(\?|#|$)/i.test(s) && /[\\/]/.test(s)) return true
+  return false
+}
+
+export function isRealVideoUrl(src) {
+  const s = String(src || '').trim()
+  if (!isRealMediaUrl(s)) return false
+  return s.startsWith('data:video') || /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(s)
+}
+
 export function sanitizeMediaUrl(url, slug) {
-  const s = String(url || '')
-  if (isBadMedia(s) || s.includes('.mp4')) {
+  const s = String(url || '').trim()
+  if (!s || isBadMedia(s) || !isRealMediaUrl(s)) {
     return SUBCATEGORY_MEDIA_MAP[slug] || '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg'
   }
   return s
@@ -188,13 +312,11 @@ export function buildDefaultServiceTree() {
   const business = [
     'Hotels',
     'Restaurants',
-    'Banquet Halls',
-    'Bars & Night Clubs',
     'Resorts',
     'Offices',
-    'Retail Showrooms',
     'Spa & Wellness',
     'Common areas',
+    'Bars',
   ]
 
   const categories = [
@@ -212,7 +334,7 @@ export function buildDefaultServiceTree() {
       sourceId: 'commercial-interiors',
       subcategories: business.map((name) => subcategory('commercial-interiors', name)),
     }),
-    category({ id: 'astro-vastu', name: 'Astro Vastu', sourceId: 'astro-vastu' }),
+    category({ id: 'astro-vastu', name: 'Astro Vastu', sourceId: 'astro-vastu', showInMenu: false }),
     category({ id: 'bim-engineering', name: 'Bim engineering', sourceId: 'bim-engineering' }),
     category({ id: 'design-supervision', name: 'Design supervision', sourceId: 'design-supervision' }),
     category({ id: 'construction-management', name: 'Construction management', sourceId: 'construction-management' }),
@@ -428,80 +550,35 @@ export function normalizeTree(raw) {
           name: categoryItem.name || '',
           slug: catSlug,
           menuDescription: categoryItem.menuDescription || '',
-          menuImage: sanitizeMediaUrl(categoryItem.menuImage, catSlug),
+          menuImage: categoryItem.menuImage || '',
           menuVideo: categoryItem.menuVideo || '',
           published: categoryItem.published !== false,
           showInMenu: categoryItem.showInMenu !== false,
           href: categoryItem.href || '',
           order: Number.isFinite(categoryItem.order) ? categoryItem.order : index,
-          page: emptyPage(categoryItem.page || {}),
+          page: normalizeServicePage(
+            categoryItem.page || {},
+            (categoryItem.subcategories || []).map((sub) => sub.slug || slugify(sub.name))
+          ),
+          projects: Array.isArray(categoryItem.projects) ? categoryItem.projects : [],
           subcategories: Array.isArray(categoryItem.subcategories)
             ? categoryItem.subcategories
                 .filter((sub) => !isJunkText(sub.name) && !isJunkText(sub.slug))
                 .map((sub, subIndex) => {
                   const subSlug = sub.slug || slugify(sub.name)
-                  const richSub = getRichPageForSlug(subSlug, sub.name)
-                  const rawSubPage = emptyPage(sub.page || {})
-                  const cleanSubImages = (rawSubPage.banner?.images || []).filter((img) => !isBadMedia(img))
-
-                  // Check if stored banner images have duplicates or are fewer than 3
-                  const bannerDuplicated = hasDuplicateMedia(cleanSubImages) || cleanSubImages.length < 3
-                  const resolvedBannerImages = (richSub && (bannerDuplicated || !cleanSubImages.length))
-                    ? richSub.banner.images
-                    : (cleanSubImages.length ? cleanSubImages : (richSub?.banner?.images || []))
-
-                  // Check if stored highlights have duplicates or clash with banner
-                  const cleanHighlights = (rawSubPage.highlights?.items || []).filter((h) => !isBadMedia(h.image))
-                  const highlightImages = cleanHighlights.map((h) => h.image)
-                  const highlightsDuplicated =
-                    hasDuplicateMedia(highlightImages) ||
-                    highlightImages.some((img) => resolvedBannerImages.includes(img))
-                  const resolvedHighlights = (richSub && (highlightsDuplicated || !cleanHighlights.length))
-                    ? richSub.highlights
-                    : (cleanHighlights.length ? rawSubPage.highlights : (richSub?.highlights || rawSubPage.highlights))
-
-                  // Check if stored gallery has duplicates or clash with banner
-                  const cleanGallery = (rawSubPage.gallery?.items || []).filter((g) => !isBadMedia(g.image))
-                  const galleryImages = cleanGallery.map((g) => g.image)
-                  const galleryDuplicated =
-                    hasDuplicateMedia(galleryImages) ||
-                    galleryImages.some((img) => resolvedBannerImages.includes(img))
-                  const resolvedGallery = (richSub && (galleryDuplicated || !cleanGallery.length))
-                    ? richSub.gallery
-                    : (cleanGallery.length ? rawSubPage.gallery : (richSub?.gallery || rawSubPage.gallery))
-
-                  const finalSubPage = richSub
-                    ? {
-                        ...richSub,
-                        ...rawSubPage,
-                        banner: {
-                          ...richSub.banner,
-                          ...(rawSubPage.banner || {}),
-                          images: resolvedBannerImages,
-                        },
-                        intro: (rawSubPage.intro?.heading || rawSubPage.intro?.paragraph1) ? rawSubPage.intro : richSub.intro,
-                        highlights: resolvedHighlights,
-                        steps: (rawSubPage.steps?.items || []).filter((s) => s.title || s.text).length ? rawSubPage.steps : richSub.steps,
-                        gallery: resolvedGallery,
-                        closing: (rawSubPage.closing?.heading || rawSubPage.closing?.paragraph) ? rawSubPage.closing : richSub.closing,
-                      }
-                    : rawSubPage
-
-                  let finalMenuImage = sanitizeMediaUrl(sub.menuImage, subSlug)
-                  if (isBadMedia(finalMenuImage) || (resolvedBannerImages || []).includes(finalMenuImage)) {
-                    finalMenuImage = SUBCATEGORY_MEDIA_MAP[subSlug] || finalMenuImage
-                  }
-
                   return {
                     id: sub.id || subSlug || `sub-${subIndex + 1}`,
                     name: sub.name || '',
                     slug: subSlug,
-                    menuDescription: sub.menuDescription || richSub?.banner?.subtitle || '',
-                    menuImage: finalMenuImage,
+                    menuDescription: sub.menuDescription || '',
+                    menuImage: sub.menuImage || '',
+                    menuVideo: sub.menuVideo || '',
                     published: sub.published !== false,
+                    showInMenu: sub.showInMenu !== false,
                     href: sub.href || '',
                     order: Number.isFinite(sub.order) ? sub.order : subIndex,
-                    page: emptyPage(finalSubPage),
+                    page: normalizeServicePage(sub.page || {}),
+                    projects: Array.isArray(sub.projects) ? sub.projects : [],
                   }
                 })
             : [],
@@ -522,22 +599,43 @@ export function setStoredServiceTree(tree) {
 
 export function menuCategories(tree) {
   return [...(tree?.categories || [])]
-    .filter((item) => item.published && item.showInMenu !== false)
+    .filter((item) => item.published && item.showInMenu !== false && item.slug !== 'all-services' && item.id !== 'all-services')
     .sort((a, b) => a.order - b.order)
     .map((item) => ({
       ...item,
       subcategories: [...(item.subcategories || [])]
-        .filter((sub) => sub.published)
+        .filter((sub) => sub.published !== false && sub.showInMenu !== false)
         .sort((a, b) => a.order - b.order),
     }))
 }
 
 export function categoryPath(categoryItem) {
+  if (categoryItem?.slug === 'all-services' || categoryItem?.id === 'all-services') return '/services'
   return `/services/${categoryItem.slug}`
 }
 
 export function subcategoryPath(categoryItem, sub) {
   return `/services/${categoryItem.slug}/${sub.slug}`
+}
+
+export function serviceHighlightPath(categoryItem, sub, item) {
+  const parent = sub?.slug ? subcategoryPath(categoryItem, sub) : categoryPath(categoryItem)
+  const slug = item?.slug || slugify(item?.title || item?.id || '')
+  if (!slug) return parent
+  if (!sub?.slug && (categoryItem?.slug === 'all-services' || categoryItem?.id === 'all-services')) {
+    return `/services/${slug}`
+  }
+  return `${parent}/${slug}`
+}
+
+export function serviceGalleryPath(categoryItem, sub, item) {
+  const parent = sub?.slug ? subcategoryPath(categoryItem, sub) : categoryPath(categoryItem)
+  const slug = item?.slug || slugify(item?.title || item?.caption || item?.id || '')
+  if (!slug) return parent
+  if (!sub?.slug && (categoryItem?.slug === 'all-services' || categoryItem?.id === 'all-services')) {
+    return `/services/${slug}`
+  }
+  return `${parent}/${slug}`
 }
 
 export function findServicePage(tree, categorySlug, subcategorySlug) {
@@ -547,6 +645,39 @@ export function findServicePage(tree, categorySlug, subcategorySlug) {
   const sub = (categoryItem.subcategories || []).find((item) => item.slug === subcategorySlug)
   if (!sub || !sub.published) return null
   return { category: categoryItem, subcategory: sub, page: sub.page, kind: 'subcategory' }
+}
+
+function findStoryOnPage(page, storySlug) {
+  const slug = String(storySlug || '').trim()
+  if (!slug || !page) return null
+  const highlight = (page.highlights?.items || []).find((item) => item.slug === slug || item.id === slug)
+  if (highlight) {
+    return {
+      highlight,
+      detail: highlight.detail || seedStoryDetail(highlight),
+    }
+  }
+  const galleryItem = (page.gallery?.items || []).find((item) => item.slug === slug || item.id === slug)
+  if (!galleryItem) return null
+  const highlightFromGallery = {
+    ...galleryItem,
+    title: galleryItem.title || galleryItem.caption || '',
+    text: galleryItem.text || galleryItem.caption || '',
+    image: galleryItem.image || '',
+  }
+  return {
+    highlight: highlightFromGallery,
+    galleryItem,
+    detail: galleryItem.detail || seedStoryDetail(highlightFromGallery),
+  }
+}
+
+export function findServiceStory(tree, categorySlug, subcategorySlug, storySlug) {
+  const match = findServicePage(tree, categorySlug, subcategorySlug || '')
+  if (!match) return null
+  const story = findStoryOnPage(match.page, storySlug)
+  if (!story) return null
+  return { ...match, ...story }
 }
 
 export function validateServiceTree(tree) {

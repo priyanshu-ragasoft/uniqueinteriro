@@ -170,7 +170,7 @@ export default function StudioPage({ lang = 'en', id }) {
   }, [])
 
   const page = findMenuPage(id)
-  const text = page?.[lang] ?? page?.en
+  const text = page?.en
   const isAllServices = id === 'all-services'
 
   const currentHero = servicesData.heroes?.[id] || {}
@@ -239,11 +239,11 @@ export default function StudioPage({ lang = 'en', id }) {
   // Filtered services on /all-services
   const filteredServices = useMemo(() => {
     return allServicesList.filter((item) => {
-      const itemText = item[lang] ?? item.en
+      const itemText = item.en
       const matchesType = () => {
         if (!selectedType || selectedType === 'ALL SERVICES' || selectedType === 'ALL DISCIPLINES') return true
         const s = selectedType.toLowerCase()
-        const t = (itemText.title || '').toLowerCase()
+        const t = (itemText?.title || '').toLowerCase()
         const i = (item.id || '').toLowerCase()
         return t.includes(s) || i.includes(s)
       }
@@ -251,21 +251,21 @@ export default function StudioPage({ lang = 'en', id }) {
       const q = searchQuery.toLowerCase().trim()
       const matchesSearch =
         !q ||
-        (itemText.title && itemText.title.toLowerCase().includes(q)) ||
-        (itemText.summary && itemText.summary.toLowerCase().includes(q)) ||
-        (itemText.points && itemText.points.some((p) => p.toLowerCase().includes(q)))
+        (itemText?.title && itemText.title.toLowerCase().includes(q)) ||
+        (itemText?.summary && itemText.summary.toLowerCase().includes(q)) ||
+        (itemText?.points && itemText.points.some((p) => p.toLowerCase().includes(q)))
 
       return matchesType() && matchesSearch
     })
-  }, [allServicesList, selectedType, searchQuery, lang])
+  }, [allServicesList, selectedType, searchQuery])
 
   if (!page || !text) {
     return (
       <main className="min-h-screen bg-[#111111] px-6 pt-40 pb-24 text-white">
         <div className="mx-auto max-w-[1600px]">
-          <h1 className="text-4xl">{lang === 'ru' ? 'Страница не найдена' : 'Page not found'}</h1>
+          <h1 className="text-4xl">Page not found</h1>
           <a href="/all-services" className="mt-4 inline-block text-[#e3943f] underline">
-            {lang === 'ru' ? 'Все услуги' : 'Back to all services'}
+            Back to all services
           </a>
         </div>
       </main>
@@ -310,7 +310,7 @@ export default function StudioPage({ lang = 'en', id }) {
               <span className="text-[16px] text-white/50 transition-transform group-hover:-translate-x-1 group-hover:text-[#e3943f]">
                 ‹
               </span>
-              <span>{isAllServices ? (lang === 'ru' ? 'Главная' : 'Home') : (lang === 'ru' ? 'Все услуги' : 'Services')}</span>
+              <span>{isAllServices ? 'Home' : 'Services'}</span>
             </a>
           </div>
 
@@ -412,10 +412,10 @@ export default function StudioPage({ lang = 'en', id }) {
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
               <div>
                 <p className="text-[12px] tracking-[0.2em] text-[#e3943f] uppercase">
-                  {lang === 'ru' ? 'Полный спектр услуг' : 'Full Scope of Services'}
+                  Full Scope of Services
                 </p>
                 <h2 className="mt-2 text-[28px] font-medium tracking-tight text-white sm:text-[38px]">
-                  {lang === 'ru' ? 'Наши ключевые направления' : 'Our Design & Engineering Disciplines'}
+                  Our Design & Engineering Disciplines
                 </h2>
               </div>
               <p className="text-[13px] text-white/60">
@@ -426,7 +426,7 @@ export default function StudioPage({ lang = 'en', id }) {
             {/* Exactly 4 cards per row on desktop */}
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {filteredServices.map((item) => {
-                const itemText = item[lang] ?? item.en
+                const itemText = item.en
                 return (
                   <a
                     key={item.id}
@@ -465,7 +465,7 @@ export default function StudioPage({ lang = 'en', id }) {
                     </div>
 
                     <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-[12px] font-bold tracking-wider text-[#e3943f] uppercase">
-                      <span>{lang === 'ru' ? 'Подробнее' : 'Explore discipline'}</span>
+                      <span>Explore discipline</span>
                       <span className="transition-transform duration-300 group-hover:translate-x-1.5">→</span>
                     </div>
                   </a>
@@ -477,15 +477,13 @@ export default function StudioPage({ lang = 'en', id }) {
             <div className="mt-20 border-t border-white/10 pt-16">
               <div className="max-w-[760px]">
                 <p className="text-[12px] tracking-[0.2em] text-[#e3943f] uppercase">
-                  {lang === 'ru' ? 'Стандарты Unique Graphics®' : 'Unique Graphics® Standards'}
+                  Unique Graphics® Standards
                 </p>
                 <h2 className="mt-2 text-[28px] font-medium tracking-tight text-white sm:text-[36px]">
                   {servicesData.turnkey?.title || 'Full Turnkey Integration Without Compromise'}
                 </h2>
                 <p className="mt-4 text-[15px] leading-relaxed text-white/70">
-                  {servicesData.turnkey?.subtitle || (lang === 'ru'
-                    ? 'Мы объединяем архитекторов, дизайнеров интерьера, инженеров BIM и специалистов по закупкам в одну слаженную команду, гарантируя безупречное совпадение проекта и реальности.'
-                    : 'We integrate architects, interior designers, BIM engineers, and global procurement specialists into one cohesive team, guaranteeing exact alignment between approved blueprints and physical handover.')}
+                  {servicesData.turnkey?.subtitle || 'We integrate architects, interior designers, BIM engineers, and global procurement specialists into one cohesive team, guaranteeing exact alignment between approved blueprints and physical handover.'}
                 </p>
               </div>
 
@@ -513,7 +511,7 @@ export default function StudioPage({ lang = 'en', id }) {
                   href={servicesData.cta?.buttonLink || '/contacts'}
                   className="shrink-0 rounded-full bg-[#e3943f] px-8 py-4 text-[13px] font-bold tracking-[0.14em] text-black uppercase transition-all duration-300 hover:bg-[#d68532] hover:shadow-lg hover:shadow-[#e3943f]/25"
                 >
-                  {servicesData.cta?.buttonText || (lang === 'ru' ? 'Обсудить проект' : 'Discuss a project')}
+                  {servicesData.cta?.buttonText || 'Discuss a project'}
                 </a>
               </div>
             </div>
@@ -541,7 +539,7 @@ export default function StudioPage({ lang = 'en', id }) {
                 {(currentStages || extraDetails.stages) && (
                   <div className="mt-12">
                     <h3 className="text-[12px] tracking-[0.2em] text-white/50 uppercase font-semibold">
-                      {lang === 'ru' ? 'Этапы реализации' : 'Implementation Process'}
+                      Implementation Process
                     </h3>
                     <div className="mt-6 grid gap-4 sm:grid-cols-2">
                       {(currentStages || extraDetails.stages).map((stage) => (
@@ -564,14 +562,14 @@ export default function StudioPage({ lang = 'en', id }) {
                     href="/contacts"
                     className="inline-flex items-center gap-2 rounded-full bg-[#e3943f] px-8 py-4 text-[12.5px] font-bold tracking-[0.14em] text-black uppercase transition-all duration-300 hover:bg-[#d68532] hover:shadow-lg hover:shadow-[#e3943f]/25"
                   >
-                    <span>{lang === 'ru' ? 'Обсудить эту услугу' : 'Discuss this service'}</span>
+                    <span>Discuss this service</span>
                     <span>→</span>
                   </a>
                   <a
                     href="/all-services"
                     className="inline-flex rounded-full border border-white/20 px-6 py-3.5 text-[12px] font-medium tracking-wider text-white transition-colors hover:border-white hover:bg-white/5"
                   >
-                    {lang === 'ru' ? 'Все услуги' : 'View all services'}
+                    View all services
                   </a>
                 </div>
               </div>
@@ -581,7 +579,7 @@ export default function StudioPage({ lang = 'en', id }) {
                 <div>
                   <div className="flex items-center justify-between border-b border-white/10 pb-5">
                     <h3 className="text-[12px] tracking-[0.2em] text-[#e3943f] uppercase font-bold">
-                      {lang === 'ru' ? 'Состав документации' : 'Included Deliverables'}
+                      Included Deliverables
                     </h3>
                     <span className="rounded-full bg-[#e3943f]/15 px-3 py-1 text-[11px] font-semibold text-[#e3943f]">
                       Turnkey
@@ -633,24 +631,24 @@ export default function StudioPage({ lang = 'en', id }) {
               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
                 <div>
                   <p className="text-[12px] tracking-[0.2em] text-[#e3943f] uppercase">
-                    {lang === 'ru' ? 'Смежные дисциплины' : 'Interdisciplinary Capabilities'}
+                    Interdisciplinary Capabilities
                   </p>
                   <h3 className="mt-2 text-[26px] font-medium tracking-tight text-white sm:text-[34px]">
-                    {lang === 'ru' ? 'Другие услуги студии' : 'Explore Other Disciplines'}
+                    Explore Other Disciplines
                   </h3>
                 </div>
                 <a
                   href="/all-services"
                   className="text-[13px] font-semibold text-[#e3943f] hover:underline"
                 >
-                  {lang === 'ru' ? 'Все услуги →' : 'All services →'}
+                  All services →
                 </a>
               </div>
 
               {/* 4 Cards per row */}
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 {relatedServices.slice(0, 4).map((item) => {
-                  const itemText = item[lang] ?? item.en
+                  const itemText = item.en || item
                   return (
                     <a
                       key={item.id}
@@ -677,7 +675,7 @@ export default function StudioPage({ lang = 'en', id }) {
                       </div>
 
                       <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-[12px] font-bold tracking-wider text-[#e3943f] uppercase">
-                        <span>{lang === 'ru' ? 'Подробнее' : 'View service'}</span>
+                        <span>View service</span>
                         <span className="transition-transform duration-300 group-hover:translate-x-1.5">→</span>
                       </div>
                     </a>

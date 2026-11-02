@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FaInstagram, FaPinterest, FaVk, FaYoutube } from 'react-icons/fa'
+import { FaInstagram, FaPinterest, FaLinkedin, FaYoutube } from 'react-icons/fa'
 const DEFAULT_REEL = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
 
 export const DEFAULT_RECOGNITION_CONFIG = {
@@ -8,16 +8,11 @@ export const DEFAULT_RECOGNITION_CONFIG = {
     count: '2 000 000',
     text: 'people follow our development on social media',
   },
-  ru: {
-    title: 'Мировое признание',
-    count: '2 000 000',
-    text: 'человек следят за нашей работой в социальных сетях',
-  },
   mediaUrl: DEFAULT_REEL,
   socials: {
     instagram: 'https://instagram.com',
     pinterest: 'https://pinterest.com',
-    vk: 'https://vk.com',
+    linkedin: 'https://linkedin.com',
     youtube: 'https://youtube.com',
   },
 }
@@ -78,15 +73,14 @@ export default function Recognition({ lang = 'en', src }) {
     node.play().catch(() => {})
   }, [])
 
-  const currentLang = lang === 'ru' ? 'ru' : 'en'
-  const text = config?.[currentLang] || DEFAULT_RECOGNITION_CONFIG[currentLang]
+  const text = config?.en || DEFAULT_RECOGNITION_CONFIG.en
   const isOldMedia = (u) => !u || String(u).includes('/assets/Product') || String(u).includes('11593543') || String(u).includes('/video/')
   const backgroundMedia = !isOldMedia(config?.mediaUrl) ? config.mediaUrl : (src && !isOldMedia(src) ? src : DEFAULT_REEL)
 
   const socialLinks = [
     { name: 'Instagram', Icon: FaInstagram, url: config?.socials?.instagram || 'https://instagram.com' },
     { name: 'Pinterest', Icon: FaPinterest, url: config?.socials?.pinterest || 'https://pinterest.com' },
-    { name: 'VK', Icon: FaVk, url: config?.socials?.vk || 'https://vk.com' },
+    { name: 'LinkedIn', Icon: FaLinkedin, url: config?.socials?.linkedin || 'https://linkedin.com' },
     { name: 'YouTube', Icon: FaYoutube, url: config?.socials?.youtube || 'https://youtube.com' },
   ]
 

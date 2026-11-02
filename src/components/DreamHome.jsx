@@ -16,17 +16,6 @@ export const DEFAULT_DREAM_HOME_CONFIG = {
     submit: "Request a manager's consultation",
     thanks: 'Thank you. Your request is noted on this page.',
   },
-  ru: {
-    title: 'Превратите мечту об идеальном доме в реальность',
-    accent: 'вместе с Unique Graphics',
-    story:
-      'Оставьте контакты, и менеджер свяжется, чтобы обсудить проект. Мы будем рады начать этот путь вместе с вами.',
-    prompt: 'Заполните форму, и менеджер свяжется с вами',
-    name: 'Ваше имя',
-    phone: 'Телефон',
-    submit: 'Запросить консультацию менеджера',
-    thanks: 'Спасибо. Заявка отмечена на этой странице.',
-  },
   mediaUrl: '',
 }
 
@@ -76,7 +65,7 @@ export default function DreamHome({ lang, video, crop = true }) {
     }
   }, [])
 
-  const text = config[lang] ?? config.en ?? DEFAULT_DREAM_HOME_CONFIG[lang] ?? DEFAULT_DREAM_HOME_CONFIG.en
+  const text = config?.en || DEFAULT_DREAM_HOME_CONFIG.en
   const [name, setName] = useState('')
   const [code, setCode] = useState(defaultCountry)
   const [phone, setPhone] = useState('')

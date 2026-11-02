@@ -1,22 +1,45 @@
-import { useEffect, useRef, useState } from 'react'
-import clip1 from '../assets/video/1.mp4'
-import clip2 from '../assets/video/2.mp4'
-import clip3 from '../assets/video/3.mp4'
-import clip4 from '../assets/video/4.mp4'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { gsap, prefersReducedMotion } from '../animations/gsapConfig'
 
-const clips = [clip4, clip3, clip2, clip1]
+/** Same fallback video admin preview uses for cycle:default */
+const DEFAULT_REAL_HERO_VIDEO =
+  '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
+
+const DEFAULT_VIDEO_PRESETS = [
+  {
+    name: 'Rydhum Hotel & Banquet Hall',
+    url: DEFAULT_REAL_HERO_VIDEO,
+  },
+  {
+    name: 'Teetro Bar & Restaurant Mohali',
+    url: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4',
+  },
+  {
+    name: 'Smart City Society Walkthrough',
+    url: '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4',
+  },
+  {
+    name: 'Pushpa The Fire Dance Bar',
+    url: '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4',
+  },
+]
+
+const DEFAULT_IMAGE_PRESETS = [
+  {
+    name: 'Greenwood Avenue Mullanpur',
+    url: '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
+  },
+  {
+    name: 'Neo Classic Villa Bijnor',
+    url: '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png',
+  },
+]
 
 const copy = {
   en: {
     title: 'Unique Graphics',
     subtitle: 'Leading international bureau for premium architectural and interior design',
     discuss: 'Discuss your project',
-  },
-  ru: {
-    title: 'Unique Graphics',
-    subtitle: 'Ведущее международное бюро премиальной архитектуры и дизайна интерьера',
-    discuss: 'Обсудить проект',
   },
 }
 
@@ -52,138 +75,174 @@ const DEFAULT_HERO_CONFIG = {
   subtitle: 'Leading international bureau for premium architectural and interior design',
   buttonText: 'Discuss your project',
   buttonLink: '/contacts',
-  mediaType: 'video', // 'video' | 'image'
-  mediaUrl: 'cycle:default',
+  mediaType: 'video',
+  mediaUrl: DEFAULT_REAL_HERO_VIDEO,
+  videoPresets: DEFAULT_VIDEO_PRESETS,
+  imagePresets: DEFAULT_IMAGE_PRESETS,
 }
 
-function HeroMedia({ config }) {
-  const reduced = prefersReducedMotion()
-  const [slot, setSlot] = useState(0)
-  const [clip, setClip] = useState(0)
-  const first = useRef(null)
-  const second = useRef(null)
-  const refs = [first, second]
+function isCycleUrl(url) {
+  return !url || String(url).startsWith('cycle:') || String(url).includes('/video/4.mp4')
+}
 
-  // If configured as an image background
-  if (config?.mediaType === 'image' && config?.mediaUrl && !config.mediaUrl.startsWith('cycle:')) {
+function isImageUrl(url) {
+  return /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(String(url || '')) || String(url || '').startsWith('data:image')
+}
+
+function isBadLegacyUrl(url) {
+  const s = String(url || '')
+  return s.includes('GREEN%20WOOD.mp4') || s.includes('GREEN WOOD.mp4')
+}
+
+/** Build the slides home + admin should share */
+function buildHeroSlides(config) {
+  const mediaType = config?.mediaType === 'image' ? 'image' : 'video'
+  const defaults = mediaType === 'image' ? DEFAULT_IMAGE_PRESETS : DEFAULT_VIDEO_PRESETS
+  const rawPresets =
+    mediaType === 'image'
+      ? Array.isArray(config?.imagePresets) && config.imagePresets.length
+        ? config.imagePresets
+        : defaults
+      : Array.isArray(config?.videoPresets) && config.videoPresets.length
+        ? config.videoPresets
+        : defaults
+
+  const fromPresets = rawPresets
+    .filter((p) => p?.url && !isCycleUrl(p.url) && !isBadLegacyUrl(p.url))
+    .map((p) => ({
+      url: p.url,
+      kind: isImageUrl(p.url) ? 'image' : 'video',
+      title: p.title || config?.title || DEFAULT_HERO_CONFIG.title,
+      subtitle: p.subtitle || config?.subtitle || DEFAULT_HERO_CONFIG.subtitle,
+      buttonText: p.buttonText || config?.buttonText || DEFAULT_HERO_CONFIG.buttonText,
+      buttonLink: p.buttonLink || config?.buttonLink || DEFAULT_HERO_CONFIG.buttonLink,
+    }))
+
+  const mediaUrl = config?.mediaUrl || ''
+
+  // Specific selected banner (not cycle) → start with that, then rest in order
+  if (mediaUrl && !isCycleUrl(mediaUrl) && !isBadLegacyUrl(mediaUrl)) {
+    const idx = fromPresets.findIndex((p) => p.url === mediaUrl)
+    if (idx >= 0) {
+      return [...fromPresets.slice(idx), ...fromPresets.slice(0, idx)]
+    }
+    return [
+      {
+        url: mediaUrl,
+        kind: mediaType === 'image' || isImageUrl(mediaUrl) ? 'image' : 'video',
+        title: config?.title || DEFAULT_HERO_CONFIG.title,
+        subtitle: config?.subtitle || DEFAULT_HERO_CONFIG.subtitle,
+        buttonText: config?.buttonText || DEFAULT_HERO_CONFIG.buttonText,
+        buttonLink: config?.buttonLink || DEFAULT_HERO_CONFIG.buttonLink,
+      },
+      ...fromPresets.filter((p) => p.url !== mediaUrl),
+    ]
+  }
+
+  // cycle:default → same playlist admin preview uses (real presets, Rydhum first)
+  if (fromPresets.length) return fromPresets
+
+  return [
+    {
+      url: mediaType === 'image' ? '/hero.jpg' : DEFAULT_REAL_HERO_VIDEO,
+      kind: mediaType === 'image' ? 'image' : 'video',
+      title: config?.title || DEFAULT_HERO_CONFIG.title,
+      subtitle: config?.subtitle || DEFAULT_HERO_CONFIG.subtitle,
+      buttonText: config?.buttonText || DEFAULT_HERO_CONFIG.buttonText,
+      buttonLink: config?.buttonLink || DEFAULT_HERO_CONFIG.buttonLink,
+    },
+  ]
+}
+
+function HeroMedia({ slide, onEnded }) {
+  const video = useRef(null)
+
+  useEffect(() => {
+    const node = video.current
+    if (!node || slide?.kind === 'image') return
+    if (prefersReducedMotion()) return
+    node.play().catch(() => {})
+  }, [slide?.url, slide?.kind])
+
+  if (!slide?.url) {
+    return <div className="absolute inset-0 bg-black" />
+  }
+
+  if (slide.kind === 'image' || prefersReducedMotion()) {
     return (
       <img
-        src={config.mediaUrl}
-        alt={config.title || 'Unique Graphics Luxury Architecture'}
-        className="absolute inset-0 h-full w-full object-cover transition-transform duration-1000 scale-[1.02]"
+        key={slide.url}
+        src={slide.kind === 'image' ? slide.url : '/hero.jpg'}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
       />
     )
   }
 
-  // If a custom single video is explicitly configured (and not cycle or heavy 900mb file)
-  if (
-    config?.mediaType === 'video' &&
-    config?.mediaUrl &&
-    !config.mediaUrl.startsWith('cycle:') &&
-    !config.mediaUrl.includes('GREEN%20WOOD.mp4') &&
-    !config.mediaUrl.includes('GREEN WOOD.mp4') &&
-    !config.mediaUrl.includes('/video/4.mp4') // treat default old path as cycle
-  ) {
-    return (
-      <video
-        key={config.mediaUrl}
-        src={config.mediaUrl}
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        aria-hidden="true"
-        className="hero-clip absolute inset-0 h-full w-full object-cover is-front"
-      />
-    )
-  }
-
-  // Default purana original multi-clip cycling banner
-  useEffect(() => {
-    if (reduced) return
-    const video = first.current
-    if (!video) return
-    video.src = clips[0]
-    video.play().catch(() => {})
-    return () => video.pause()
-  }, [reduced])
-
-  useEffect(() => {
-    const outgoing = refs[slot === 0 ? 1 : 0].current
-    const timer = window.setTimeout(() => outgoing?.pause(), 900)
-    return () => window.clearTimeout(timer)
-  }, [slot])
-
-  const onEnded = () => {
-    const nextClip = (clip + 1) % clips.length
-    const nextSlot = slot === 0 ? 1 : 0
-    const incoming = refs[nextSlot].current
-    if (!incoming) return
-    incoming.src = clips[nextClip]
-    incoming.play().catch(() => {})
-    setClip(nextClip)
-    setSlot(nextSlot)
-  }
-
-  if (reduced) {
-    return <img src="/hero.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
-  }
-
-  return refs.map((ref, layer) => (
+  return (
     <video
-      key={layer}
-      ref={ref}
-      src={layer === 0 ? clips[0] : undefined}
-      muted
+      key={slide.url}
+      ref={video}
+      src={slide.url}
       autoPlay
+      muted
+      loop={false}
       playsInline
       preload="auto"
       aria-hidden="true"
-      onEnded={layer === slot ? onEnded : undefined}
-      className={`hero-clip absolute inset-0 h-full w-full object-cover ${layer === slot ? 'is-front' : ''}`}
+      onEnded={onEnded}
+      className="hero-clip absolute inset-0 h-full w-full object-cover is-front"
     />
-  ))
+  )
 }
 
 export default function Hero({ lang }) {
-  const text = copy[lang] ?? copy.en
+  const text = copy.en
   const root = useRef(null)
 
   const [config, setConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('ug_homepage_hero_config')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (!parsed.mediaType || parsed.mediaType === 'video') {
-          parsed.mediaUrl = 'cycle:default'
-        }
-        return parsed
-      }
+      if (saved) return JSON.parse(saved)
     } catch {}
     return DEFAULT_HERO_CONFIG
   })
 
-  // Sync with MongoDB backend setting
+  const slides = useMemo(() => buildHeroSlides(config), [config])
+  const [slideIndex, setSlideIndex] = useState(0)
+
+  useEffect(() => {
+    setSlideIndex(0)
+  }, [slides])
+
+  const activeSlide = slides[slideIndex] || slides[0]
+
+  // Sync with MongoDB — prefer newer local save so admin Save wins immediately
   useEffect(() => {
     const fetchConfig = async () => {
       try {
         const res = await fetch('/api/blogs/settings/hero')
         const data = await res.json()
         if (data.success && data.data) {
-          const remote = { ...data.data }
-          if (!remote.mediaType || remote.mediaType === 'video') {
-            remote.mediaUrl = 'cycle:default'
+          const localRaw = localStorage.getItem('ug_homepage_hero_config')
+          let local = null
+          try {
+            local = localRaw ? JSON.parse(localRaw) : null
+          } catch {
+            local = null
           }
-          setConfig(remote)
-          localStorage.setItem('ug_homepage_hero_config', JSON.stringify(remote))
+          const remote = { ...data.data }
+          const keepLocal =
+            local?.updatedAt && (!remote.updatedAt || Number(local.updatedAt) >= Number(remote.updatedAt))
+          const next = keepLocal ? local : remote
+          setConfig(next)
+          localStorage.setItem('ug_homepage_hero_config', JSON.stringify(next))
         }
       } catch {}
     }
 
     fetchConfig()
 
-    // Listen to real-time update events from Admin panel
     const handleUpdate = () => {
       try {
         const saved = localStorage.getItem('ug_homepage_hero_config')
@@ -198,6 +257,15 @@ export default function Hero({ lang }) {
       window.removeEventListener('storage', handleUpdate)
     }
   }, [])
+
+  // Image slides: advance on timer; videos advance onEnded
+  useEffect(() => {
+    if (!activeSlide || activeSlide.kind !== 'image' || slides.length < 2) return undefined
+    const timer = window.setTimeout(() => {
+      setSlideIndex((i) => (i + 1) % slides.length)
+    }, 8000)
+    return () => window.clearTimeout(timer)
+  }, [activeSlide, slides.length])
 
   useEffect(() => {
     const section = root.current
@@ -215,20 +283,42 @@ export default function Hero({ lang }) {
     }, section)
 
     return () => context.revert()
-  }, [config.title, config.subtitle])
+  }, [activeSlide?.title, activeSlide?.subtitle])
 
-  const titleText = config?.title || text.title
-  const subtitleText = config?.subtitle || text.subtitle
-  const buttonLabel = config?.buttonText || text.discuss
-  const buttonHref = config?.buttonLink || '/contacts'
+  const titleText = activeSlide?.title || config?.title || text.title
+  const subtitleText = activeSlide?.subtitle || config?.subtitle || text.subtitle
+  const buttonLabel = activeSlide?.buttonText || config?.buttonText || text.discuss
+  const buttonHref = activeSlide?.buttonLink || config?.buttonLink || '/contacts'
+
+  const goNext = () => {
+    if (slides.length < 2) return
+    setSlideIndex((i) => (i + 1) % slides.length)
+  }
 
   return (
     <section id="top" ref={root} className="hero-stage relative min-h-svh text-white" aria-label={titleText}>
       <div className="absolute inset-0 [mask-image:linear-gradient(to_bottom,#000_68%,transparent_100%)]">
-        <HeroMedia config={config} />
+        <HeroMedia
+          slide={activeSlide}
+          onEnded={() => {
+            if (slides.length < 2) {
+              // single video: restart
+              const node = root.current?.querySelector('video')
+              if (node) {
+                node.currentTime = 0
+                node.play().catch(() => {})
+              }
+              return
+            }
+            goNext()
+          }}
+        />
       </div>
       <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-transparent" />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[34%] bg-gradient-to-b from-transparent via-[#141414]/55 to-[#141414]" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[34%] bg-gradient-to-b from-transparent via-[#141414]/55 to-[#141414]"
+      />
       <Fog />
 
       <div className="relative z-10 flex min-h-svh items-end px-5 pt-28 pb-16 sm:px-10 lg:px-16 lg:pb-20">

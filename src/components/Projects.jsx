@@ -55,48 +55,6 @@ export const DEFAULT_PROJECTS_CONFIG = {
       },
     ],
   },
-  ru: {
-    title: 'Реализованные проекты в 32 странах',
-    before: 'Мы показываем проекты в узнаваемом стиле Unique Graphics по всему миру ',
-    accent: 'самое обширное портфолио',
-    button: 'Смотреть портфолио',
-    buttonLink: '/all-projects',
-    globeImage: '',
-    stats: [
-      {
-        value: '1 200 м²',
-        label: 'Средняя площадь проекта',
-        desc: 'Частные резиденции, загородные виллы и пентхаусы с авторской эргономикой и индивидуальным объёмно-пространственным решением.',
-        detail: 'От городских апартаментов 600 м² до загородных резиденций свыше 4 500 м².',
-        note: '',
-        iconKey: 'area',
-      },
-      {
-        value: '98%',
-        label: 'Индекс рекомендации клиентов',
-        desc: 'Более 85% новых проектов начинаются по личной рекомендации клиентов и повторных обращений для обустройства новых резиденций.',
-        detail: '',
-        note: 'Мы непрерывно измеряем индекс лояльности NPS на всех этапах проектирования.',
-        iconKey: 'recommend',
-      },
-      {
-        value: '2 000 м²',
-        label: 'Собственное производство в Санкт-Петербурге',
-        desc: 'Столярные цеха, камнеобработка, витражные и металлические мастерские гарантируют безупречное совпадение чертежей и готовых изделий.',
-        detail: 'Итальянские ЧПУ станки и авторская ручная доводка.',
-        note: '',
-        iconKey: 'manufacturing',
-      },
-      {
-        value: '10+ лет',
-        label: 'Опыта в премиальной архитектуре',
-        desc: 'Международное портфолио в Дубае, Лондоне, Майами, Комо и Москве с бескомпромиссным контролем качества и сроков строительства.',
-        detail: 'Лауреаты международных премий в сфере люксовой архитектуры.',
-        note: '',
-        iconKey: 'reward',
-      },
-    ],
-  },
 }
 
 export default function Projects({ lang = 'en' }) {
@@ -158,8 +116,7 @@ export default function Projects({ lang = 'en' }) {
     }
   }, [])
 
-  const currentLang = lang === 'ru' ? 'ru' : 'en'
-  const text = config[currentLang] || DEFAULT_PROJECTS_CONFIG[currentLang]
+  const text = config?.en || DEFAULT_PROJECTS_CONFIG.en
   const displayedGlobe = text.globeImage || config.globeImage || globeImage
 
   const getStatIcon = (stat) => {

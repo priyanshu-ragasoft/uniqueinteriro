@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DEFAULT_SITE_CHROME, getStoredSiteChrome, setStoredSiteChrome } from '../data/siteChrome'
 function newestFirst(list) {
   return [...list].sort((a, b) => {
     const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime()
@@ -12,7 +13,7 @@ const copy = {
     primary: [
       ['/about', 'About us'],
       ['/contacts', 'Contacts'],
-      ['/all-services', 'Services'],
+      ['/services', 'Services'],
       ['/all-projects', 'Portfolio'],
       ['/commercial-interiors', 'Commercials'],
       ['/blog', 'Studio Blog & Journal'],
@@ -46,48 +47,8 @@ const copy = {
     privacy: 'Privacy Policy',
     terms: 'Terms & Conditions',
     socialTitle: "We're on social media",
-    socials: ['Instagram', 'Pinterest', 'VKontakte', 'YouTube'],
+    socials: ['Instagram', 'Pinterest', 'LinkedIn', 'YouTube'],
     contact: 'Contact us',
-  },
-  ru: {
-    primary: [
-      ['/about', 'О нас'],
-      ['/contacts', 'Контакты'],
-      ['/all-services', 'Услуги'],
-      ['/all-projects', 'Портфолио'],
-      ['/commercial-interiors', 'Коммерция'],
-      ['/blog', 'Блог и Журнал'],
-      ['/', 'Начало'],
-    ],
-    secondary: [
-      ['/architectural-design', 'Архитектура'],
-      ['/interior-design', 'Жилые интерьеры'],
-      ['/all-projects', 'Гостиная'],
-      ['/all-projects', 'Спальня'],
-      ['/all-projects', 'Кухня'],
-      ['/all-projects', 'Вилла'],
-      ['/all-projects', 'Офис'],
-    ],
-    worldwide: 'Работаем по всему миру',
-    facts: [
-      ['/', '32 страны', 'portfolio'],
-      ['/all-projects', '650 реализованных проектов'],
-      ['/', '98% клиентов рекомендуют нас', 'partner'],
-      ['/', '10+ лет практики', 'partner'],
-    ],
-    cooperation: 'Сотрудничество',
-    steps: [
-      ['/contacts', '1. Заполните форму'],
-      ['/contacts', '2. Мы свяжемся'],
-      ['/contacts', '3. Получите предложение'],
-      ['/blog', 'Архитектурный журнал'],
-    ],
-    contactLink: 'Связаться со студией',
-    brand: 'Unique Graphics',
-    rights: '© 2026 Unique Graphics',
-    socialTitle: 'Мы в социальных сетях',
-    socials: ['Instagram', 'Pinterest', 'VKontakte', 'YouTube'],
-    contact: 'Связаться',
   },
 }
 
@@ -114,8 +75,25 @@ function ColumnLinks({ items }) {
 }
 
 export default function Footer() {
-  const text = copy.en
+  const [chrome, setChrome] = useState(() => getStoredSiteChrome())
+  const text = { ...copy.en, ...chrome.footer }
   const [journal, setJournal] = useState([])
+
+  useEffect(() => {
+    const apply = () => setChrome(getStoredSiteChrome())
+    window.addEventListener('site-chrome-config-changed', apply)
+    fetch('/api/blogs/settings/site-chrome')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data.data) {
+          const next = { ...DEFAULT_SITE_CHROME, ...data.data }
+          setStoredSiteChrome(next)
+          setChrome(next)
+        }
+      })
+      .catch(() => {})
+    return () => window.removeEventListener('site-chrome-config-changed', apply)
+  }, [])
 
   useEffect(() => {
     let cancelled = false

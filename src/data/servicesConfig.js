@@ -269,7 +269,7 @@ export const DEFAULT_SERVICES_CONFIG = {
 
   // Turnkey Integration Section (For /all-services page)
   turnkey: {
-    title: 'Full Turnkey Integration Without Compromise',
+    title: 'From the first drawing to the finished room.',
     subtitle: 'We integrate architects, interior designers, BIM engineers, and global procurement specialists into one cohesive team, guaranteeing exact alignment between approved blueprints and physical handover.',
     pillars: [
       {

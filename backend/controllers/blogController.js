@@ -683,18 +683,25 @@ export const updateBlogBannerSettings = async (req, res) => {
 export const getHomepageHeroSettings = async (req, res) => {
   try {
     const setting = await Setting.findOne({ key: 'homepage_hero_config' })
+    const DEFAULT_REAL_HERO_VIDEO =
+      '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
     const defaults = {
       title: 'Unique Graphics',
       subtitle: 'Leading international bureau for premium architectural and interior design',
       buttonText: 'Discuss your project',
       buttonLink: '/contacts',
       mediaType: 'video',
-      mediaUrl: 'cycle:default',
+      mediaUrl: DEFAULT_REAL_HERO_VIDEO,
     }
     const val = setting ? { ...setting.value } : defaults
-    if (!val.mediaUrl || val.mediaUrl.includes('GREEN%20WOOD.mp4') || val.mediaUrl.includes('GREEN WOOD.mp4')) {
-      val.mediaUrl = 'cycle:default'
+    if (
+      !val.mediaUrl ||
+      val.mediaUrl.includes('GREEN%20WOOD.mp4') ||
+      val.mediaUrl.includes('GREEN WOOD.mp4')
+    ) {
+      val.mediaUrl = DEFAULT_REAL_HERO_VIDEO
     }
+    // Keep cycle:default as-is — frontend maps it to the same playlist as admin preview
     return res.status(200).json({
       success: true,
       data: val,
@@ -908,26 +915,30 @@ export const updateAboutPageSettings = async (req, res) => {
  * @route   GET /api/blogs/settings/portfolio-pages
  * @access  Public
  */
+const PROTECTED_PORTFOLIO_SLUGS = new Set(['residences', 'hospitality', 'nightlife'])
+
+function mergePortfolioSettings(existing, incoming) {
+  const prev = existing && typeof existing === 'object' ? existing : {}
+  const next = incoming && typeof incoming === 'object' ? incoming : {}
+  const prevCats = Array.isArray(prev.categories) ? prev.categories : []
+  const nextCats = Array.isArray(next.categories) ? next.categories : []
+  const incomingSlugs = new Set(nextCats.map((item) => item.slug))
+  const removed = new Set(Array.isArray(next.removedSlugs) ? next.removedSlugs : [])
+  const kept = prevCats.filter(
+    (item) =>
+      PROTECTED_PORTFOLIO_SLUGS.has(item.slug) &&
+      !incomingSlugs.has(item.slug) &&
+      !removed.has(item.slug)
+  )
+  const categories = nextCats.length ? [...nextCats, ...kept] : prevCats
+  const value = { ...prev, ...next, categories }
+  delete value.removedSlugs
+  return value
+}
+
 export const getPortfolioPagesSettings = async (req, res) => {
   try {
     const setting = await Setting.findOne({ key: 'portfolio_pages_config' })
-    if (setting && setting.value) {
-      const str = JSON.stringify(setting.value).toLowerCase()
-      if (
-        str.includes('snjks') ||
-        str.includes('xshbj') ||
-        str.includes('kmbgv') ||
-        str.includes('kpkju') ||
-        str.includes('chygyt') ||
-        str.includes('sbdutfy')
-      ) {
-        await Setting.deleteOne({ key: 'portfolio_pages_config' })
-        return res.status(200).json({
-          success: true,
-          data: null,
-        })
-      }
-    }
     return res.status(200).json({
       success: true,
       data: setting ? setting.value : null,
@@ -944,9 +955,11 @@ export const getPortfolioPagesSettings = async (req, res) => {
  */
 export const updatePortfolioPagesSettings = async (req, res) => {
   try {
+    const existing = await Setting.findOne({ key: 'portfolio_pages_config' })
+    const value = mergePortfolioSettings(existing?.value, req.body)
     const updated = await Setting.findOneAndUpdate(
       { key: 'portfolio_pages_config' },
-      { value: req.body },
+      { value },
       { upsert: true, new: true }
     )
     return res.status(200).json({
@@ -954,6 +967,28 @@ export const updatePortfolioPagesSettings = async (req, res) => {
       message: 'Portfolio pages configuration updated successfully.',
       data: updated.value,
     })
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+export const getSiteChromeSettings = async (req, res) => {
+  try {
+    const setting = await Setting.findOne({ key: 'site_chrome_config' })
+    return res.status(200).json({ success: true, data: setting ? setting.value : null })
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+export const updateSiteChromeSettings = async (req, res) => {
+  try {
+    const updated = await Setting.findOneAndUpdate(
+      { key: 'site_chrome_config' },
+      { value: req.body },
+      { upsert: true, new: true }
+    )
+    return res.status(200).json({ success: true, data: updated.value })
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message })
   }
@@ -1230,13 +1265,21 @@ export const seedDefaultProjectsAndServices = async () => {
       const existing = await Setting.findOne({ key: 'portfolio_pages_config' })
       const prevVal = existing ? existing.value : {}
 
+      // Never overwrite admin-published project lists. Only seed when a list is empty.
+      const pickList = (prevList, seedList) =>
+        Array.isArray(prevList) && prevList.length > 0
+          ? prevList
+          : Array.isArray(seedList) && seedList.length > 0
+            ? seedList
+            : prevList || []
+
       const updatedPortfolio = {
         ...prevVal,
         navCards: prevVal.navCards || {},
         heroes: prevVal.heroes || {},
-        architectural: Array.isArray(data.architectural) && data.architectural.length > 0 ? data.architectural : (prevVal.architectural || []),
-        commercial: Array.isArray(data.commercial) && data.commercial.length > 0 ? data.commercial : (prevVal.commercial || []),
-        interior: Array.isArray(data.interior) && data.interior.length > 0 ? data.interior : (prevVal.interior || []),
+        architectural: pickList(prevVal.architectural, data.architectural),
+        commercial: pickList(prevVal.commercial, data.commercial),
+        interior: pickList(prevVal.interior, data.interior),
       }
 
       await Setting.findOneAndUpdate(
@@ -1244,7 +1287,9 @@ export const seedDefaultProjectsAndServices = async () => {
         { value: updatedPortfolio },
         { upsert: true, new: true }
       )
-      console.log(`[Project & Services Seeder]: Synced ${updatedPortfolio.architectural.length} Arch, ${updatedPortfolio.commercial.length} Comm, ${updatedPortfolio.interior.length} Interior projects to MongoDB!`)
+      console.log(
+        `[Project & Services Seeder]: Portfolio lists ready — ${updatedPortfolio.architectural.length} Arch, ${updatedPortfolio.commercial.length} Comm, ${updatedPortfolio.interior.length} Interior (admin edits preserved).`
+      )
     }
 
     // Also ensure services_pages_config is cleaned of test junk and populated with real luxury data
@@ -1264,12 +1309,11 @@ export const seedDefaultProjectsAndServices = async () => {
       c.menuImage?.includes('01.jpg') ||
       c.subcategories?.some((s) => s.menuImage?.includes('/uploads/1792') || s.menuImage?.includes('iphone') || s.menuImage?.includes('01.jpg') || s.menuImage?.includes('.mp4'))
     )
-    const hasAstro = servicesSetting?.value?.categories?.some((c) => c.slug === 'astro-vastu')
-    const needsRichSubPages = !servicesSetting?.value?.categories?.some((c) =>
-      c.subcategories?.some((s) => s.slug === 'bars' && s.page?.banner?.images?.length)
-    )
+    const hasAdminServiceTree =
+      Array.isArray(servicesSetting?.value?.categories) && servicesSetting.value.categories.length > 0
 
-    if (!servicesSetting || !Array.isArray(servicesSetting.value?.categories) || hasJunk || hasBadMedia || !hasAstro || needsRichSubPages) {
+    // Never replace an admin-saved services tree. Only seed when empty or junk.
+    if (!hasAdminServiceTree || hasJunk || hasBadMedia) {
       const cleanCategories = [
         {
           id: 'all-services',
@@ -1809,19 +1853,18 @@ export const seedDefaultProjectsAndServices = async () => {
             detail: p.description || 'Bespoke project crafted by Unique Graphics®.'
           },
           ru: {
-            category: p.type || 'Проект',
+            category: p.type || 'Bespoke Design',
             title: p.titlePre || p.id,
             summary: (p.location ? p.location + ' • ' : '') + (p.area || '1 200 m²'),
-            scope: ['Архитектура', 'Интерьер', '3D визуализация'],
-            detail: p.description || 'Проект студии Unique Graphics®.'
+            scope: ['Architectural Design', 'Interior Architecture', '3D Visualization'],
+            detail: p.description || 'Bespoke project crafted by Unique Graphics®.'
           }
         }
       })
 
       const updatedCompletedConfig = {
         copy: prevCompleted.copy || {
-          en: { lead: 'More than', count: '650', tail: 'completed projects' },
-          ru: { lead: 'Более', count: '650', tail: 'реализованных проектов' }
+          en: { lead: 'More than', count: '650', tail: 'completed projects' }
         },
         categories: {
           en: [
@@ -1832,15 +1875,6 @@ export const seedDefaultProjectsAndServices = async () => {
             ['bars-clubs', 'Bars & Clubs'],
             ['interior', 'Luxury Interior'],
             ['office', 'Office']
-          ],
-          ru: [
-            ['all', 'Все'],
-            ['architecture', 'Архитектура'],
-            ['commercial', 'Коммерческие'],
-            ['banquet', 'Банкетные залы'],
-            ['bars-clubs', 'Бары и Клубы'],
-            ['interior', 'Интерьеры'],
-            ['office', 'Офис']
           ]
         },
         projects: mappedProjects

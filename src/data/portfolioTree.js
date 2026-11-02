@@ -1,5 +1,11 @@
-import { DEFAULT_PORTFOLIO_CONFIG, getStoredPortfolioConfig, setStoredPortfolioConfig } from './portfolioConfig'
-import { emptyPage, isJunkText, validateServiceTree } from './serviceTree'
+import {
+  DEFAULT_PORTFOLIO_CONFIG,
+  getProjectsForCategory as getLegacyProjects,
+  getStoredPortfolioConfig,
+  resolveProjectListKey,
+  setStoredPortfolioConfig,
+} from './portfolioConfig'
+import { emptyPage, isJunkText, slugify, validateServiceTree } from './serviceTree'
 
 export function buildDefaultPortfolioTree() {
   const cards = DEFAULT_PORTFOLIO_CONFIG.navCards
@@ -486,88 +492,465 @@ export function buildDefaultPortfolioTree() {
   }
 }
 
-export function normalizePortfolioTree(raw) {
+/** Public path for a portfolio menu category. Slug wins over a leftover href. */
+export function portfolioCategoryPath(item) {
+  const slug = String(item?.slug || '').trim()
+  if (!slug || slug === 'all-projects') return '/all-projects'
+  if (slug === 'architectural-design') return '/architectural-design'
+  if (slug === 'interior-design') return '/interior-design'
+  if (slug === 'commercial-design' || slug === 'commercial-interiors') return '/commercial-design'
+  return `/${slug}`
+}
+
+export function portfolioSubcategoryPath(categoryItem, sub) {
+  if (!categoryItem || !sub?.slug) return portfolioCategoryPath(categoryItem)
+  return `${portfolioCategoryPath(categoryItem)}/${sub.slug}`
+}
+
+export function emptyHighlightDetail(partial = {}) {
+  return {
+    banner: {
+      show: true,
+      label: '',
+      title: '',
+      accent: 'by Unique Graphics®',
+      subtitle: '',
+      images: ['', '', ''],
+      ...(partial.banner || {}),
+    },
+    intro: {
+      show: true,
+      heading: '',
+      paragraph1: '',
+      paragraph2: '',
+      ...(partial.intro || {}),
+    },
+    sections: Array.isArray(partial.sections) ? partial.sections : [],
+    gallery: Array.isArray(partial.gallery) ? partial.gallery : [],
+    closing: {
+      show: true,
+      heading: '',
+      paragraph: '',
+      buttonLabel: 'Request a consultation',
+      buttonLink: '/contacts',
+      ...(partial.closing || {}),
+    },
+  }
+}
+
+function highlightDetailHasContent(detail) {
+  if (!detail || typeof detail !== 'object') return false
+  const banner = detail.banner || {}
+  return Boolean(
+    banner.title ||
+      banner.subtitle ||
+      banner.label ||
+      (banner.images || []).some(Boolean) ||
+      detail.intro?.heading ||
+      detail.intro?.paragraph1 ||
+      (Array.isArray(detail.sections) && detail.sections.length) ||
+      (Array.isArray(detail.gallery) && detail.gallery.length) ||
+      detail.closing?.heading
+  )
+}
+
+export function migrateHighlightDetail(item) {
+  if (highlightDetailHasContent(item?.detail)) return emptyHighlightDetail(item.detail)
+  const title = String(item?.title || '').trim()
+  const text = String(item?.text || '').trim()
+  const image = String(item?.image || '').trim()
+  const id = item?.id || 'hl'
+  return emptyHighlightDetail({
+    banner: {
+      show: true,
+      label: '',
+      title,
+      accent: 'by Unique Graphics®',
+      subtitle: text,
+      images: [image, '', ''],
+    },
+    intro: {
+      show: true,
+      heading: title,
+      paragraph1: text,
+      paragraph2: '',
+    },
+    sections: [],
+    gallery: [],
+    closing: {
+      show: true,
+      heading: title ? `Continue ${title.toLowerCase()}.` : 'Discuss this space.',
+      paragraph: text || 'Share the site and how the rooms should feel.',
+      buttonLabel: 'Request a consultation',
+      buttonLink: '/contacts',
+    },
+  })
+}
+
+function uniqueHighlightSlug(rawSlug, reserved, used) {
+  let slug = slugify(rawSlug) || 'highlight'
+  if (reserved.has(slug) || used.has(slug)) slug = `${slug}-story`
+  let index = 2
+  while (reserved.has(slug) || used.has(slug)) {
+    slug = `${slugify(rawSlug) || 'highlight'}-story-${index}`
+    index += 1
+  }
+  used.add(slug)
+  return slug
+}
+
+export function normalizeHighlightItem(raw, index = 0, reservedSlugs = [], usedSlugs = new Set()) {
+  const title = String(raw?.title || '').trim()
+  const reserved = reservedSlugs instanceof Set ? reservedSlugs : new Set(reservedSlugs)
+  const slug = uniqueHighlightSlug(raw?.slug || title || raw?.id || `highlight-${index + 1}`, reserved, usedSlugs)
+  return {
+    id: raw?.id || `hl-${index + 1}`,
+    title,
+    text: String(raw?.text || ''),
+    image: String(raw?.image || ''),
+    slug,
+    published: raw?.published !== false,
+    detail: migrateHighlightDetail(raw),
+  }
+}
+
+export function normalizeHighlightItems(items, reservedSlugs = []) {
+  const reserved = new Set((reservedSlugs || []).map((value) => String(value || '').trim()).filter(Boolean))
+  const used = new Set()
+  return (Array.isArray(items) ? items : []).map((item, index) => normalizeHighlightItem(item, index, reserved, used))
+}
+
+export function portfolioHighlightPath(categoryItem, sub, highlight) {
+  const parent = sub?.slug ? portfolioSubcategoryPath(categoryItem, sub) : portfolioCategoryPath(categoryItem)
+  const slug = highlight?.slug || slugify(highlight?.title || highlight?.id || '')
+  if (!slug) return parent
+  return `${parent}/${slug}`
+}
+
+export function findHighlightOnPage(page, highlightSlug) {
+  const slug = String(highlightSlug || '').trim()
+  if (!slug) return null
+  return (page?.highlights?.items || []).find((item) => item.slug === slug || item.id === slug) || null
+}
+
+export function findPortfolioHighlight(tree, categorySlug, subcategorySlug, highlightSlug) {
+  const match = findPortfolioPage(tree, categorySlug, subcategorySlug || '')
+  if (!match) return null
+  const highlight = findHighlightOnPage(match.page, highlightSlug)
+  if (!highlight) return null
+  return { ...match, highlight, detail: highlight.detail || emptyHighlightDetail() }
+}
+
+function uniqueGallerySlug(rawSlug, reserved, used) {
+  let slug = slugify(rawSlug) || 'gallery'
+  if (reserved.has(slug) || used.has(slug)) slug = `${slug}-gallery`
+  let index = 2
+  while (reserved.has(slug) || used.has(slug)) {
+    slug = `${slugify(rawSlug) || 'gallery'}-gallery-${index}`
+    index += 1
+  }
+  used.add(slug)
+  return slug
+}
+
+export function migrateGalleryDetail(item) {
+  if (highlightDetailHasContent(item?.detail)) return emptyHighlightDetail(item.detail)
+  const title = String(item?.title || item?.caption || '').trim()
+  const text = String(item?.caption || item?.text || '').trim()
+  const image = String(item?.image || '').trim()
+  const id = item?.id || 'gal'
+  return emptyHighlightDetail({
+    banner: {
+      show: true,
+      label: '',
+      title,
+      accent: 'by Unique Graphics®',
+      subtitle: text,
+      images: [image, '', ''],
+    },
+    intro: {
+      show: true,
+      heading: title,
+      paragraph1: text,
+      paragraph2: '',
+    },
+    sections: [],
+    gallery: [],
+    closing: {
+      show: true,
+      heading: title ? `Continue ${title.toLowerCase()}.` : 'Discuss this space.',
+      paragraph: text || 'Share the site and how the rooms should feel.',
+      buttonLabel: 'Request a consultation',
+      buttonLink: '/contacts',
+    },
+  })
+}
+
+export function normalizeGalleryItem(raw, index = 0, reservedSlugs = [], usedSlugs = new Set()) {
+  const caption = String(raw?.caption || '').trim()
+  const title = String(raw?.title || caption).trim()
+  const reserved = reservedSlugs instanceof Set ? reservedSlugs : new Set(reservedSlugs)
+  const slug = uniqueGallerySlug(raw?.slug || title || raw?.id || `gallery-${index + 1}`, reserved, usedSlugs)
+  return {
+    id: raw?.id || `gal-${index + 1}`,
+    image: String(raw?.image || ''),
+    caption,
+    title,
+    slug,
+    published: raw?.published !== false,
+    detail: migrateGalleryDetail({ ...raw, title, caption }),
+  }
+}
+
+export function normalizeGalleryItems(items, reservedSlugs = []) {
+  const reserved = new Set((reservedSlugs || []).map((value) => String(value || '').trim()).filter(Boolean))
+  const used = new Set()
+  return (Array.isArray(items) ? items : []).map((item, index) => normalizeGalleryItem(item, index, reserved, used))
+}
+
+export function portfolioGalleryPath(categoryItem, sub, item) {
+  const parent = sub?.slug ? portfolioSubcategoryPath(categoryItem, sub) : portfolioCategoryPath(categoryItem)
+  const slug = item?.slug || slugify(item?.title || item?.caption || item?.id || '')
+  if (!slug) return parent
+  return `${parent}/${slug}`
+}
+
+export function findGalleryOnPage(page, gallerySlug) {
+  const slug = String(gallerySlug || '').trim()
+  if (!slug) return null
+  return (page?.gallery?.items || []).find((item) => item.slug === slug || item.id === slug) || null
+}
+
+export function findPortfolioGallery(tree, categorySlug, subcategorySlug, gallerySlug) {
+  const match = findPortfolioPage(tree, categorySlug, subcategorySlug || '')
+  if (!match) return null
+  const item = findGalleryOnPage(match.page, gallerySlug)
+  if (!item) return null
+  const highlight = {
+    ...item,
+    title: item.title || item.caption || '',
+    text: item.caption || item.text || '',
+    image: item.image || '',
+  }
+  return { ...match, highlight, galleryItem: item, detail: item.detail || emptyHighlightDetail() }
+}
+
+export function findPortfolioStory(tree, categorySlug, subcategorySlug, storySlug) {
+  return (
+    findPortfolioHighlight(tree, categorySlug, subcategorySlug, storySlug) ||
+    findPortfolioGallery(tree, categorySlug, subcategorySlug, storySlug)
+  )
+}
+
+function cleanMenuVideo(value) {
+  const v = String(value || '').trim()
+  if (!v) return ''
+  if (v.startsWith('data:video')) return v
+  if (v.startsWith('/') || /^https?:\/\//i.test(v)) {
+    return /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(v) ? v : ''
+  }
+  return ''
+}
+
+function pageFromLegacyHero(hero, fallbackTitle) {
+  if (!hero) return emptyPage({ banner: { title: fallbackTitle || '' } })
+  return emptyPage({
+    banner: {
+      show: true,
+      title: hero.titleLead || fallbackTitle || '',
+      accent: hero.titleAccent || 'by Unique Graphics®',
+      subtitle: hero.description || '',
+      images: [hero.banner1, hero.banner2, hero.banner3].filter(Boolean),
+    },
+  })
+}
+
+function normalizeNode(raw, index, legacy, parentSlug) {
+  const slug = String(raw?.slug || raw?.id || '').trim() || `page-${index + 1}`
+  const name = isJunkText(raw?.name) ? '' : String(raw?.name || '')
+  const legacyKey = parentSlug || slug
+  const hero = legacy?.heroes?.[slug] || legacy?.heroes?.[legacyKey]
+  const nav = legacy?.navCards?.[slug] || legacy?.navCards?.[legacyKey]
+  const rawPage = raw?.page && typeof raw.page === 'object' ? raw.page : {}
+  const hasBannerMedia = (rawPage.banner?.images || []).some(Boolean)
+  const hasBannerText = Boolean(rawPage.banner?.title || rawPage.banner?.subtitle || rawPage.banner?.label)
+  const page = emptyPage(
+    hasBannerMedia || hasBannerText ? rawPage : { ...pageFromLegacyHero(hero, name), ...rawPage }
+  )
+
+  let projects = Array.isArray(raw?.projects) ? raw.projects : null
+  if ((!projects || !projects.length) && slug !== 'all-projects' && !parentSlug) {
+    const legacyList = getLegacyProjects(legacy, slug)
+    projects = Array.isArray(legacyList) ? legacyList : []
+  }
+  if (!projects) projects = []
+
+  const reservedHighlightSlugs = parentSlug
+    ? []
+    : (Array.isArray(raw?.subcategories) ? raw.subcategories : []).map((sub) => String(sub?.slug || sub?.id || '').trim())
+  const highlightItems = normalizeHighlightItems(page.highlights?.items, reservedHighlightSlugs)
+  const reservedGallerySlugs = [
+    ...reservedHighlightSlugs,
+    ...highlightItems.map((item) => item.slug),
+  ]
+  const pageWithHighlights = {
+    ...page,
+    highlights: {
+      ...(page.highlights || {}),
+      items: highlightItems,
+    },
+    gallery: {
+      ...(page.gallery || {}),
+      items: normalizeGalleryItems(page.gallery?.items, reservedGallerySlugs),
+    },
+  }
+
+  return {
+    id: raw?.id || slug,
+    name,
+    slug,
+    menuDescription: raw?.menuDescription || nav?.hover || '',
+    menuImage: raw?.menuImage || nav?.image || '',
+    menuVideo: cleanMenuVideo(raw?.menuVideo || nav?.video || ''),
+    href: parentSlug ? '' : portfolioCategoryPath({ slug }),
+    published: raw?.published !== false,
+    showInMenu: raw?.showInMenu !== false,
+    order: Number.isFinite(raw?.order) ? raw.order : index,
+    page: pageWithHighlights,
+    projects,
+    subcategories: parentSlug
+      ? []
+      : (Array.isArray(raw?.subcategories) ? raw.subcategories : []).map((sub, subIndex) =>
+          normalizeNode(sub, subIndex, legacy, slug)
+        ),
+  }
+}
+
+export function normalizePortfolioTree(raw, legacyConfig) {
   if (!raw || !Array.isArray(raw.categories) || raw.categories.length === 0) {
     return buildDefaultPortfolioTree()
   }
 
-  // Detect any junk in categories or page fields
-  const hasJunk = raw.categories.some((c) => {
-    if (isJunkText(c.name) || isJunkText(c.slug) || isJunkText(c.menuDescription)) return true
-    const p = c.page || {}
-    if (isJunkText(p.banner?.subtitle) || isJunkText(p.banner?.title) || isJunkText(p.banner?.label)) return true
-    if (isJunkText(p.intro?.heading) || isJunkText(p.intro?.paragraph1) || isJunkText(p.intro?.paragraph2)) return true
-    if (isJunkText(p.closing?.heading) || isJunkText(p.closing?.paragraph) || isJunkText(p.closing?.buttonLabel)) return true
-    if (p.highlights?.items?.some((h) => isJunkText(h.title) || isJunkText(h.text))) return true
-    if (p.steps?.items?.some((s) => isJunkText(s.title) || isJunkText(s.text))) return true
-    if (p.gallery?.items?.some((g) => isJunkText(g.caption))) return true
-    return false
-  })
-
-  if (hasJunk) {
+  const nameJunk = raw.categories.some((c) => isJunkText(c.name) || isJunkText(c.slug))
+  if (nameJunk) {
     try {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ug_portfolio_pages_config')
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return buildDefaultPortfolioTree()
   }
 
-  const def = buildDefaultPortfolioTree()
   return {
-    categories: raw.categories.map((c, index) => {
-      const match = def.categories.find((d) => d.slug === c.slug || d.id === c.id) || def.categories[index] || def.categories[0]
-      const rawPage = c.page || {}
-      // If the category page banner has empty or junk values, use default
-      const bannerSubtitle = isJunkText(rawPage.banner?.subtitle) || !rawPage.banner?.subtitle ? match.page.banner.subtitle : rawPage.banner.subtitle
-      const introHeading = isJunkText(rawPage.intro?.heading) || !rawPage.intro?.heading ? match.page.intro.heading : rawPage.intro.heading
-      const introP1 = isJunkText(rawPage.intro?.paragraph1) || !rawPage.intro?.paragraph1 ? match.page.intro.paragraph1 : rawPage.intro.paragraph1
-
-      const cleanPage = emptyPage({
-        ...match.page,
-        ...rawPage,
-        banner: {
-          ...match.page.banner,
-          ...(rawPage.banner || {}),
-          subtitle: bannerSubtitle,
-          images: (rawPage.banner?.images || []).filter(Boolean).length ? rawPage.banner.images : match.page.banner.images,
-        },
-        intro: {
-          ...match.page.intro,
-          ...(rawPage.intro || {}),
-          heading: introHeading,
-          paragraph1: introP1,
-        },
-        highlights: rawPage.highlights?.items?.length ? rawPage.highlights : match.page.highlights,
-        steps: rawPage.steps?.items?.length ? rawPage.steps : match.page.steps,
-        gallery: rawPage.gallery?.items?.length ? rawPage.gallery : match.page.gallery,
-        closing: (rawPage.closing?.heading && !isJunkText(rawPage.closing.heading)) ? rawPage.closing : match.page.closing,
-      })
-
-      return {
-        ...match,
-        ...c,
-        name: c.name || match.name,
-        slug: c.slug || match.slug,
-        menuDescription: c.menuDescription || match.menuDescription,
-        menuImage: c.menuImage || match.menuImage,
-        menuVideo: c.menuVideo || match.menuVideo,
-        published: c.published !== false,
-        showInMenu: c.showInMenu !== false,
-        page: cleanPage,
-        subcategories: Array.isArray(c.subcategories) ? c.subcategories : [],
-      }
-    }),
+    categories: raw.categories.map((c, index) => normalizeNode(c, index, legacyConfig || raw)),
   }
 }
 
+export function findPortfolioPage(tree, categorySlug, subcategorySlug) {
+  const categories = tree?.categories || []
+  const category = categories.find((item) => item.slug === categorySlug || item.id === categorySlug)
+  if (!category) return null
+  if (!subcategorySlug) {
+    return { category, subcategory: null, page: category.page, projects: category.projects || [], kind: 'category' }
+  }
+  const sub = (category.subcategories || []).find((item) => item.slug === subcategorySlug || item.id === subcategorySlug)
+  if (!sub) return null
+  return { category, subcategory: sub, page: sub.page, projects: sub.projects || [], kind: 'subcategory' }
+}
+
+export function flattenPortfolioProjects(tree) {
+  const list = []
+  for (const cat of tree?.categories || []) {
+    for (const project of cat.projects || []) {
+      list.push({ ...project, categoryId: cat.id, categorySlug: cat.slug })
+    }
+    for (const sub of cat.subcategories || []) {
+      for (const project of sub.projects || []) {
+        list.push({
+          ...project,
+          categoryId: cat.id,
+          subcategoryId: sub.id,
+          categorySlug: cat.slug,
+          subcategorySlug: sub.slug,
+        })
+      }
+    }
+  }
+  return list
+}
+
+export function projectsForPortfolioPage(tree, categorySlug, subcategorySlug) {
+  const match = findPortfolioPage(tree, categorySlug, subcategorySlug)
+  if (!match) return []
+  if (match.kind === 'subcategory') return match.projects || []
+  if (match.category.slug === 'all-projects' || match.category.id === 'all-projects') {
+    const own = match.projects || []
+    const rest = flattenPortfolioProjects(tree).filter((item) => item.categorySlug !== 'all-projects')
+    const seen = new Set()
+    const merged = [...own, ...rest].filter((item) => {
+      const key = String(item.id || '')
+      if (!key || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    if (merged.length) return merged
+    return getLegacyProjects(getStoredPortfolioConfig(), 'all-projects')
+  }
+  if (match.projects?.length) return match.projects
+  return getLegacyProjects(getStoredPortfolioConfig(), match.category.slug)
+}
+
+export function syncLegacyPortfolioConfig(tree, current = {}) {
+  const navCards = { ...(current.navCards || {}) }
+  const heroes = { ...(current.heroes || {}) }
+  const projectLists = { ...(current.projectLists || {}) }
+  const next = { ...current, navCards, heroes, projectLists, categories: tree.categories }
+
+  for (const cat of tree.categories || []) {
+    navCards[cat.slug] = {
+      title: cat.name || cat.slug,
+      hover: cat.menuDescription || '',
+      image: cat.menuImage || '',
+      video: cat.menuVideo || '',
+    }
+    const images = cat.page?.banner?.images || []
+    heroes[cat.slug] = {
+      titleLead: cat.page?.banner?.title || cat.name || '',
+      titleAccent: cat.page?.banner?.accent || '',
+      description: cat.page?.banner?.subtitle || '',
+      banner1: images[0] || '',
+      banner2: images[1] || '',
+      banner3: images[2] || '',
+    }
+    const listKey = resolveProjectListKey(cat.slug)
+    if (Array.isArray(cat.projects)) {
+      if (listKey === 'architectural' || listKey === 'interior' || listKey === 'commercial') {
+        next[listKey] = cat.projects
+      } else if (cat.slug !== 'all-projects') {
+        projectLists[listKey || cat.slug] = cat.projects
+      }
+    }
+    for (const sub of cat.subcategories || []) {
+      const subKey = `${cat.slug}__${sub.slug}`
+      projectLists[subKey] = Array.isArray(sub.projects) ? sub.projects : []
+    }
+  }
+
+  return next
+}
+
 export function getStoredPortfolioTree() {
-  return normalizePortfolioTree(getStoredPortfolioConfig().categories ? getStoredPortfolioConfig() : buildDefaultPortfolioTree())
+  const cfg = getStoredPortfolioConfig()
+  const raw = Array.isArray(cfg.categories) && cfg.categories.length ? cfg : buildDefaultPortfolioTree()
+  return normalizePortfolioTree(raw, cfg)
 }
 
 export function setStoredPortfolioTree(tree) {
   const current = getStoredPortfolioConfig()
-  setStoredPortfolioConfig({ ...current, categories: tree.categories })
+  const normalized = normalizePortfolioTree(tree, current)
+  setStoredPortfolioConfig(syncLegacyPortfolioConfig(normalized, current))
 }
 
 export function validatePortfolioTree(tree) {

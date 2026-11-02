@@ -21,25 +21,6 @@ export const DEFAULT_EXPERT_STEPS_CONFIG = {
       },
     ],
   },
-  ru: {
-    before: 'Узнайте, как ',
-    accent: 'создаётся проект вашей мечты',
-    after: ' вместе с личным экспертом',
-    steps: [
-      {
-        title: 'Заполните форму',
-        text: 'Оставьте имя и телефон',
-      },
-      {
-        title: 'Мы свяжемся с вами',
-        text: 'Личный эксперт обсудит задачи проекта и познакомит с нашим подходом',
-      },
-      {
-        title: 'Получите предложение',
-        text: 'После разбора пожеланий мы подготовим персональный план проекта',
-      },
-    ],
-  },
 }
 
 function StepCard({ index, title, text, onClick }) {
@@ -112,8 +93,8 @@ export default function ExpertSteps({ lang }) {
     }
   }, [])
 
-  const text = config[lang] ?? config.en ?? DEFAULT_EXPERT_STEPS_CONFIG[lang] ?? DEFAULT_EXPERT_STEPS_CONFIG.en
-  const consult = consultCopy[lang] ?? consultCopy.en
+  const text = config?.en || DEFAULT_EXPERT_STEPS_CONFIG.en
+  const consult = consultCopy.en
   const [open, setOpen] = useState(false)
 
   return (

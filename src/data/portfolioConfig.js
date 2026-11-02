@@ -71,10 +71,151 @@ export const DEFAULT_PORTFOLIO_CONFIG = {
     },
   },
 
-  // 3. Projects Lists
+  // 3. Projects Lists (legacy 3 + custom category slug lists)
   architectural: defaultArchProjects,
   interior: defaultIntProjects,
   commercial: defaultCommProjects,
+  projectLists: {},
+}
+
+/** Menu slug → legacy project bucket */
+export const CATEGORY_TO_LIST_KEY = {
+  'architectural-design': 'architectural',
+  architecture: 'architectural',
+  'interior-design': 'interior',
+  interiors: 'interior',
+  'commercial-design': 'commercial',
+  'commercial-interiors': 'commercial',
+  commercial: 'commercial',
+}
+
+export function resolveProjectListKey(slugOrKey) {
+  const key = String(slugOrKey || '').trim()
+  if (!key || key === 'all-projects') return ''
+  if (key === 'architectural' || key === 'interior' || key === 'commercial') return key
+  return CATEGORY_TO_LIST_KEY[key] || key
+}
+
+export function getAllPortfolioProjects(config) {
+  const cfg = config || DEFAULT_PORTFOLIO_CONFIG
+  const custom = Object.values(cfg.projectLists || {}).flatMap((list) =>
+    Array.isArray(list) ? list : []
+  )
+  return [
+    ...(Array.isArray(cfg.architectural) ? cfg.architectural : []),
+    ...(Array.isArray(cfg.interior) ? cfg.interior : []),
+    ...(Array.isArray(cfg.commercial) ? cfg.commercial : []),
+    ...custom,
+  ]
+}
+
+/** Read projects for a category slug or legacy list key */
+export function getProjectsForCategory(config, slugOrKey) {
+  const cfg = config || DEFAULT_PORTFOLIO_CONFIG
+  const listKey = resolveProjectListKey(slugOrKey)
+  if (!listKey) return getAllPortfolioProjects(cfg)
+  if (listKey === 'architectural' || listKey === 'interior' || listKey === 'commercial') {
+    return Array.isArray(cfg[listKey]) ? cfg[listKey] : []
+  }
+  const custom = cfg.projectLists?.[listKey]
+  return Array.isArray(custom) ? custom : []
+}
+
+/** Write projects for a category slug or legacy list key */
+export function setProjectsForCategory(config, slugOrKey, list) {
+  const listKey = resolveProjectListKey(slugOrKey)
+  const nextList = Array.isArray(list) ? list : []
+  if (!listKey) return config
+  if (listKey === 'architectural' || listKey === 'interior' || listKey === 'commercial') {
+    return { ...config, [listKey]: nextList }
+  }
+  return {
+    ...config,
+    projectLists: {
+      ...(config.projectLists || {}),
+      [listKey]: nextList,
+    },
+  }
+}
+
+/** Built-in portfolio menu slugs — do not cascade-wipe legacy project buckets */
+export const BUILTIN_PORTFOLIO_SLUGS = [
+  'all-projects',
+  'architectural-design',
+  'interior-design',
+  'commercial-design',
+]
+
+export function isBuiltinPortfolioSlug(slug) {
+  return BUILTIN_PORTFOLIO_SLUGS.includes(String(slug || '').trim())
+}
+
+/**
+ * Remove a custom category's related config (menu card, page banners, project list).
+ * Never clears architectural / interior / commercial arrays.
+ */
+export function purgePortfolioCategoryFromConfig(config, slugOrId) {
+  const slug = String(slugOrId || '').trim()
+  if (!slug || isBuiltinPortfolioSlug(slug)) return config || DEFAULT_PORTFOLIO_CONFIG
+  const cfg = config || DEFAULT_PORTFOLIO_CONFIG
+  const listKey = resolveProjectListKey(slug)
+
+  const navCards = { ...(cfg.navCards || {}) }
+  delete navCards[slug]
+
+  const heroes = { ...(cfg.heroes || {}) }
+  delete heroes[slug]
+
+  const projectLists = { ...(cfg.projectLists || {}) }
+  if (listKey && listKey !== 'architectural' && listKey !== 'interior' && listKey !== 'commercial') {
+    delete projectLists[listKey]
+    delete projectLists[slug]
+  }
+
+  return {
+    ...cfg,
+    navCards,
+    heroes,
+    projectLists,
+  }
+}
+
+/** Seed empty nav/hero/list when admin creates a new category */
+export function seedPortfolioCategory(config, { slug, name }) {
+  const id = String(slug || '').trim()
+  if (!id || id === 'all-projects') return config
+  const listKey = resolveProjectListKey(id)
+  const label = String(name || id).trim() || id
+  let next = { ...config }
+  next.navCards = {
+    ...(next.navCards || {}),
+    [id]: next.navCards?.[id] || {
+      title: label.toUpperCase(),
+      hover: `${label} projects.`,
+      image: '',
+      video: '',
+    },
+  }
+  next.heroes = {
+    ...(next.heroes || {}),
+    [id]: next.heroes?.[id] || {
+      titleLead: label,
+      titleAccent: 'by Unique Graphics®',
+      description: `Projects in ${label} — add from Admin → Portfolio → Projects list.`,
+      banner1: '',
+      banner2: '',
+      banner3: '',
+    },
+  }
+  if (listKey === 'architectural' || listKey === 'interior' || listKey === 'commercial') {
+    if (!Array.isArray(next[listKey])) next = { ...next, [listKey]: [] }
+  } else {
+    next.projectLists = {
+      ...(next.projectLists || {}),
+      [listKey]: Array.isArray(next.projectLists?.[listKey]) ? next.projectLists[listKey] : [],
+    }
+  }
+  return next
 }
 
 const STORAGE_KEY = 'ug_portfolio_pages_config'
@@ -85,15 +226,27 @@ export function getStoredPortfolioConfig() {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_PORTFOLIO_CONFIG
     const parsed = JSON.parse(raw)
+    const hasOwn = (key) => Object.prototype.hasOwnProperty.call(parsed, key)
     return {
       ...DEFAULT_PORTFOLIO_CONFIG,
       ...parsed,
       categories: Array.isArray(parsed.categories) ? parsed.categories : undefined,
       navCards: { ...DEFAULT_PORTFOLIO_CONFIG.navCards, ...(parsed.navCards || {}) },
       heroes: { ...DEFAULT_PORTFOLIO_CONFIG.heroes, ...(parsed.heroes || {}) },
-      architectural: Array.isArray(parsed.architectural) && parsed.architectural.length > 0 ? parsed.architectural : DEFAULT_PORTFOLIO_CONFIG.architectural,
-      interior: Array.isArray(parsed.interior) && parsed.interior.length > 0 ? parsed.interior : DEFAULT_PORTFOLIO_CONFIG.interior,
-      commercial: Array.isArray(parsed.commercial) && parsed.commercial.length > 0 ? parsed.commercial : DEFAULT_PORTFOLIO_CONFIG.commercial,
+      architectural:
+        hasOwn('architectural') && Array.isArray(parsed.architectural)
+          ? parsed.architectural
+          : DEFAULT_PORTFOLIO_CONFIG.architectural,
+      interior:
+        hasOwn('interior') && Array.isArray(parsed.interior)
+          ? parsed.interior
+          : DEFAULT_PORTFOLIO_CONFIG.interior,
+      commercial:
+        hasOwn('commercial') && Array.isArray(parsed.commercial)
+          ? parsed.commercial
+          : DEFAULT_PORTFOLIO_CONFIG.commercial,
+      projectLists:
+        parsed.projectLists && typeof parsed.projectLists === 'object' ? parsed.projectLists : {},
     }
   } catch (e) {
     console.warn('[portfolioConfig] Failed to parse local config:', e)

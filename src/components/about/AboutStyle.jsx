@@ -18,11 +18,7 @@ export default function AboutStyle({ lang }) {
     }
   }, [])
 
-  const text =
-    styleConfig[lang] ??
-    styleConfig.en ??
-    DEFAULT_ABOUT_PAGE_CONFIG.style[lang] ??
-    DEFAULT_ABOUT_PAGE_CONFIG.style.en
+  const text = styleConfig.en ?? DEFAULT_ABOUT_PAGE_CONFIG.style.en
 
   const mediaSrc = styleConfig?.mediaUrl?.trim()
   const isVideo = mediaSrc && !mediaSrc.match(/\.(jpeg|jpg|png|gif|webp|svg)$/i)

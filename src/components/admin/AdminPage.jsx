@@ -3,20 +3,20 @@ import { BLOG_POSTS } from '../blog/BlogPage'
 import { DEFAULT_PROJECTS_CONFIG, STAT_ICONS } from '../Projects'
 import { DEFAULT_COMPLETED_PROJECTS_CONFIG } from '../CompletedProjects'
 import { DEFAULT_DISCOVER_CONFIG } from '../Discover'
-import { DEFAULT_CLIENTS_CONFIG } from '../Clients'
+import { DEFAULT_CLIENTS_CONFIG, RenderBrand } from '../Clients'
 import { DEFAULT_RECOGNITION_CONFIG } from '../Recognition'
 import { DEFAULT_EXPERT_STEPS_CONFIG } from '../ExpertSteps'
 import { DEFAULT_DREAM_HOME_CONFIG } from '../DreamHome'
 import { DEFAULT_CLOSING_CONFIG } from '../Closing'
-import { FaInstagram, FaPinterest, FaVk, FaYoutube } from 'react-icons/fa'
+import { FaInstagram, FaPinterest, FaLinkedin, FaYoutube } from 'react-icons/fa'
 import AboutPageManager from './AboutPageManager'
 import ServicesManager from './ServicesManager'
-import PortfolioManager from './PortfolioManager'
 import { getStoredPortfolioConfig } from '../../data/portfolioConfig'
 import { readBlogCategories, writeBlogCategories, withoutStaticBlogs } from '../../data/blogCategories'
 import { getStoredBlogs, setStoredBlogs, sanitizeBlogItem } from '../../data/blogConfig'
-import { buildDefaultPortfolioTree, getStoredPortfolioTree, normalizePortfolioTree, setStoredPortfolioTree, validatePortfolioTree } from '../../data/portfolioTree'
+import { buildDefaultPortfolioTree, getStoredPortfolioTree, normalizePortfolioTree, portfolioCategoryPath, portfolioSubcategoryPath, setStoredPortfolioTree, syncLegacyPortfolioConfig, validatePortfolioTree } from '../../data/portfolioTree'
 import ContactPageManager from './ContactPageManager'
+import SiteChromeManager from './SiteChromeManager'
 import { getStoredContactConfig } from '../../data/contactConfig'
 import { getStoredAboutConfig } from '../../data/aboutConfig'
 import { getStoredServicesConfig } from '../../data/servicesConfig'
@@ -117,7 +117,16 @@ export default function AdminPage() {
   const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin/portfolio')) {
+      return 'portfolio_pages'
+    }
+    return 'overview'
+  })
+  const [portfolioProjectEditing, setPortfolioProjectEditing] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.location.pathname.startsWith('/admin/portfolio/')
+  })
   const [inquiries, setInquiries] = useState(() => {
     try {
       const saved = localStorage.getItem('ug_client_inquiries')
@@ -138,7 +147,7 @@ export default function AdminPage() {
     return []
   })
   const [serverOnline, setServerOnline] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [inquirySearch, setInquirySearch] = useState('')
   const [inquiryFilter, setInquiryFilter] = useState('ALL')
   const [selectedInquiry, setSelectedInquiry] = useState(null)
@@ -231,7 +240,7 @@ export default function AdminPage() {
       const saved = localStorage.getItem('ug_homepage_hero_config')
       if (saved) return withBannerPresets(JSON.parse(saved))
     } catch { }
-    return {
+    return withBannerPresets({
       title: 'Unique Graphics',
       subtitle: 'Leading international bureau for premium architectural and interior design',
       buttonText: 'Discuss your project',
@@ -240,7 +249,7 @@ export default function AdminPage() {
       mediaUrl: DEFAULT_REAL_HERO_VIDEO,
       videoPresets: DEFAULT_VIDEO_PRESETS,
       imagePresets: DEFAULT_IMAGE_PRESETS,
-    }
+    })
   })
   const [heroBannerSaving, setHeroBannerSaving] = useState(false)
   const [editingPreset, setEditingPreset] = useState(null)
@@ -659,7 +668,7 @@ export default function AdminPage() {
       summaryEn: '',
       summaryRu: '',
       scopeEn: 'Furniture layout, Daylight and lamps, Custom Joinery',
-      scopeRu: 'Расстановка мебели, Дневной свет и лампы, Мебель на заказ',
+      scopeRu: 'Furniture layout, Daylight and lamps, Custom Joinery',
       detailEn: '',
       detailRu: '',
     })
@@ -772,6 +781,9 @@ export default function AdminPage() {
   }
 
   // Dynamic Brand Sections State (Discover, Clients, Recognition, Expert Steps, Dream Home, Closing)
+  const sanitizeAdminBrands = (arr) =>
+    Array.isArray(arr) ? arr.map((b) => (b?.name === '\u0415\u0412\u0420\u041E\u0421\u0422\u0420\u041E\u0419' ? { ...b, name: 'EUROSTROY' } : b)) : DEFAULT_CLIENTS_CONFIG.brands
+
   const [brandSectionsConfig, setBrandSectionsConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('ug_brand_sections_config')
@@ -782,14 +794,12 @@ export default function AdminPage() {
             ...DEFAULT_DISCOVER_CONFIG,
             ...(parsed.discover || {}),
             en: { ...DEFAULT_DISCOVER_CONFIG.en, ...(parsed.discover?.en || {}) },
-            ru: { ...DEFAULT_DISCOVER_CONFIG.ru, ...(parsed.discover?.ru || {}) },
           },
           clients: {
             ...DEFAULT_CLIENTS_CONFIG,
             ...(parsed.clients || {}),
             en: { ...DEFAULT_CLIENTS_CONFIG.en, ...(parsed.clients?.en || {}) },
-            ru: { ...DEFAULT_CLIENTS_CONFIG.ru, ...(parsed.clients?.ru || {}) },
-            brands: Array.isArray(parsed.clients?.brands) ? parsed.clients.brands : DEFAULT_CLIENTS_CONFIG.brands,
+            brands: sanitizeAdminBrands(parsed.clients?.brands),
           },
           recognition: {
             ...DEFAULT_RECOGNITION_CONFIG,
@@ -835,8 +845,11 @@ export default function AdminPage() {
     type: 'text',
     name: '',
     sub: '',
+    image: '',
     bold: true,
   })
+  const [editingBrandIndex, setEditingBrandIndex] = useState(null)
+  const [editingBrandForm, setEditingBrandForm] = useState(null)
 
   // Fetch Homepage Brand Sections settings from MongoDB backend
   const fetchBrandSectionsSettings = async () => {
@@ -855,8 +868,7 @@ export default function AdminPage() {
             ...DEFAULT_CLIENTS_CONFIG,
             ...(result.data.clients || {}),
             en: { ...DEFAULT_CLIENTS_CONFIG.en, ...(result.data.clients?.en || {}) },
-            ru: { ...DEFAULT_CLIENTS_CONFIG.ru, ...(result.data.clients?.ru || {}) },
-            brands: Array.isArray(result.data.clients?.brands) ? result.data.clients.brands : DEFAULT_CLIENTS_CONFIG.brands,
+            brands: sanitizeAdminBrands(result.data.clients?.brands),
           },
           recognition: {
             ...DEFAULT_RECOGNITION_CONFIG,
@@ -918,8 +930,7 @@ export default function AdminPage() {
               ...DEFAULT_CLIENTS_CONFIG,
               ...(data.data.clients || {}),
               en: { ...DEFAULT_CLIENTS_CONFIG.en, ...(data.data.clients?.en || {}) },
-              ru: { ...DEFAULT_CLIENTS_CONFIG.ru, ...(data.data.clients?.ru || {}) },
-              brands: Array.isArray(data.data.clients?.brands) ? data.data.clients.brands : DEFAULT_CLIENTS_CONFIG.brands,
+              brands: sanitizeAdminBrands(data.data.clients?.brands),
             },
             recognition: {
               ...DEFAULT_RECOGNITION_CONFIG,
@@ -1010,16 +1021,43 @@ export default function AdminPage() {
     }))
   }
 
+  const handleBrandLogoUpload = (e, isEdit = false) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target.result
+      if (isEdit) {
+        setEditingBrandForm((prev) => ({
+          ...prev,
+          type: 'image',
+          image: dataUrl,
+          name: prev?.name || file.name.replace(/\.[^/.]+$/, ''),
+        }))
+      } else {
+        setNewBrandForm((prev) => ({
+          ...prev,
+          type: 'image',
+          image: dataUrl,
+          name: prev?.name || file.name.replace(/\.[^/.]+$/, ''),
+        }))
+      }
+      showToast('Logo image uploaded successfully!')
+    }
+    reader.readAsDataURL(file)
+  }
+
   const handleAddClientBrand = (e) => {
     if (e) e.preventDefault()
-    if (!newBrandForm.name.trim()) {
-      showToast('Please enter brand name or logo text.')
+    if (!newBrandForm.name.trim() && !newBrandForm.image) {
+      showToast('Please enter brand name or upload a logo image.')
       return
     }
     const brandItem = {
       type: newBrandForm.type,
-      name: newBrandForm.name.trim(),
+      name: newBrandForm.name.trim() || 'Brand Logo',
       ...(newBrandForm.sub ? { sub: newBrandForm.sub.trim() } : {}),
+      ...(newBrandForm.image ? { image: newBrandForm.image } : {}),
       ...(newBrandForm.bold ? { bold: true } : {}),
     }
 
@@ -1031,8 +1069,77 @@ export default function AdminPage() {
       },
     }))
 
-    setNewBrandForm({ type: 'text', name: '', sub: '', bold: true })
-    showToast(`Brand "${brandItem.name}" added to Clients bar!`)
+    setNewBrandForm({ type: 'text', name: '', sub: '', image: '', bold: true })
+    showToast(`Brand "${brandItem.name}" added! Click Save to publish.`)
+  }
+
+  const handleStartEditBrand = (index) => {
+    const brand = brandSectionsConfig.clients?.brands?.[index]
+    if (!brand) return
+    const bName = typeof brand === 'string' ? brand : (brand.name || '')
+    const bType = typeof brand === 'string' ? 'text' : (brand.type || 'text')
+    const bSub = typeof brand === 'string' ? '' : (brand.sub || '')
+    const bImg = typeof brand === 'string' ? '' : (brand.image || brand.logo || '')
+    setEditingBrandIndex(index)
+    setEditingBrandForm({
+      type: bType,
+      name: bName,
+      sub: bSub,
+      image: bImg,
+      bold: true,
+    })
+  }
+
+  const handleSaveEditBrand = (e) => {
+    if (e) e.preventDefault()
+    if (!editingBrandForm.name.trim() && !editingBrandForm.image) {
+      showToast('Please enter brand name or upload a logo image.')
+      return
+    }
+    const updatedBrand = {
+      type: editingBrandForm.type,
+      name: editingBrandForm.name.trim() || 'Brand Logo',
+      ...(editingBrandForm.sub ? { sub: editingBrandForm.sub.trim() } : {}),
+      ...(editingBrandForm.image ? { image: editingBrandForm.image } : {}),
+      bold: true,
+    }
+    setBrandSectionsConfig((prev) => {
+      const list = [...(prev.clients?.brands || [])]
+      list[editingBrandIndex] = updatedBrand
+      return {
+        ...prev,
+        clients: {
+          ...prev.clients,
+          brands: list,
+        },
+      }
+    })
+    setEditingBrandIndex(null)
+    setEditingBrandForm(null)
+    showToast(`Brand "${updatedBrand.name}" updated! Click Save to publish live.`)
+  }
+
+  const handleCancelEditBrand = () => {
+    setEditingBrandIndex(null)
+    setEditingBrandForm(null)
+  }
+
+  const handleMoveBrand = (index, direction) => {
+    setBrandSectionsConfig((prev) => {
+      const list = [...(prev.clients?.brands || [])]
+      const targetIndex = index + direction
+      if (targetIndex < 0 || targetIndex >= list.length) return prev
+      const temp = list[index]
+      list[index] = list[targetIndex]
+      list[targetIndex] = temp
+      return {
+        ...prev,
+        clients: {
+          ...prev.clients,
+          brands: list,
+        },
+      }
+    })
   }
 
   const handleRemoveClientBrand = (index) => {
@@ -1047,6 +1154,10 @@ export default function AdminPage() {
         },
       }
     })
+    if (editingBrandIndex === index) {
+      setEditingBrandIndex(null)
+      setEditingBrandForm(null)
+    }
     showToast('Brand removed from list.')
   }
 
@@ -1058,7 +1169,41 @@ export default function AdminPage() {
         brands: DEFAULT_CLIENTS_CONFIG.brands,
       },
     }))
+    setEditingBrandIndex(null)
+    setEditingBrandForm(null)
     showToast('Reset to default studio client brands.')
+  }
+
+  const handleDirectSaveClientBrands = async () => {
+    setBrandSaving(true)
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('adminToken')
+      if (token) {
+        const res = await fetch(`${API_BASE_URL}/blogs/settings/brand-sections`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(brandSectionsConfig),
+        })
+        const data = await res.json()
+        if (data.success && data.data) {
+          localStorage.setItem('ug_brand_sections_config', JSON.stringify(data.data))
+          window.dispatchEvent(new Event('ug_brand_updated'))
+          showToast('Client brands successfully published live on the website!')
+          setBrandSaving(false)
+          return
+        }
+      }
+    } catch (err) {
+      console.warn('Direct brand save error:', err)
+    }
+
+    localStorage.setItem('ug_brand_sections_config', JSON.stringify(brandSectionsConfig))
+    window.dispatchEvent(new Event('ug_brand_updated'))
+    showToast('Client brands updated & published live!')
+    setBrandSaving(false)
   }
 
   // Recognition Section Field Updaters
@@ -1988,7 +2133,7 @@ export default function AdminPage() {
     })
 
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col lg:flex-row font-sans">
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-row font-sans">
         {/* Floating Toast Notification */}
         {activeToast && (
           <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 rounded-xl border border-[#e3943f]/40 bg-[#141414] px-4 py-3 text-[12px] text-white shadow-2xl backdrop-blur-md animate-fade-in">
@@ -1997,65 +2142,19 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Mobile Top App Bar with Sidebar Toggle */}
-        <header className="lg:hidden flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-[#121212] sticky top-0 z-40">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors cursor-pointer"
-              aria-label="Toggle Navigation Sidebar"
-            >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            </button>
-            <div className="flex items-center gap-2">
-              <img src="/logouniqe.png" alt="Unique Graphics" className="h-8 w-auto object-contain" />
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="text-[11px] font-bold text-red-400 uppercase tracking-wider hover:underline"
-          >
-            Sign Out
-          </button>
-        </header>
-
-        {/* Backdrop for mobile drawer */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
         {/* DEDICATED LUXURY SIDEBAR */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-72 max-h-screen h-full bg-[#111111] border-r border-white/[0.08] px-5 py-5 flex flex-col justify-between transition-transform duration-300 backdrop-blur-2xl lg:translate-x-0 lg:static lg:w-72 lg:h-screen lg:sticky lg:top-0 shrink-0 overflow-hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-            }`}
+          className="sticky top-0 z-40 flex h-screen w-64 shrink-0 flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-[#111111] px-4 py-5 sm:w-72"
         >
           {/* Sidebar Brand Header */}
-          <div className="shrink-0 flex items-center justify-between pb-4 border-b border-white/[0.08]">
-            <div className="flex items-center gap-3">
+          <div className="shrink-0 pb-4 border-b border-white/[0.08]">
             <img src="/logouniqe.png" alt="Unique Graphics" className="h-12 w-auto max-w-[160px] object-contain" />
-            </div>
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden h-8 w-8 rounded-lg bg-white/[0.05] border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-            >
-              ✕
-            </button>
           </div>
 
           {/* Navigation Menu Links (Scrollable Container for all screen heights) */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-3.5 pr-1 space-y-1.5 no-scrollbar">
-            <span className="block text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-2 px-3">
-              MANAGEMENT MODULES
+            <span className="block text-[11px] font-semibold text-white/40 mb-2 px-3">
+              Pages
             </span>
             <nav className="space-y-1.5">
 
@@ -2157,9 +2256,10 @@ export default function AdminPage() {
                 type="button"
                 onClick={() => {
                   setActiveTab('brand_showcase')
+                  setBrandSubTab('clients')
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-[12px] font-semibold tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'brand_showcase'
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-[12px] font-semibold tracking-wider uppercase transition-all duration-200 cursor-pointer ${activeTab === 'brand_showcase' && brandSubTab === 'clients'
                   ? 'bg-[#e3943f] text-black shadow-md shadow-[#e3943f]/25 font-bold'
                   : 'text-white/70 hover:bg-white/[0.04] hover:text-white'
                   }`}
@@ -2168,9 +2268,8 @@ export default function AdminPage() {
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
-                  <span>Clients</span>
+                  <span>Client Brands</span>
                 </div>
-
               </button>
 
               {/* Tab: About Us Page Studio */}
@@ -2333,18 +2432,18 @@ export default function AdminPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#e3943f]" />
-                <span className="text-[10px] font-bold tracking-[0.2em] text-[#e3943f] uppercase">
-                  ATELIER EXECUTIVE CONSOLE
+                <span className="text-[11px] font-semibold text-[#e3943f]">
+                  Unique Graphics
                 </span>
               </div>
-              <h1 className="text-[18px] sm:text-[22px] font-normal tracking-[-0.01em] text-white uppercase mt-0.5">
+              <h1 className="mt-0.5 text-[22px] font-semibold text-white sm:text-[26px]">
                 {activeTab === 'overview' && 'Dashboard'}
                 {activeTab === 'hero_banner' && 'Home page banner'}
                 {activeTab === 'projects_section' && '32 countries on the home page'}
                 {activeTab === 'completed_projects' && 'Project photos'}
                 {activeTab === 'brand_showcase' && 'Clients and awards'}
                 {activeTab === 'about_page' && 'About page'}
-                {activeTab === 'portfolio_pages' && 'Portfolio pages'}
+                {activeTab === 'portfolio_pages' && (portfolioProjectEditing ? 'Edit project' : 'Portfolio')}
                 {activeTab === 'services_pages' && 'Services'}
                 {activeTab === 'contact_page' && 'Contact page'}
                 {activeTab === 'inquiries' && 'Messages'}
@@ -2360,7 +2459,7 @@ export default function AdminPage() {
           </header>
 
           {/* STAGE BODY VIEW ROUTING */}
-          <div className="p-6 sm:p-10 space-y-8 flex-1">
+          <div className={portfolioProjectEditing ? 'p-4 sm:p-6 flex-1' : 'p-6 sm:p-10 space-y-8 flex-1'}>
             {/* VIEW 1: BESPOKE LUXURY ARCHITECTURAL AUDIT & REVISION MATRIX */}
             {activeTab === 'overview' && (() => {
               const contactConfig = getStoredContactConfig()
@@ -3866,7 +3965,7 @@ export default function AdminPage() {
                                 type="text"
                                 value={newCatData.labelRu}
                                 onChange={(e) => setNewCatData({ ...newCatData, labelRu: e.target.value })}
-                                placeholder="e.g. Пентхаус"
+                                placeholder="e.g. Penthouse"
                                 className="w-full rounded-lg border border-white/10 bg-[#121212] px-3 py-2 text-[12px] text-white outline-none focus:border-[#e3943f]"
                               />
                             </div>
@@ -4007,12 +4106,20 @@ export default function AdminPage() {
                               >
                                 <div className="flex items-center gap-3.5 min-w-0">
                                   <div className="h-14 w-20 shrink-0 rounded-lg bg-black overflow-hidden relative border border-white/10 flex items-center justify-center">
-                                    <video
-                                      src={proj.video}
-                                      muted
-                                      loop
-                                      className="h-full w-full object-cover"
-                                    />
+                                    {proj.video ? (
+                                      <video
+                                        src={proj.video}
+                                        poster={proj.image || undefined}
+                                        muted
+                                        loop
+                                        playsInline
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : proj.image ? (
+                                      <img src={proj.image} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                      <div className="h-full w-full bg-gradient-to-br from-[#2a221b] to-[#101010]" />
+                                    )}
                                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                                       <svg className="h-4 w-4 text-[#e3943f]" viewBox="0 0 24 24" fill="currentColor">
                                         <polygon points="5 3 19 12 5 21 5 3" />
@@ -4109,10 +4216,17 @@ export default function AdminPage() {
                               {sample?.video ? (
                                 <video
                                   src={sample.video}
+                                  poster={sample.image || undefined}
                                   muted
                                   loop
                                   autoPlay
                                   playsInline
+                                  className="absolute inset-0 h-full w-full object-cover opacity-65 group-hover:opacity-95 transition-opacity"
+                                />
+                              ) : sample?.image ? (
+                                <img
+                                  src={sample.image}
+                                  alt=""
                                   className="absolute inset-0 h-full w-full object-cover opacity-65 group-hover:opacity-95 transition-opacity"
                                 />
                               ) : (
@@ -4147,12 +4261,25 @@ export default function AdminPage() {
                                 key={p.id}
                                 className="shrink-0 h-[100px] w-[140px] rounded-xl bg-black overflow-hidden relative border border-white/15 flex flex-col justify-end p-2.5 group"
                               >
-                                <video
-                                  src={p.video}
-                                  muted
-                                  loop
-                                  className="absolute inset-0 h-full w-full object-cover"
-                                />
+                                {p.video ? (
+                                  <video
+                                    src={p.video}
+                                    poster={p.image || undefined}
+                                    muted
+                                    loop
+                                    autoPlay
+                                    playsInline
+                                    className="absolute inset-0 h-full w-full object-cover"
+                                  />
+                                ) : p.image ? (
+                                  <img
+                                    src={p.image}
+                                    alt=""
+                                    className="absolute inset-0 h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="absolute inset-0 bg-gradient-to-br from-[#2a221b] via-[#1c1813] to-[#101010]" />
+                                )}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
                                 <span className="relative z-10 text-[10px] font-medium tracking-tight text-white line-clamp-1">
                                   {info.title}
@@ -4669,7 +4796,7 @@ export default function AdminPage() {
                                 <option value="italic">Luxury Italic Serif (DAMAC)</option>
                                 <option value="hilton">Emblem + Subtitle (Hilton)</option>
                                 <option value="jacob">Stacked Monogram (&Co Jacob)</option>
-                                <option value="euro">Cyrillic Heavy (ЕВРОСТРОЙ)</option>
+                                <option value="euro">Corporate Bold (EUROSTROY)</option>
                               </select>
                             </div>
 
@@ -4803,14 +4930,17 @@ export default function AdminPage() {
 
                             <div>
                               <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                <FaVk className="text-blue-400" />
-                                <span>VK Profile:</span>
+                                <FaLinkedin className="text-blue-400" />
+                                <span>LinkedIn Profile:</span>
                               </label>
                               <input
                                 type="text"
-                                value={brandSectionsConfig.recognition?.socials?.vk || ''}
-                                onChange={(e) => updateRecognitionSocial('vk', e.target.value)}
-                                placeholder="https://vk.com/..."
+                                value={brandSectionsConfig.recognition?.socials?.linkedin || brandSectionsConfig.recognition?.socials?.vk || ''}
+                                onChange={(e) => {
+                                  updateRecognitionSocial('linkedin', e.target.value)
+                                  updateRecognitionSocial('vk', e.target.value)
+                                }}
+                                placeholder="https://linkedin.com/..."
                                 className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12px] text-white outline-none focus:border-[#e3943f]"
                               />
                             </div>
@@ -5469,13 +5599,13 @@ export default function AdminPage() {
                                 <FaPinterest />
                               </a>
                               <a
-                                href={brandSectionsConfig.recognition?.socials?.vk || '#'}
+                                href={brandSectionsConfig.recognition?.socials?.linkedin || brandSectionsConfig.recognition?.socials?.vk || '#'}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="h-8 w-8 rounded-full bg-white text-black flex items-center justify-center text-[13px] hover:scale-110 transition-transform"
-                                title="VK"
+                                title="LinkedIn"
                               >
-                                <FaVk />
+                                <FaLinkedin />
                               </a>
                               <a
                                 href={brandSectionsConfig.recognition?.socials?.youtube || '#'}
@@ -5642,30 +5772,32 @@ export default function AdminPage() {
 
             {/* VIEW: PORTFOLIO & CATEGORY PAGES MANAGER (STANDALONE COMPONENT) */}
             {activeTab === 'portfolio_pages' && (
-              <>
               <ServicesManager
                 token={token}
-                title="Portfolio menu"
-                intro="This top block updates the Portfolio menu in the website header: category names, the side list, the hover picture, and the text on each portfolio page. Save here before you edit the project cards below."
+                title="Portfolio"
+                intro="Choose a section on the left. Change the website menu, this page, or the project cards. Press Save to website when you finish."
                 endpoint="/api/blogs/settings/portfolio-pages"
                 readTree={getStoredPortfolioTree}
                 writeTree={setStoredPortfolioTree}
                 resetTree={buildDefaultPortfolioTree}
                 checkTree={validatePortfolioTree}
                 normalize={normalizePortfolioTree}
-                packTree={(value) => ({ ...getStoredPortfolioConfig(), categories: value.categories })}
-                urlFor={(categoryItem, sub) => sub?.href || categoryItem?.href || (sub ? `/portfolio/${categoryItem.slug}/${sub.slug}` : `/portfolio/${categoryItem.slug}`)}
-                hoverNote="Only the small picture in the Portfolio menu. The page banner is set below."
+                packTree={(value) => syncLegacyPortfolioConfig(value, getStoredPortfolioConfig())}
+                urlFor={(categoryItem, sub) =>
+                  sub?.slug ? portfolioSubcategoryPath(categoryItem, sub) : portfolioCategoryPath(categoryItem)
+                }
+                hoverNote="This is only the small picture in the website menu. The big banner is in This page."
+                onEditingChange={setPortfolioProjectEditing}
               />
-              <div className="mt-10">
-                <PortfolioManager token={token} />
-              </div>
-              </>
             )}
 
             {/* VIEW: SERVICES & DISCIPLINES MANAGER (STANDALONE COMPONENT) */}
             {activeTab === 'services_pages' && (
-              <ServicesManager token={token} />
+              <ServicesManager
+                token={token}
+                title="Services"
+                intro="Choose a service on the left. Change the menu, this page, or the cards. Press Save to website when you finish."
+              />
             )}
 
             {/* VIEW: CONTACT US PORTAL MANAGER (STANDALONE COMPONENT) */}
@@ -6493,6 +6625,7 @@ export default function AdminPage() {
             {/* VIEW: ADMIN ACCOUNT, CREDENTIALS & PASSWORD SECURITY SETTINGS */}
             {activeTab === 'settings' && (
               <div className="space-y-8 animate-fade-in">
+                <SiteChromeManager token={token} />
                 {/* Header Banner with Luxury Gold Ambient Glow */}
                 <div className="relative rounded-3xl border border-[#e3943f]/25 bg-gradient-to-br from-[#1a1612] via-[#121212] to-[#0a0a0a] p-6 sm:p-8 overflow-hidden shadow-2xl backdrop-blur-2xl">
                   <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#e3943f]/15 blur-3xl animate-pulse" />
@@ -7471,7 +7604,7 @@ export default function AdminPage() {
                       type="text"
                       value={projectFormData.titleRu}
                       onChange={(e) => setProjectFormData({ ...projectFormData, titleRu: e.target.value })}
-                      placeholder="e.g. Дневная гостиная"
+                      placeholder="e.g. Daylight Living Room"
                       className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-[#e3943f]"
                     />
                   </div>
@@ -7545,7 +7678,7 @@ export default function AdminPage() {
                       rows="2"
                       value={projectFormData.summaryRu}
                       onChange={(e) => setProjectFormData({ ...projectFormData, summaryRu: e.target.value })}
-                      placeholder="e.g. Гостиная под дневной свет: посадка смотрит в комнату..."
+                      placeholder="e.g. Daylight living room: seating oriented toward the open space..."
                       className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2 text-[12.5px] text-white outline-none focus:border-[#e3943f] resize-none"
                     />
                   </div>
@@ -7584,7 +7717,7 @@ export default function AdminPage() {
                         rows="3"
                         value={projectFormData.detailRu}
                         onChange={(e) => setProjectFormData({ ...projectFormData, detailRu: e.target.value })}
-                        placeholder="e.g. Диван стоит не у стекла, проход у окна свободен. Свет сбоку и одна лампа на вечер. Хранение низкое, стена остаётся открытой."
+                        placeholder="e.g. The sofa sits off the glass so the walk past the window stays clear. Light comes from the side, with one lamp for the evening. Storage is kept low so the wall stays open."
                         className="w-full rounded-xl border border-white/10 bg-[#121212] p-3 text-[12.5px] text-white outline-none focus:border-[#e3943f] resize-none leading-relaxed"
                       />
                     </div>
@@ -7614,7 +7747,7 @@ export default function AdminPage() {
                       type="text"
                       value={projectFormData.scopeRu}
                       onChange={(e) => setProjectFormData({ ...projectFormData, scopeRu: e.target.value })}
-                      placeholder="e.g. Расстановка, Дневной свет и лампы, Диван и кресла, Стены и пол"
+                      placeholder="e.g. Furniture layout, Daylight and lamps, Sofa and chairs, Wall and floor finish"
                       className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] text-white outline-none focus:border-[#e3943f]"
                     />
                   </div>

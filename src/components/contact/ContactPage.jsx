@@ -5,13 +5,39 @@ const DEFAULT_REAL_CONTACT_VIDEO = '/website-assets/commercial%20interior/TEETRO
 const DEFAULT_REAL_POSTER = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png'
 import { getStoredContactConfig, setStoredContactConfig } from '../../data/contactConfig'
 
+const ENQUIRE_PROJECT_KEY = 'ug_enquire_project'
+
+function readEnquireProject() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(ENQUIRE_PROJECT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed?.mediaUrl) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function isVideoSrc(src) {
+  return (
+    /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i.test(String(src || '')) ||
+    String(src || '').startsWith('data:video')
+  )
+}
+
 export default function ContactPage({ lang }) {
   const [config, setConfig] = useState(() => getStoredContactConfig())
+  const [enquireProject, setEnquireProject] = useState(() => readEnquireProject())
   const video = useRef(null)
   const [name, setName] = useState('')
   const [code, setCode] = useState(defaultCountry)
   const [phone, setPhone] = useState('')
-  const [note, setNote] = useState('')
+  const [note, setNote] = useState(() => {
+    const project = readEnquireProject()
+    return project?.title ? `Interested in: ${project.title}` : ''
+  })
   const [sent, setSent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -47,13 +73,21 @@ export default function ContactPage({ lang }) {
     }
   }, [])
 
+  useEffect(() => {
+    const project = readEnquireProject()
+    setEnquireProject(project)
+    if (project?.title) {
+      setNote((prev) => (prev?.trim() ? prev : `Interested in: ${project.title}`))
+    }
+  }, [])
+
   // Auto-play video if present
   useEffect(() => {
     const node = video.current
     if (!node) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     node.play().catch(() => {})
-  }, [config.mediaUrl])
+  }, [config.mediaUrl, enquireProject?.mediaUrl])
 
   const submit = async (event) => {
     event.preventDefault()
@@ -63,15 +97,20 @@ export default function ContactPage({ lang }) {
     const dialCode = code?.dial_code || '+1'
     const fullPhone = `${dialCode} ${phone.trim()}`
     const locationName = code?.name ? `${code.name} (${dialCode})` : 'International'
+    const projectLine = enquireProject?.title ? `Project: ${enquireProject.title}. ` : ''
 
     const payload = {
       client: name.trim(),
       phone: fullPhone,
       location: locationName,
-      projectType: 'Architectural & Haute Interior Directive',
+      projectType: enquireProject?.title
+        ? `Enquire — ${enquireProject.title}`
+        : 'Architectural & Haute Interior Directive',
       budget: 'Consultation Requested',
-      message: note.trim() || 'Direct inquiry submitted via Contact Us portal.',
-      source: 'Contact Us Page',
+      message:
+        note.trim() ||
+        `${projectLine}Direct inquiry submitted via Contact Us portal.`.trim(),
+      source: enquireProject?.id ? `Project Enquire (${enquireProject.id})` : 'Contact Us Page',
     }
 
     try {
@@ -108,32 +147,46 @@ export default function ContactPage({ lang }) {
   }
 
   const isOldMedia = (u) => !u || String(u).includes('/assets/Contact') || String(u).includes('Nina_obrezano')
-  const activeMedia = !isOldMedia(config.mediaUrl) ? config.mediaUrl : DEFAULT_REAL_CONTACT_VIDEO
-  const isImageMedia = activeMedia && activeMedia.match(/\.(jpeg|jpg|png|webp|avif|svg)(\?.*)?$/i)
+  const activeMedia =
+    enquireProject?.mediaUrl ||
+    (!isOldMedia(config.mediaUrl) ? config.mediaUrl : DEFAULT_REAL_CONTACT_VIDEO)
+  const activePoster =
+    enquireProject?.posterUrl ||
+    (config.posterUrl && !String(config.posterUrl).includes('videoframe')
+      ? config.posterUrl
+      : DEFAULT_REAL_POSTER)
+  const isImageMedia = Boolean(activeMedia) && !isVideoSrc(activeMedia)
+  const mediaAlt = enquireProject?.title || config.title || 'Contact Unique Graphics'
 
   return (
     <main className="bg-[#101010] px-4 pt-36 pb-16 text-white sm:px-6 md:pt-48 lg:px-10 lg:pb-24">
       <p className="text-[12px] tracking-[0.18em] text-[#e3943f] uppercase">
         {config.kicker || 'Contact us'}
+        {enquireProject?.title ? (
+          <span className="ml-2 normal-case tracking-normal text-white/45">
+            · {enquireProject.title}
+          </span>
+        ) : null}
       </p>
       <div className="mt-6 grid overflow-hidden rounded-[28px] bg-[#1c1c1c] lg:grid-cols-[1.15fr_0.85fr] border border-white/5 shadow-2xl">
-        <div className="bg-black flex items-center justify-center min-h-[360px] lg:min-h-[640px] relative overflow-hidden">
+        <div className="relative min-h-[420px] overflow-hidden bg-black lg:min-h-[640px] lg:h-full">
           {isImageMedia ? (
             <img
               src={activeMedia}
-              alt={config.title || 'Contact Unique Graphics'}
-              className="h-full max-h-[720px] w-full object-cover"
+              alt={mediaAlt}
+              className="absolute inset-0 h-full w-full object-cover object-center"
             />
           ) : (
             <video
               ref={video}
+              key={activeMedia}
               src={activeMedia}
-              poster={config.posterUrl && !String(config.posterUrl).includes('videoframe') ? config.posterUrl : DEFAULT_REAL_POSTER}
+              poster={activePoster}
               muted
               loop
               playsInline
               autoPlay
-              className="h-full max-h-[720px] w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover object-center"
             />
           )}
         </div>

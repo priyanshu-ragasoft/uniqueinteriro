@@ -20,14 +20,6 @@ export const menuPages = [
       points: ['Houses', 'Interiors', 'Commercial rooms', 'Courts and gardens'],
       detail: 'Each project starts with how the place is used. The drawings follow that, not a repeated plan.',
     },
-    ru: {
-      category: 'Портфолио',
-      title: 'Все проекты',
-      hover: 'Дома и комнаты из всего портфолио.',
-      summary: 'Весь набор: от частных домов до комнат внутри них.',
-      points: ['Дома', 'Интерьеры', 'Коммерческие помещения', 'Дворы и сады'],
-      detail: 'Каждый проект начинается с того, как место используют. Чертежи идут за этим, а не за готовым планом.',
-    },
   },
   {
     id: 'architectural-design',
@@ -40,14 +32,6 @@ export const menuPages = [
       summary: 'The house as a building: site, floors, light, and the line of the facade.',
       points: ['Site and approach', 'Floor plans', 'Facade and roof', 'Stair and structure'],
       detail: 'Rooms face the garden or the court. Service rooms stay on the quieter side. Sections are agreed before building starts.',
-    },
-    ru: {
-      category: 'Портфолио',
-      title: 'Архитектурное проектирование',
-      hover: 'Планы, фасады и объём дома.',
-      summary: 'Дом как здание: участок, этажи, свет и линия фасада.',
-      points: ['Участок и подъезд', 'Планы этажей', 'Фасад и кровля', 'Лестница и конструктив'],
-      detail: 'Комнаты смотрят в сад или во двор. Служебные остаются на тихой стороне. Сечения согласуем до стройки.',
     },
   },
   {
@@ -62,14 +46,6 @@ export const menuPages = [
       points: ['Furniture layout', 'Lighting', 'Joinery', 'Textiles and finishes'],
       detail: 'One room is planned at a time. The light is layered, and storage stays out of the way of the view.',
     },
-    ru: {
-      category: 'Портфолио',
-      title: 'Дизайн интерьера',
-      hover: 'Мебель, свет и отделка каждой комнаты.',
-      summary: 'Комнаты после коробки: посадка, хранение, свет и материалы.',
-      points: ['Расстановка', 'Свет', 'Столярка', 'Текстиль и отделка'],
-      detail: 'Каждую комнату собираем отдельно. Свет слоями, хранение не закрывает вид.',
-    },
   },
   {
     id: 'commercial-design',
@@ -82,14 +58,6 @@ export const menuPages = [
       summary: 'Rooms for guests and for work, with a clear path and a quiet service side.',
       points: ['Guest flow', 'Work rooms', 'Service path', 'Lighting for evening use'],
       detail: 'Guests should not cross the kitchen. Staff have their own door. The light can be lowered without one harsh switch.',
-    },
-    ru: {
-      category: 'Портфолио',
-      title: 'Коммерческий дизайн',
-      hover: 'Гостевые, гостиные и рабочие места.',
-      summary: 'Помещения для гостей и для работы, с ясным путём и тихой служебной стороной.',
-      points: ['Путь гостя', 'Рабочие комнаты', 'Сервис', 'Вечерний свет'],
-      detail: 'Гость не пересекает кухню. У персонала своя дверь. Свет снижается без одного резкого выключателя.',
     },
   },
   {
@@ -104,14 +72,6 @@ export const menuPages = [
       points: ['Architecture', 'Interiors', 'Site supervision', 'Procurement'],
       detail: 'One studio can hold the project from the sketch to the last delivery, so the drawings and the site stay in step.',
     },
-    ru: {
-      category: 'Услуги',
-      title: 'Все услуги',
-      hover: 'От первого чертежа до готовой комнаты.',
-      summary: 'Проект, чертежи, проверка площадки, стройка и то, чем наполняют комнаты.',
-      points: ['Архитектура', 'Интерьеры', 'Надзор', 'Комплектация'],
-      detail: 'Одна студия может вести проект от эскиза до последней поставки, чтобы чертежи и площадка не расходились.',
-    },
   },
   {
     id: 'architecture',
@@ -124,14 +84,6 @@ export const menuPages = [
       summary: 'Plans and sections for the house, with the structure and the openings drawn together.',
       points: ['Concept', 'Plans and sections', 'Facade', 'Coordination with the builder'],
       detail: 'We draw the house so ceiling heights, doors, and the stair agree before anyone is on site.',
-    },
-    ru: {
-      category: 'Услуги',
-      title: 'Архитектура',
-      hover: 'Здание, спланированное до стройки.',
-      summary: 'Планы и разрезы дома: конструктив и проёмы в одном комплекте.',
-      points: ['Концепция', 'Планы и разрезы', 'Фасад', 'Согласование со строителем'],
-      detail: 'Дом рисуем так, чтобы высоты, двери и лестница сошлись до выхода на площадку.',
     },
   },
   {
@@ -146,14 +98,6 @@ export const menuPages = [
       points: ['Layout', 'Finishes', 'Lighting plan', 'Furniture'],
       detail: 'The plan shows where you sit, where you store, and where the light falls at night.',
     },
-    ru: {
-      category: 'Услуги',
-      title: 'Интерьеры',
-      hover: 'Комнаты под ежедневную жизнь.',
-      summary: 'Планировки, отделка и свет для комнат, в которых сидят.',
-      points: ['Планировка', 'Отделка', 'Свет', 'Мебель'],
-      detail: 'На плане видно, где сидеть, где хранить и куда падает свет вечером.',
-    },
   },
   {
     id: 'commercial-interiors',
@@ -166,14 +110,6 @@ export const menuPages = [
       summary: 'Lounges, dining rooms, and work rooms with a service path kept out of sight.',
       points: ['Guest rooms', 'Workrooms', 'Acoustic finishes', 'Dimmable light'],
       detail: 'The room has to work on a busy evening and still feel calm. Service stays on its own side.',
-    },
-    ru: {
-      category: 'Услуги',
-      title: 'Коммерческие интерьеры',
-      hover: 'Интерьеры для гостей и для персонала.',
-      summary: 'Гостиные, столовые и кабинеты, сервис остаётся вне вида.',
-      points: ['Гостевые', 'Кабинеты', 'Акустика', 'Регулируемый свет'],
-      detail: 'Комната должна работать в загруженный вечер и оставаться спокойной. Сервис на своей стороне.',
     },
   },
   {
@@ -188,14 +124,6 @@ export const menuPages = [
       points: ['Coordinated model', 'Plans and sections', 'Services routes', 'Issue sets for the site'],
       detail: 'A duct and a beam should meet in the model, not on the ceiling during construction.',
     },
-    ru: {
-      category: 'Услуги',
-      title: 'BIM проектирование',
-      hover: 'Чертежи, которые сходятся между собой.',
-      summary: 'Планы, разрезы и инженерия в одной модели, чтобы пересечения всплывали на бумаге.',
-      points: ['Согласованная модель', 'Планы и разрезы', 'Трассы инженерии', 'Комплекты для площадки'],
-      detail: 'Воздуховод и балка должны встретиться в модели, а не на потолке во время стройки.',
-    },
   },
   {
     id: 'design-supervision',
@@ -208,14 +136,6 @@ export const menuPages = [
       summary: 'Visits that compare the built work with the approved drawings.',
       points: ['Site visits', 'Checks against drawings', 'Notes for the builder', 'Samples and finishes'],
       detail: 'If a wall or a finish drifts from the drawing, it is caught while it can still be corrected.',
-    },
-    ru: {
-      category: 'Услуги',
-      title: 'Авторский надзор',
-      hover: 'Площадка сверяется с чертежами.',
-      summary: 'Выезды, на которых построенное сравнивают с утверждёнными чертежами.',
-      points: ['Выезды', 'Сверка с чертежами', 'Замечания строителю', 'Образцы и отделка'],
-      detail: 'Если стена или отделка уходит от чертежа, это видно, пока ещё можно поправить.',
     },
   },
   {
@@ -230,14 +150,6 @@ export const menuPages = [
       points: ['Sequence of works', 'Dates', 'Approvals', 'Reports from site'],
       detail: 'The next trade starts when the last one is accepted. You see the date before it slips.',
     },
-    ru: {
-      category: 'Услуги',
-      title: 'Управление строительством',
-      hover: 'Стройка в согласованном порядке.',
-      summary: 'Порядок работ на площадке, с датами и точками, которые вы принимаете.',
-      points: ['Порядок работ', 'Даты', 'Согласования', 'Отчёты с площадки'],
-      detail: 'Следующий подряд начинается, когда предыдущий принят. Дату видно до того, как она съедет.',
-    },
   },
   {
     id: 'procurement',
@@ -250,14 +162,6 @@ export const menuPages = [
       summary: 'Stone, timber, lights, and furniture bought to match the specification.',
       points: ['Specification', 'Orders', 'Delivery dates', 'Check on arrival'],
       detail: 'What arrives should be what was drawn. Dates are set so the site is not waiting on a missing piece.',
-    },
-    ru: {
-      category: 'Услуги',
-      title: 'Комплектация',
-      hover: 'Материалы и мебель по чертежам.',
-      summary: 'Камень, дерево, свет и мебель закупаются по спецификации.',
-      points: ['Спецификация', 'Заказы', 'Сроки поставки', 'Проверка при приёмке'],
-      detail: 'Приехать должно то, что нарисовано. Сроки ставим так, чтобы площадка не ждала недостающую позицию.',
     },
   },
   {
@@ -272,14 +176,6 @@ export const menuPages = [
       points: ['2D Floor plans & elevations', 'Photorealistic 3D CGI renders', 'Lighting & texture studies', 'Material moodboards & finishes'],
       detail: 'Every project begins with precision 2D drafting before transitioning into ultra-realistic 3D CGI simulations, revealing exact natural light, spatial geometry, and textures before execution.',
     },
-    ru: {
-      category: 'Услуги',
-      title: '2D / 3D дизайн',
-      hover: 'Точные архитектурные чертежи и фотореалистичная 3D-визуализация.',
-      summary: '2D планировочные решения, разрезы и кинематографичная 3D-визуализация экстерьеров и интерьеров.',
-      points: ['2D Планировки и фасады', 'Фотореалистичные 3D рендеры', 'Световые сценарии и текстуры', 'Материалы и мудборды'],
-      detail: 'Каждый проект начинается с точных 2D планов, после чего переходит в 3D CGI визуализацию, передающую свет, объём и фактуры материалов.',
-    },
   },
   {
     id: 'walkthrough',
@@ -292,14 +188,6 @@ export const menuPages = [
       summary: 'Ultra-HD cinematic video walkthroughs and immersive digital flythrough tours through future villas and estates.',
       points: ['4K Cinematic camera flythroughs', 'Interior & exterior tours', 'Day-to-night lighting transitions', 'Virtual reality (VR) ready models'],
       detail: 'Experience the flow, volume, and atmosphere of your residence through cinematic camera movements, dynamic evening lighting, and realistic environmental reflections.',
-    },
-    ru: {
-      category: 'Услуги',
-      title: '3D Видеотур (Walkthrough)',
-      hover: 'Кинематографичные 3D видеотуры и архитектурные анимации.',
-      summary: 'Ultra-HD видеоэкскурсии и эффектные пролёты камеры по будущим виллам и резиденциям.',
-      points: ['4K Видеопролёты камеры', 'Интерьерные и фасадные туры', 'Смена дня и ночи', 'VR-совместимые панорамы'],
-      detail: 'Оцените масштаб, сценарии освещения и атмосферу дома в кинематографичном видеотуре с естественным светом и акустикой пространства.',
     },
   },
 ]

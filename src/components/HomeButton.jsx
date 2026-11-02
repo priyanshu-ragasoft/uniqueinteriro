@@ -40,7 +40,7 @@ export default function HomeButton({ lang }) {
       <span aria-hidden="true" className="text-[18px] leading-none">
         ‹
       </span>
-      {lang === 'ru' ? 'На главную' : 'Home'}
+      Home
     </a>
   )
 }

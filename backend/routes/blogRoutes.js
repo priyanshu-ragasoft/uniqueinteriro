@@ -23,6 +23,8 @@ import {
   updateServicesPagesSettings,
   getContactPageSettings,
   updateContactPageSettings,
+  getSiteChromeSettings,
+  updateSiteChromeSettings,
   getOverviewDirectivesSettings,
   updateOverviewDirectivesSettings,
   setFeaturedCoverBlog,
@@ -66,6 +68,9 @@ router.put('/settings/services-pages', protectAdmin, updateServicesPagesSettings
 // Contact Us Page Configuration
 router.get('/settings/contact-page', getContactPageSettings)
 router.put('/settings/contact-page', protectAdmin, updateContactPageSettings)
+
+router.get('/settings/site-chrome', getSiteChromeSettings)
+router.put('/settings/site-chrome', protectAdmin, updateSiteChromeSettings)
 
 // Blog Page Banner & Typography Settings
 router.get('/settings/banner', getBlogBannerSettings)
