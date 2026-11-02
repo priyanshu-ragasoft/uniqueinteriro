@@ -211,7 +211,7 @@ export default function StudioPage({ lang = 'en', id }) {
           vid.currentTime = 0
           const playPromise = vid.play()
           if (playPromise !== undefined) {
-            playPromise.catch(() => {})
+            playPromise.catch(() => { })
           }
         } catch {
           // ignore
@@ -290,9 +290,8 @@ export default function StudioPage({ lang = 'en', id }) {
               muted
               playsInline
               preload="auto"
-              className={`absolute inset-0 h-full w-full object-cover object-center scale-105 transition-opacity duration-1000 ease-in-out ${
-                idx === currentBanner ? 'opacity-100 z-[1]' : 'opacity-0 z-0 pointer-events-none'
-              }`}
+              className={`absolute inset-0 h-full w-full object-cover object-center scale-105 transition-opacity duration-1000 ease-in-out ${idx === currentBanner ? 'opacity-100 z-[1]' : 'opacity-0 z-0 pointer-events-none'
+                }`}
             />
           ))}
           <div className="absolute inset-0 z-[2] bg-gradient-to-t from-[#111111] via-black/40 to-black/60 pointer-events-none" />
