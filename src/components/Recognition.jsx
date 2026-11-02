@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FaInstagram, FaPinterest, FaLinkedin, FaYoutube } from 'react-icons/fa'
-const DEFAULT_REEL = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
+import { DEPLOYED_VIDEOS, normalizeProjectVideoUrl } from '../utils/videoUrl'
+const DEFAULT_REEL = DEPLOYED_VIDEOS.victerrace
 
 export const DEFAULT_RECOGNITION_CONFIG = {
   en: {
@@ -75,7 +76,8 @@ export default function Recognition({ lang = 'en', src }) {
 
   const text = config?.en || DEFAULT_RECOGNITION_CONFIG.en
   const isOldMedia = (u) => !u || String(u).includes('/assets/Product') || String(u).includes('11593543') || String(u).includes('/video/')
-  const backgroundMedia = !isOldMedia(config?.mediaUrl) ? config.mediaUrl : (src && !isOldMedia(src) ? src : DEFAULT_REEL)
+  const rawBackgroundMedia = !isOldMedia(config?.mediaUrl) ? config.mediaUrl : (src && !isOldMedia(src) ? src : DEFAULT_REEL)
+  const backgroundMedia = normalizeProjectVideoUrl(rawBackgroundMedia)
 
   const socialLinks = [
     { name: 'Instagram', Icon: FaInstagram, url: config?.socials?.instagram || 'https://instagram.com' },

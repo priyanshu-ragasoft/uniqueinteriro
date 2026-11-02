@@ -3,6 +3,7 @@ import { commercialProjects } from './commercialProjects'
 import { interiorProjects } from './interiorProjects'
 import { getStoredPortfolioConfig } from './portfolioConfig'
 import { flattenPortfolioProjects, getStoredPortfolioTree } from './portfolioTree'
+import { normalizeProjectVideoUrl } from '../utils/videoUrl'
 
 export const categories = {
   en: [
@@ -35,8 +36,8 @@ function mapDisciplineProject(p, defaultCat) {
     id: p.id,
     cat,
     image: p.image,
-    video: p.video || null,
-    gallery: Array.isArray(p.gallery) ? p.gallery : [],
+    video: p.video ? normalizeProjectVideoUrl(p.video) : null,
+    gallery: Array.isArray(p.gallery) ? p.gallery.map((g) => (typeof g === 'string' && g.endsWith('.mp4') ? normalizeProjectVideoUrl(g) : g)) : [],
     sections: Array.isArray(p.sections) ? p.sections : [],
     tour360: p.tour360 || '',
     area: p.area || '',

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import CountrySelect from '../CountrySelect'
 import { defaultCountry } from '../../data/countries'
-const DEFAULT_REAL_CONTACT_VIDEO = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
+import { DEPLOYED_VIDEOS, normalizeProjectVideoUrl } from '../../utils/videoUrl'
+const DEFAULT_REAL_CONTACT_VIDEO = DEPLOYED_VIDEOS.victerrace
 const DEFAULT_REAL_POSTER = '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png'
 import { getStoredContactConfig, setStoredContactConfig } from '../../data/contactConfig'
 
@@ -147,9 +148,10 @@ export default function ContactPage({ lang }) {
   }
 
   const isOldMedia = (u) => !u || String(u).includes('/assets/Contact') || String(u).includes('Nina_obrezano')
-  const activeMedia =
+  const rawActiveMedia =
     enquireProject?.mediaUrl ||
     (!isOldMedia(config.mediaUrl) ? config.mediaUrl : DEFAULT_REAL_CONTACT_VIDEO)
+  const activeMedia = normalizeProjectVideoUrl(rawActiveMedia)
   const activePoster =
     enquireProject?.posterUrl ||
     (config.posterUrl && !String(config.posterUrl).includes('videoframe')

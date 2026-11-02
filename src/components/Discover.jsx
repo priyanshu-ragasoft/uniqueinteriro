@@ -170,7 +170,7 @@ export default function Discover({ lang = 'en' }) {
 
   const text = config?.en || DEFAULT_DISCOVER_CONFIG.en
   const [open, setOpen] = useState(false)
-  const REAL_DISCOVER_VIDEO = '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4'
+  const REAL_DISCOVER_VIDEO = '/project-videos/pushpa-the-fire.mp4'
   const isOld = (u) => !u || String(u).includes('/assets/') || String(u).includes('/video/')
   const videoSrc = !isOld(config?.mediaUrl) ? config.mediaUrl : REAL_DISCOVER_VIDEO
 

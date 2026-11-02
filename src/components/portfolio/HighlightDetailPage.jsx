@@ -7,13 +7,14 @@ import {
 } from '../../data/portfolioTree'
 import { getStoredPortfolioConfig, setStoredPortfolioConfig } from '../../data/portfolioConfig'
 import NotFoundPage from '../NotFoundPage'
+import { normalizeProjectVideoUrl } from '../../utils/videoUrl'
 
 function isVideoSrc(src) {
   return /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i.test(String(src || '')) || String(src || '').startsWith('data:video')
 }
 
 function visibleMedia(images) {
-  return (images || []).map((src) => String(src || '').trim()).filter(Boolean)
+  return (images || []).map((src) => normalizeProjectVideoUrl(String(src || '').trim())).filter(Boolean)
 }
 
 export default function HighlightDetailPage({

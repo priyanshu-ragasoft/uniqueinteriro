@@ -71,7 +71,7 @@ export default function DreamHome({ lang, video, crop = true }) {
   const [phone, setPhone] = useState('')
   const [sent, setSent] = useState(false)
 
-  const REAL_DREAM_VIDEO = '/website-assets/architecture/HILL%20VIEW%20APARTMENT%20PRESENTATION/b.mp4'
+  const REAL_DREAM_VIDEO = '/project-videos/smart-city-banur.mp4'
   const isOld = (u) => !u || String(u).includes('/assets/') || String(u).includes('/video/')
   const activeVideo = !isOld(config?.mediaUrl) ? config.mediaUrl : (video && !isOld(video) ? video : REAL_DREAM_VIDEO)
 

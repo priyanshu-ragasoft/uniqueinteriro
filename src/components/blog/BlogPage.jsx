@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { readBlogCategories, withoutStaticBlogs } from '../../data/blogCategories'
 import { DEFAULT_BLOGS, getStoredBlogs, setStoredBlogs, sanitizeBlogItem } from '../../data/blogConfig'
+import { DEPLOYED_VIDEOS, normalizeProjectVideoUrl } from '../../utils/videoUrl'
 
 export const BLOG_POSTS = DEFAULT_BLOGS
 
@@ -17,8 +18,7 @@ export default function BlogPage() {
 
   // Dynamic hero banner and page typography settings
   const [bannerConfig, setBannerConfig] = useState(() => {
-    const defaultUrl =
-      '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4'
+    const defaultUrl = DEPLOYED_VIDEOS.smartCity
     try {
       const saved = localStorage.getItem('ug_blog_banner_config')
       if (saved) {
@@ -142,9 +142,9 @@ export default function BlogPage() {
             loop
             muted
             playsInline
-            key={bannerConfig.mediaUrl}
+            key={normalizeProjectVideoUrl(bannerConfig.mediaUrl)}
             className="absolute inset-0 h-full w-full object-cover opacity-60 filter brightness-90 contrast-105 saturate-105 scale-105 pointer-events-none transition-all duration-700"
-            src={bannerConfig.mediaUrl}
+            src={normalizeProjectVideoUrl(bannerConfig.mediaUrl)}
           />
         ) : bannerConfig.mediaUrl && bannerConfig.mediaType !== 'none' ? (
           <img

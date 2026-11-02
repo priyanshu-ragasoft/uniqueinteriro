@@ -46,6 +46,24 @@ export async function saveToMediaBucket(filename, buffer, contentType) {
 }
 
 function mediaPathFromRequest(req) {
+  const rawReqUrl = String(req.originalUrl || req.url || '')
+  const assetMatch = rawReqUrl.match(/[?&]asset=([^#]+)/)
+  if (assetMatch) {
+    try {
+      const decoded = decodeURIComponent(assetMatch[1]).replace(/^\/+/, '')
+      if (decoded.startsWith('uploads/')) return decoded
+      return `website-assets/${decoded.replace(/^website-assets\//, '')}`
+    } catch {}
+  }
+
+  const uploadMatch = rawReqUrl.match(/[?&]upload=([^#]+)/)
+  if (uploadMatch) {
+    try {
+      const decoded = decodeURIComponent(uploadMatch[1]).replace(/^\/+/, '').replace(/^uploads\//, '')
+      return `uploads/${decoded}`
+    } catch {}
+  }
+
   const queryUpload = req.query?.upload
   if (queryUpload) {
     const raw = Array.isArray(queryUpload) ? queryUpload.join('/') : String(queryUpload)
@@ -72,11 +90,27 @@ function mediaPathFromRequest(req) {
   return ''
 }
 
+function resolveStaticProjectVideoRedirect(filename) {
+  const upper = String(filename || '').toUpperCase()
+  if (!upper.endsWith('.MP4') || !upper.startsWith('WEBSITE-ASSETS/')) return null
+  if (upper.includes('RYDHUM HOTEL.MP4')) return '/project-videos/rydhum-hotel.mp4'
+  if (upper.includes('VICTERRACE KOLKATA.MP4') || upper.includes('TETTRO MOHALI.MP4')) {
+    return '/project-videos/victerrace-kolkata.mp4'
+  }
+  if (upper.includes('PUSHPA THE FIRE.MP4')) return '/project-videos/pushpa-the-fire.mp4'
+  return '/project-videos/smart-city-banur.mp4'
+}
+
 export async function serveStoredMedia(req, res, next) {
   try {
     const filename = mediaPathFromRequest(req)
     if (!filename.startsWith('website-assets/') && !filename.startsWith('uploads/')) {
       return next()
+    }
+
+    const staticVideoRedirect = resolveStaticProjectVideoRedirect(filename)
+    if (staticVideoRedirect) {
+      return res.redirect(302, staticVideoRedirect)
     }
 
     const bucket = await getMediaBucket()

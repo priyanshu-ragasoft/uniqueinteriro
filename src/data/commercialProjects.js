@@ -1,4 +1,4 @@
-﻿export const commercialProjects = [
+export const commercialProjects = [
   {
     id: 'comm-alpha-slg-market-hotel-reaturant-banquet-hall-hanumangarh',
     image: '/website-assets/commercial%20interior/ALPHA%20SLG%20MARKET%20HOTEL%20&%20REATURANT%20BANQUET%20HALL%20HANUMANGARH/BANQUET/13575879-3102-4c3e-b2fc-5a963960f51e.png',
@@ -535,7 +535,7 @@
   {
     id: 'comm-pushpa-the-fire-dance-bar-kolkata',
     image: '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/129a7d57-c895-4ecc-a079-cbc6aa3c7308.png',
-    video: '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4',
+    video: '/project-videos/pushpa-the-fire.mp4',
     area: '1200 mÂ²',
     type: 'Lounge, Bar & Night Club',
     tone: 'Gold, Dark Fluted Marble & Acoustic Bronze',
@@ -558,7 +558,7 @@
       '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/b79d0c98-6640-4334-8a8a-91bd737a85d4.png',
       '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/bb97c788-17ee-4c90-b755-7ba38fe54c53.png',
       '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/df20aafa-5ac4-4e54-8929-980e5f747e7b.png',
-      '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4',
+      '/project-videos/pushpa-the-fire.mp4',
     ],
   },
   {
@@ -638,7 +638,7 @@
   {
     id: 'comm-rydhum-hotel-banquet-hall-firozepure-punjab',
     image: '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/BANQUET%20HALL/2e5bdd4a-8ef9-4ec8-9ddf-4715a6dea97f.png',
-    video: '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4',
+    video: '/project-videos/rydhum-hotel.mp4',
     area: '1200 mÂ²',
     type: 'Luxury Banquet Hall',
     tone: 'Gold, Dark Fluted Marble & Acoustic Bronze',
@@ -660,7 +660,7 @@
       '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/OUTDOOR%20TENT/V2.jpg',
       '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/OUTDOOR%20TENT/V3.jpg',
       '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/OUTDOOR%20TENT/V4.jpg',
-      '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4',
+      '/project-videos/rydhum-hotel.mp4',
     ],
   },
   {
@@ -695,7 +695,7 @@
   {
     id: 'comm-teetro-bar-resturant-mohali-79-chandigarh',
     image: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png',
-    video: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4',
+    video: '/project-videos/victerrace-kolkata.mp4',
     area: '1200 mÂ²',
     type: 'Lounge, Bar & Night Club',
     tone: 'Gold, Dark Fluted Marble & Acoustic Bronze',
@@ -721,7 +721,7 @@
       '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/c344a1de-084e-45ef-a080-08085732ab7a.png',
       '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/f2881772-f02b-4f2a-bb9b-7001ed4a1d7b.png',
       '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/f840f3e1-d3fe-4c5a-84f0-9121b6b31422.png',
-      '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4',
+      '/project-videos/victerrace-kolkata.mp4',
     ],
   },
   {
@@ -780,7 +780,7 @@
   {
     id: 'comm-vecterrace-hotel-dance-bar-kolkata',
     image: '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/V.jpg',
-    video: '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4',
+    video: '/project-videos/victerrace-kolkata.mp4',
     area: '1200 mÂ²',
     type: 'Lounge, Bar & Night Club',
     tone: 'Gold, Dark Fluted Marble & Acoustic Bronze',
@@ -799,7 +799,7 @@
       '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/V3.jpg',
       '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/V4.jpg',
       '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/V5.jpg',
-      '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4',
+      '/project-videos/victerrace-kolkata.mp4',
     ],
   },
 ]

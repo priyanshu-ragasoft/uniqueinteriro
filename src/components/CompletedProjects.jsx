@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { categories as defaultCategories, projects as defaultProjects } from '../data/projects'
+import { normalizeProjectVideoUrl } from '../utils/videoUrl'
 
 export const DEFAULT_COMPLETED_PROJECTS_CONFIG = {
   copy: {
@@ -15,7 +16,8 @@ export const DEFAULT_COMPLETED_PROJECTS_CONFIG = {
 
 const FALLBACK_PROJECT_IMAGE = '/website-assets/architecture/AUTOMOTIVE%20GALLERY/9ea0e852-0904-49c5-b948-f8504d0ea7fb.png'
 
-function HoverClip({ video, image, className, children }) {
+function HoverClip({ video: rawVideo, image, className, children }) {
+  const video = normalizeProjectVideoUrl(rawVideo)
   const clip = useRef(null)
   const [videoFailed, setVideoFailed] = useState(false)
   const [imgSrc, setImgSrc] = useState(image || FALLBACK_PROJECT_IMAGE)

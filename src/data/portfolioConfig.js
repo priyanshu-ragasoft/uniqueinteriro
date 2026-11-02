@@ -9,13 +9,13 @@ export const DEFAULT_PORTFOLIO_CONFIG = {
       title: 'ALL PROJECTS',
       hover: 'Houses and rooms from the full portfolio.',
       image: '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
-      video: '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4',
+      video: '/project-videos/rydhum-hotel.mp4',
     },
     'architectural-design': {
       title: 'ARCHITECTURAL DESIGN',
       hover: 'Plans, facades, and the shape of the house.',
       image: '/website-assets/architecture/G%20S%20STREET%20MARKET/076fc39d-c3b1-48a3-a1df-4abaa5bbf7c1.png',
-      video: '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4',
+      video: '/project-videos/smart-city-banur.mp4',
     },
     'interior-design': {
       title: 'INTERIOR DESIGN',
@@ -27,7 +27,7 @@ export const DEFAULT_PORTFOLIO_CONFIG = {
       title: 'COMMERCIAL DESIGN',
       hover: 'Guest rooms, lounges, and places of work.',
       image: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/2a52ad1e-4050-4783-b269-36dcd2bb72b0.png',
-      video: '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4',
+      video: '/project-videos/pushpa-the-fire.mp4',
     },
   },
 
@@ -38,18 +38,18 @@ export const DEFAULT_PORTFOLIO_CONFIG = {
       titleAccent: 'by Unique Graphics®',
       description:
         'The complete global portfolio of Unique Graphics® — from landmark architectural villas and private estates to haute couture residential interiors and monumental commercial headquarters worldwide.',
-      banner1: '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4',
-      banner2: '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4',
-      banner3: '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4',
+      banner1: '/project-videos/rydhum-hotel.mp4',
+      banner2: '/project-videos/pushpa-the-fire.mp4',
+      banner3: '/project-videos/victerrace-kolkata.mp4',
     },
     'architectural-design': {
       titleLead: 'Architectural design',
       titleAccent: 'by Unique Graphics®',
       description:
         'Monumental architectural forms created in harmony with natural landscapes — private villas, landmark cliffside residences, and modern estates engineered to transcend generations.',
-      banner1: '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4',
-      banner2: '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4',
-      banner3: '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4',
+      banner1: '/project-videos/rydhum-hotel.mp4',
+      banner2: '/project-videos/smart-city-banur.mp4',
+      banner3: '/project-videos/victerrace-kolkata.mp4',
     },
     'interior-design': {
       titleLead: 'Interior design',
@@ -65,9 +65,9 @@ export const DEFAULT_PORTFOLIO_CONFIG = {
       titleAccent: 'by Unique Graphics®',
       description:
         'We are chosen by those who strive for excellence — landmark banquet halls, luxury bars, resorts, and corporate headquarters crafted with distinctive elegance.',
-      banner1: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4',
-      banner2: '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4',
-      banner3: '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4',
+      banner1: '/project-videos/victerrace-kolkata.mp4',
+      banner2: '/project-videos/pushpa-the-fire.mp4',
+      banner3: '/project-videos/rydhum-hotel.mp4',
     },
   },
 

@@ -2,6 +2,33 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
+  "redirects": [
+    {
+      "source": "/website-assets/:path(.*RYDHUM.*\\.mp4)",
+      "destination": "/project-videos/rydhum-hotel.mp4",
+      "permanent": false
+    },
+    {
+      "source": "/website-assets/:path(.*VICTERRACE.*\\.mp4)",
+      "destination": "/project-videos/victerrace-kolkata.mp4",
+      "permanent": false
+    },
+    {
+      "source": "/website-assets/:path(.*TETTRO.*\\.mp4)",
+      "destination": "/project-videos/victerrace-kolkata.mp4",
+      "permanent": false
+    },
+    {
+      "source": "/website-assets/:path(.*PUSHPA.*\\.mp4)",
+      "destination": "/project-videos/pushpa-the-fire.mp4",
+      "permanent": false
+    },
+    {
+      "source": "/website-assets/:path(.*\\.mp4)",
+      "destination": "/project-videos/smart-city-banur.mp4",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/website-assets/:path*",

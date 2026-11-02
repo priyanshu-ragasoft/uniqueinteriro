@@ -597,8 +597,7 @@ export const deleteBlog = async (req, res) => {
  */
 export const getBlogBannerSettings = async (req, res) => {
   try {
-    const defaultMediaUrl =
-      '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4'
+    const defaultMediaUrl = '/project-videos/smart-city-banur.mp4'
 
     const defaults = {
       badge: 'STUDIO JOURNAL & PUBLICATIONS',
@@ -683,8 +682,7 @@ export const updateBlogBannerSettings = async (req, res) => {
 export const getHomepageHeroSettings = async (req, res) => {
   try {
     const setting = await Setting.findOne({ key: 'homepage_hero_config' })
-    const DEFAULT_REAL_HERO_VIDEO =
-      '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
+    const DEFAULT_REAL_HERO_VIDEO = '/project-videos/rydhum-hotel.mp4'
     const defaults = {
       title: 'Unique Graphics',
       subtitle: 'Leading international bureau for premium architectural and interior design',
@@ -1895,12 +1893,12 @@ export const seedDefaultProjectsAndServices = async () => {
         { key: 'homepage_hero_config' },
         {
           $set: {
-            'value.mediaUrl': DEFAULT_REAL_HERO_VIDEO,
+            'value.mediaUrl': '/project-videos/rydhum-hotel.mp4',
             'value.videoPresets': [
-              { name: 'Greenwood Avenue (Default)', url: DEFAULT_REAL_HERO_VIDEO },
-              { name: 'Teetro Bar & Restaurant Mohali', url: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4' },
-              { name: 'G S Street Market Walkthrough', url: '/website-assets/architecture/G%20S%20STREET%20MARKET/G%20S%20STREET.mp4' },
-              { name: 'Pushpa The Fire Dance Bar', url: '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4' },
+              { name: 'Rydhum Hotel & Banquet Hall', url: '/project-videos/rydhum-hotel.mp4' },
+              { name: 'Vecterrace Hotel Dance Bar', url: '/project-videos/victerrace-kolkata.mp4' },
+              { name: 'Smart City Society Walkthrough', url: '/project-videos/smart-city-banur.mp4' },
+              { name: 'Pushpa The Fire Dance Bar', url: '/project-videos/pushpa-the-fire.mp4' },
             ]
           }
         }
@@ -1915,7 +1913,7 @@ export const seedDefaultProjectsAndServices = async () => {
         { key: 'homepage_brand_sections_config' },
         {
           $set: {
-            'value.recognition.mediaUrl': '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4'
+            'value.recognition.mediaUrl': '/project-videos/victerrace-kolkata.mp4'
           }
         }
       )

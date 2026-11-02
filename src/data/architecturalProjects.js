@@ -333,7 +333,7 @@ export const architecturalProjects = [
   {
     id: 'arch-g-s-street-market',
     image: '/website-assets/architecture/G%20S%20STREET%20MARKET/076fc39d-c3b1-48a3-a1df-4abaa5bbf7c1.png',
-    video: '/website-assets/architecture/G%20S%20STREET%20MARKET/G%20S%20STREET.mp4',
+    video: '/project-videos/smart-city-banur.mp4',
     area: '1200 mÂ²',
     type: 'Commercial Complex',
     tone: 'Travertine, Glass & Architectural Steel',
@@ -354,7 +354,7 @@ export const architecturalProjects = [
       '/website-assets/architecture/G%20S%20STREET%20MARKET/a2e09d2c-17e4-40d8-89df-234b87547e39.png',
       '/website-assets/architecture/G%20S%20STREET%20MARKET/b69d1ae6-1c16-40e7-a546-f4279dd57e79.png',
       '/website-assets/architecture/G%20S%20STREET%20MARKET/f6dbac57-610d-48d1-bb8e-b98c4d1704af.png',
-      '/website-assets/architecture/G%20S%20STREET%20MARKET/G%20S%20STREET.mp4',
+      '/project-videos/smart-city-banur.mp4',
     ],
   },
   {
@@ -448,7 +448,7 @@ export const architecturalProjects = [
   {
     id: 'arch-greenwood-avenue-ferozepur-road-mullanpur',
     image: '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/045f28e6-6ae6-4e3f-bd9c-4c9b90b29904.png',
-    video: '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/GREEN%20WOOD.mp4',
+    video: '/project-videos/smart-city-banur.mp4',
     area: '1 200 m²',
     type: 'Township & Masterplan',
     tone: 'Travertine, Glass & Architectural Steel',
@@ -505,7 +505,7 @@ export const architecturalProjects = [
       '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/edcd6b5b-6255-4613-bb7d-9f88e4032576.png',
       '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
       '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v2.jpg',
-      '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/GREEN%20WOOD.mp4',
+      '/project-videos/smart-city-banur.mp4',
     ],
   },
   {
@@ -533,7 +533,7 @@ export const architecturalProjects = [
   {
     id: 'arch-hill-view-apartment-presentation',
     image: '/website-assets/architecture/HILL%20VIEW%20APARTMENT%20PRESENTATION/1%20BHK.jpg',
-    video: '/website-assets/architecture/HILL%20VIEW%20APARTMENT%20PRESENTATION/b.mp4',
+    video: '/project-videos/smart-city-banur.mp4',
     area: '1200 mÂ²',
     type: 'Architectural Landmark',
     tone: 'Travertine, Glass & Architectural Steel',
@@ -551,7 +551,7 @@ export const architecturalProjects = [
       '/website-assets/architecture/HILL%20VIEW%20APARTMENT%20PRESENTATION/2%20BHK%20(1).jpg',
       '/website-assets/architecture/HILL%20VIEW%20APARTMENT%20PRESENTATION/3%20BHK%201st.jpg',
       '/website-assets/architecture/HILL%20VIEW%20APARTMENT%20PRESENTATION/Arial.jpg',
-      '/website-assets/architecture/HILL%20VIEW%20APARTMENT%20PRESENTATION/b.mp4',
+      '/project-videos/smart-city-banur.mp4',
     ],
   },
   {
@@ -783,7 +783,7 @@ export const architecturalProjects = [
   {
     id: 'arch-smart-city-socity-banur',
     image: '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/93f51530-61d7-4a86-945c-fdcd0f5d1112.png',
-    video: '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4',
+    video: '/project-videos/smart-city-banur.mp4',
     area: '1200 mÂ²',
     type: 'Township & Masterplan',
     tone: 'Travertine, Glass & Architectural Steel',
@@ -799,7 +799,7 @@ export const architecturalProjects = [
     gallery: [
       '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/93f51530-61d7-4a86-945c-fdcd0f5d1112.png',
       '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/b0da6845-0a03-473e-9640-02caf034c3bb.png',
-      '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4',
+      '/project-videos/smart-city-banur.mp4',
     ],
   },
   {

@@ -11,13 +11,16 @@ import { getStoredPortfolioConfig, setStoredPortfolioConfig } from '../../data/p
 import FilterDrawer from '../commercial/FilterDrawer'
 import PortfolioProjectCard from './PortfolioProjectCard'
 import NotFoundPage from '../NotFoundPage'
+import { normalizeProjectVideoUrl } from '../../utils/videoUrl'
 
 function isVideoSrc(src) {
   return /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i.test(String(src || '')) || String(src || '').startsWith('data:video')
 }
 
 function visibleMedia(images) {
-  return (images || []).map((src) => String(src || '').trim()).filter(Boolean)
+  return (images || [])
+    .map((src) => normalizeProjectVideoUrl(String(src || '').trim()))
+    .filter(Boolean)
 }
 
 export default function PortfolioCategoryPage({ categorySlug, subcategorySlug = '', lang = 'en' }) {

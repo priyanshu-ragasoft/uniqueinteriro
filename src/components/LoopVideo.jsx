@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { normalizeProjectVideoUrl } from '../utils/videoUrl'
 
 const DEFAULT_POSTER = '/website-assets/architecture/AUTOMOTIVE%20GALLERY/9ea0e852-0904-49c5-b948-f8504d0ea7fb.png'
 
-export default function LoopVideo({ src, className = '', alt = '', poster = '' }) {
+export default function LoopVideo({ src: rawSrc, className = '', alt = '', poster = '' }) {
+  const src = normalizeProjectVideoUrl(rawSrc)
   const video = useRef(null)
   const [hasError, setHasError] = useState(false)
 

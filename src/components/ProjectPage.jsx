@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { findProject, projects as allProjects } from '../data/projects'
 import { setStoredPortfolioConfig } from '../data/portfolioConfig'
+import { normalizeProjectVideoUrl } from '../utils/videoUrl'
 
 function cleanText(value) {
   return String(value || '')
@@ -27,8 +28,8 @@ function slugify(value) {
 
 function mediaSrc(item) {
   if (!item) return ''
-  if (typeof item === 'string') return item
-  return item.src || item.url || item.image || ''
+  if (typeof item === 'string') return normalizeProjectVideoUrl(item)
+  return normalizeProjectVideoUrl(item.src || item.url || item.image || '')
 }
 
 function mediaCaption(item) {

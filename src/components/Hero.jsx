@@ -1,26 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { gsap, prefersReducedMotion } from '../animations/gsapConfig'
+import { DEPLOYED_VIDEOS, normalizeProjectVideoUrl } from '../utils/videoUrl'
 
 /** Same fallback video admin preview uses for cycle:default */
-const DEFAULT_REAL_HERO_VIDEO =
-  '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
+const DEFAULT_REAL_HERO_VIDEO = DEPLOYED_VIDEOS.rydhum
 
 const DEFAULT_VIDEO_PRESETS = [
   {
     name: 'Rydhum Hotel & Banquet Hall',
-    url: DEFAULT_REAL_HERO_VIDEO,
+    url: DEPLOYED_VIDEOS.rydhum,
   },
   {
-    name: 'Teetro Bar & Restaurant Mohali',
-    url: '/website-assets/commercial%20interior/TEETRO%20BAR%20&%20RESTURANT%20MOHALI%2079%20CHANDIGARH/TETTRO%20MOHALI.mp4',
+    name: 'Vecterrace Hotel Dance Bar Kolkata',
+    url: DEPLOYED_VIDEOS.victerrace,
   },
   {
     name: 'Smart City Society Walkthrough',
-    url: '/website-assets/architecture/SMART%20CITY%20SOCITY%20BANUR/WhatsApp%20Video%202025-07-03%20at%2019.14.48.mp4',
+    url: DEPLOYED_VIDEOS.smartCity,
   },
   {
     name: 'Pushpa The Fire Dance Bar',
-    url: '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4',
+    url: DEPLOYED_VIDEOS.pushpa,
   },
 ]
 
@@ -109,16 +109,19 @@ function buildHeroSlides(config) {
 
   const fromPresets = rawPresets
     .filter((p) => p?.url && !isCycleUrl(p.url) && !isBadLegacyUrl(p.url))
-    .map((p) => ({
-      url: p.url,
-      kind: isImageUrl(p.url) ? 'image' : 'video',
-      title: p.title || config?.title || DEFAULT_HERO_CONFIG.title,
-      subtitle: p.subtitle || config?.subtitle || DEFAULT_HERO_CONFIG.subtitle,
-      buttonText: p.buttonText || config?.buttonText || DEFAULT_HERO_CONFIG.buttonText,
-      buttonLink: p.buttonLink || config?.buttonLink || DEFAULT_HERO_CONFIG.buttonLink,
-    }))
+    .map((p) => {
+      const normalizedUrl = normalizeProjectVideoUrl(p.url)
+      return {
+        url: normalizedUrl,
+        kind: isImageUrl(normalizedUrl) ? 'image' : 'video',
+        title: p.title || config?.title || DEFAULT_HERO_CONFIG.title,
+        subtitle: p.subtitle || config?.subtitle || DEFAULT_HERO_CONFIG.subtitle,
+        buttonText: p.buttonText || config?.buttonText || DEFAULT_HERO_CONFIG.buttonText,
+        buttonLink: p.buttonLink || config?.buttonLink || DEFAULT_HERO_CONFIG.buttonLink,
+      }
+    })
 
-  const mediaUrl = config?.mediaUrl || ''
+  const mediaUrl = normalizeProjectVideoUrl(config?.mediaUrl || '')
 
   // Specific selected banner (not cycle) → start with that, then rest in order
   if (mediaUrl && !isCycleUrl(mediaUrl) && !isBadLegacyUrl(mediaUrl)) {
@@ -184,6 +187,7 @@ function HeroMedia({ slide, onEnded }) {
       key={slide.url}
       ref={video}
       src={slide.url}
+      poster="/hero.jpg"
       autoPlay
       muted
       loop={false}
@@ -191,6 +195,7 @@ function HeroMedia({ slide, onEnded }) {
       preload="auto"
       aria-hidden="true"
       onEnded={onEnded}
+      onError={onEnded}
       className="hero-clip absolute inset-0 h-full w-full object-cover is-front"
     />
   )

@@ -2,9 +2,10 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { getStoredPortfolioConfig } from '../../data/portfolioConfig'
 import FilterDrawer from '../commercial/FilterDrawer'
 import PortfolioProjectCard from './PortfolioProjectCard'
-const banner1 = '/website-assets/commercial%20interior/RYDHUM%20HOTEL%20&%20BANQUET%20HALL%20FIROZEPURE%20PUNJAB/RYDHUM%20HOTEL.mp4'
-const banner2 = '/website-assets/commercial%20interior/PUSHPA%20THE%20FIRE%20DANCE%20BAR%20KOLKATA/PUSHPA%20THE%20FIRE.mp4'
-const banner3 = '/website-assets/commercial%20interior/VECTERRACE%20HOTEL%20DANCE%20BAR%20KOLKATA/VICTERRACE%20KOLKATA.mp4'
+import { DEPLOYED_VIDEOS, normalizeProjectVideoUrl } from '../../utils/videoUrl'
+const banner1 = DEPLOYED_VIDEOS.rydhum
+const banner2 = DEPLOYED_VIDEOS.pushpa
+const banner3 = DEPLOYED_VIDEOS.victerrace
 
 const defaultBannerVideos = [
   { id: 1, src: banner1 },
@@ -32,9 +33,9 @@ export default function AllProjectsPage({ lang = 'en' }) {
   const isOld = (u) => !u || String(u).includes('/assets/project') || String(u).includes('8347237')
   const bannerVideos = useMemo(() => {
     return [
-      { id: 1, src: !isOld(heroConfig.banner1) ? heroConfig.banner1 : banner1 },
-      { id: 2, src: !isOld(heroConfig.banner2) ? heroConfig.banner2 : banner2 },
-      { id: 3, src: !isOld(heroConfig.banner3) ? heroConfig.banner3 : banner3 },
+      { id: 1, src: normalizeProjectVideoUrl(!isOld(heroConfig.banner1) ? heroConfig.banner1 : banner1) },
+      { id: 2, src: normalizeProjectVideoUrl(!isOld(heroConfig.banner2) ? heroConfig.banner2 : banner2) },
+      { id: 3, src: normalizeProjectVideoUrl(!isOld(heroConfig.banner3) ? heroConfig.banner3 : banner3) },
     ]
   }, [heroConfig.banner1, heroConfig.banner2, heroConfig.banner3])
 
