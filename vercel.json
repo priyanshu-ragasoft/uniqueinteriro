@@ -31,19 +31,19 @@
   ],
   "rewrites": [
     {
-      "source": "/website-assets/:path*",
-      "destination": "/api/index.js?asset=:path*"
+      "source": "/website-assets/:path(.*)",
+      "destination": "/api/index?asset=:path"
     },
     {
-      "source": "/uploads/:path*",
-      "destination": "/api/index.js?upload=:path*"
+      "source": "/uploads/:path(.*)",
+      "destination": "/api/index?upload=:path"
     },
     {
-      "source": "/api/:path*",
-      "destination": "/api/index.js"
+      "source": "/api/(.*)",
+      "destination": "/api/index"
     },
     {
-      "source": "/:path*",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
