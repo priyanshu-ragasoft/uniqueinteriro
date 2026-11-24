@@ -9,6 +9,7 @@ import {
   subcategoryPath,
   SUBCATEGORY_MEDIA_MAP,
 } from '../../data/serviceTree'
+import { getMediaDetailsInfo } from '../../utils/mediaProjectMatcher'
 
 function visibleImages(images) {
   return (images || []).map((src) => String(src || '').trim()).filter(Boolean).slice(0, 3)
@@ -109,6 +110,7 @@ export default function ServicePage({
   const showIntro = intro.show !== false && (intro.heading || intro.paragraph1 || intro.paragraph2)
   const showClosing = closing.show !== false && (closing.heading || closing.paragraph || closing.buttonLabel)
   const title = banner.title || match.subcategory?.name || match.category.name
+  const heroDetails = getMediaDetailsInfo(heroImage, title, banner.link || banner.href)
   const parentHref = match.kind === 'subcategory' ? categoryPath(match.category) : '/services'
   const parentLabel = match.kind === 'subcategory' ? match.category.name : 'Services'
   const introVisual = highlights.find((item) => item.image) || null
@@ -133,18 +135,40 @@ export default function ServicePage({
         <section className="relative flex min-h-[88svh] w-full flex-col justify-end overflow-hidden px-6 pb-16 pt-32 sm:px-10 lg:min-h-[92svh] lg:px-16 lg:pb-24">
           <div className="absolute inset-0 z-0 overflow-hidden bg-black">
             {heroImage ? (
-              <Media src={heroImage} fallback={fallbackMedia} className="absolute inset-0 h-full w-full object-cover object-center" />
+              heroDetails.href ? (
+                <a
+                  href={heroDetails.href}
+                  className="block h-full w-full cursor-pointer"
+                  title={`View details: ${heroDetails.title}`}
+                >
+                  <Media src={heroImage} fallback={fallbackMedia} className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 hover:scale-105" />
+                </a>
+              ) : (
+                <Media src={heroImage} fallback={fallbackMedia} className="absolute inset-0 h-full w-full object-cover object-center" />
+              )
             ) : null}
-            <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-black/25 to-black/15" />
+            <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-black/25 to-black/15 pointer-events-none" />
           </div>
           <div className="relative z-10 mx-auto w-full max-w-[1180px]">
-            <a
-              href={parentHref}
-              className="mb-10 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-[13px] text-white/85 backdrop-blur-sm hover:bg-white/20"
-            >
-              <span>‹</span>
-              <span>{parentLabel}</span>
-            </a>
+            <div className="mb-10 flex flex-wrap items-center gap-3">
+              <a
+                href={parentHref}
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-[13px] text-white/85 backdrop-blur-sm hover:bg-white/20"
+              >
+                <span>‹</span>
+                <span>{parentLabel}</span>
+              </a>
+              {heroDetails.href ? (
+                <a
+                  href={heroDetails.href}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/45 px-4 py-2 text-[13px] text-[#e3943f] backdrop-blur-sm transition hover:border-[#e3943f] hover:bg-black/75"
+                  title={`View details: ${heroDetails.title}`}
+                >
+                  <span className="max-w-[240px] truncate">{heroDetails.title}</span>
+                  <span>↗</span>
+                </a>
+              ) : null}
+            </div>
             {banner.label ? (
               <p className="mb-4 text-[12px] tracking-[0.22em] text-white/55 uppercase">{banner.label}</p>
             ) : null}
@@ -246,12 +270,30 @@ export default function ServicePage({
 
       {midPhoto ? (
         <section className="relative my-6 overflow-hidden">
-          <Media
-            src={midPhoto.image}
-            fallback={fallbackMedia}
-            alt={midPhoto.caption || midPhoto.title || ''}
-            className="h-[42vw] min-h-[260px] max-h-[520px] w-full object-cover"
-          />
+          {(() => {
+            const midDetails = getMediaDetailsInfo(midPhoto.image, midPhoto.caption || midPhoto.title)
+            return midDetails.href ? (
+              <a
+                href={midDetails.href}
+                className="group block cursor-pointer"
+                title={midDetails.title ? `View details: ${midDetails.title}` : 'View project details'}
+              >
+                <Media
+                  src={midPhoto.image}
+                  fallback={fallbackMedia}
+                  alt={midPhoto.caption || midPhoto.title || ''}
+                  className="h-[42vw] min-h-[260px] max-h-[520px] w-full object-cover transition duration-700 group-hover:scale-[1.02]"
+                />
+              </a>
+            ) : (
+              <Media
+                src={midPhoto.image}
+                fallback={fallbackMedia}
+                alt={midPhoto.caption || midPhoto.title || ''}
+                className="h-[42vw] min-h-[260px] max-h-[520px] w-full object-cover"
+              />
+            )
+          })()}
           {showClosing && closing.buttonLabel ? (
             <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/70 to-transparent px-6 py-10 sm:px-10 lg:px-16">
               <a

@@ -39,7 +39,7 @@ export const DEFAULT_SITE_CHROME = {
     privacy: 'Privacy Policy',
     terms: 'Terms & Conditions',
     socialTitle: "We're on social media",
-    socials: ['Instagram', 'Pinterest', 'LinkedIn', 'YouTube'],
+    socials: ['Instagram', 'Facebook', 'X', 'Behance'],
   },
   legal: {
     privacy: {

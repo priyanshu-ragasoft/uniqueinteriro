@@ -46,23 +46,28 @@ export async function saveToMediaBucket(filename, buffer, contentType) {
 }
 
 function mediaPathFromRequest(req) {
-  // 1. Direct path check from originalUrl, url, or Vercel invoke headers
-  const headerUrl = req.headers?.['x-vercel-original-url'] || req.headers?.['x-invoke-path'] || ''
-  const candidates = [req.originalUrl, req.url, headerUrl]
-  for (const value of candidates) {
-    if (!value) continue
-    const pathOnly = decodeURIComponent(String(value).split('?')[0]).replace(/^\/+/, '')
-    if (pathOnly.startsWith('website-assets/') || pathOnly.startsWith('uploads/')) {
-      return pathOnly
-    }
+  const rawReqUrl = String(req.originalUrl || req.url || '')
+  const assetMatch = rawReqUrl.match(/[?&]asset=([^#]+)/)
+  if (assetMatch) {
+    try {
+      const decoded = decodeURIComponent(assetMatch[1]).replace(/^\/+/, '')
+      if (decoded.startsWith('uploads/')) return decoded
+      return `website-assets/${decoded.replace(/^website-assets\//, '')}`
+    } catch {}
   }
 
-  // 2. Query parameters if rewritten
+  const uploadMatch = rawReqUrl.match(/[?&]upload=([^#]+)/)
+  if (uploadMatch) {
+    try {
+      const decoded = decodeURIComponent(uploadMatch[1]).replace(/^\/+/, '').replace(/^uploads\//, '')
+      return `uploads/${decoded}`
+    } catch {}
+  }
+
   const queryUpload = req.query?.upload
   if (queryUpload) {
     const raw = Array.isArray(queryUpload) ? queryUpload.join('/') : String(queryUpload)
-    const cleaned = decodeURIComponent(raw).replace(/^\/+/, '').replace(/^uploads\//, '')
-    return `uploads/${cleaned}`
+    return `uploads/${decodeURIComponent(raw).replace(/^\/+/, '').replace(/^uploads\//, '')}`
   }
 
   const queryAsset = req.query?.asset || req.query?.path
@@ -73,25 +78,15 @@ function mediaPathFromRequest(req) {
     return `website-assets/${decoded.replace(/^website-assets\//, '')}`
   }
 
-  // 3. Fallback regex on raw URL (ensure stopping at & or #)
-  const rawReqUrl = String(req.originalUrl || req.url || '')
-  const assetMatch = rawReqUrl.match(/[?&]asset=([^&#]+)/)
-  if (assetMatch) {
-    try {
-      const decoded = decodeURIComponent(assetMatch[1]).replace(/^\/+/, '')
-      if (decoded.startsWith('uploads/')) return decoded
-      return `website-assets/${decoded.replace(/^website-assets\//, '')}`
-    } catch {}
+  const headerUrl = req.headers?.['x-vercel-original-url'] || req.headers?.['x-invoke-path'] || ''
+  const candidates = [req.originalUrl, req.url, headerUrl]
+  for (const value of candidates) {
+    if (!value) continue
+    const pathOnly = decodeURIComponent(String(value).split('?')[0])
+    if (pathOnly.startsWith('/website-assets/') || pathOnly.startsWith('/uploads/')) {
+      return pathOnly.slice(1)
+    }
   }
-
-  const uploadMatch = rawReqUrl.match(/[?&]upload=([^&#]+)/)
-  if (uploadMatch) {
-    try {
-      const decoded = decodeURIComponent(uploadMatch[1]).replace(/^\/+/, '').replace(/^uploads\//, '')
-      return `uploads/${decoded}`
-    } catch {}
-  }
-
   return ''
 }
 

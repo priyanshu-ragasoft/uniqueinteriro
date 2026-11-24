@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { FaInstagram, FaFacebook, FaBehance } from 'react-icons/fa'
+import { FaXTwitter } from 'react-icons/fa6'
 import { DEFAULT_SITE_CHROME, getStoredSiteChrome, setStoredSiteChrome } from '../data/siteChrome'
 function newestFirst(list) {
   return [...list].sort((a, b) => {
@@ -47,10 +49,17 @@ const copy = {
     privacy: 'Privacy Policy',
     terms: 'Terms & Conditions',
     socialTitle: "We're on social media",
-    socials: ['Instagram', 'Pinterest', 'LinkedIn', 'YouTube'],
+    socials: ['Instagram', 'Facebook', 'X', 'Behance'],
     contact: 'Contact us',
   },
 }
+
+const SOCIAL_LINKS = [
+  { name: 'Instagram', url: 'https://www.instagram.com/uniquegraphics.interior/', Icon: FaInstagram },
+  { name: 'Facebook', url: 'https://www.facebook.com/UniqueGraphics.Interior', Icon: FaFacebook },
+  { name: 'X', url: 'https://x.com/UniqueGraphicsX', Icon: FaXTwitter },
+  { name: 'Behance', url: 'https://www.behance.net/uniquegraphics02', Icon: FaBehance },
+]
 
 function ColumnLinks({ items }) {
   return (
@@ -206,13 +215,20 @@ export default function Footer() {
             {text.brand}
           </p>
           <p className="mt-8 text-[12px] tracking-[0.14em] uppercase">{text.socialTitle}</p>
-          <ul className="mt-4 flex flex-col gap-2">
-            {text.socials.map((name) => (
-              <li key={name} className="text-[15px] text-white/85">
-                {name}
-              </li>
+          <div className="mt-4 flex items-center gap-3">
+            {SOCIAL_LINKS.map(({ name, url, Icon }) => (
+              <a
+                key={name}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={name}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-[15px] text-white/85 transition-all hover:scale-110 hover:border-[#e3943f] hover:bg-[#e3943f] hover:text-black"
+              >
+                <Icon aria-hidden />
+              </a>
             ))}
-          </ul>
+          </div>
         </div>
       </div>
 

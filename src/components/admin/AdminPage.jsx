@@ -8,7 +8,8 @@ import { DEFAULT_RECOGNITION_CONFIG } from '../Recognition'
 import { DEFAULT_EXPERT_STEPS_CONFIG } from '../ExpertSteps'
 import { DEFAULT_DREAM_HOME_CONFIG } from '../DreamHome'
 import { DEFAULT_CLOSING_CONFIG } from '../Closing'
-import { FaInstagram, FaPinterest, FaLinkedin, FaYoutube } from 'react-icons/fa'
+import { FaInstagram, FaFacebook, FaBehance } from 'react-icons/fa'
+import { FaXTwitter } from 'react-icons/fa6'
 import AboutPageManager from './AboutPageManager'
 import ServicesManager from './ServicesManager'
 import { getStoredPortfolioConfig } from '../../data/portfolioConfig'
@@ -117,12 +118,76 @@ export default function AdminPage() {
   const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const VALID_ADMIN_TABS = [
+    'overview',
+    'hero_banner',
+    'projects_section',
+    'completed_projects',
+    'brand_showcase',
+    'about_page',
+    'portfolio_pages',
+    'services_pages',
+    'contact_page',
+    'inquiries',
+    'blog',
+    'settings',
+  ]
+
   const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin/portfolio')) {
-      return 'portfolio_pages'
+    if (typeof window !== 'undefined') {
+      try {
+        const urlParams = new URLSearchParams(window.location.search)
+        const tabParam = urlParams.get('tab')
+        if (tabParam && VALID_ADMIN_TABS.includes(tabParam)) {
+          return tabParam
+        }
+        const hashParam = window.location.hash.replace(/^#/, '')
+        if (hashParam && VALID_ADMIN_TABS.includes(hashParam)) {
+          return hashParam
+        }
+        if (window.location.pathname.startsWith('/admin/portfolio')) {
+          return 'portfolio_pages'
+        }
+        const savedTab = localStorage.getItem('ug_admin_active_tab')
+        if (savedTab && VALID_ADMIN_TABS.includes(savedTab)) {
+          return savedTab
+        }
+      } catch {}
     }
     return 'overview'
   })
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeTab) {
+      try {
+        localStorage.setItem('ug_admin_active_tab', activeTab)
+        const url = new URL(window.location.href)
+        if (url.searchParams.get('tab') !== activeTab) {
+          url.searchParams.set('tab', activeTab)
+          window.history.replaceState({}, '', url.toString())
+        }
+      } catch {}
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      try {
+        const urlParams = new URLSearchParams(window.location.search)
+        const tabParam = urlParams.get('tab')
+        if (tabParam && VALID_ADMIN_TABS.includes(tabParam)) {
+          setActiveTab(tabParam)
+        } else {
+          const savedTab = localStorage.getItem('ug_admin_active_tab')
+          if (savedTab && VALID_ADMIN_TABS.includes(savedTab)) {
+            setActiveTab(savedTab)
+          }
+        }
+      } catch {}
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
   const [portfolioProjectEditing, setPortfolioProjectEditing] = useState(() => {
     if (typeof window === 'undefined') return false
     return window.location.pathname.startsWith('/admin/portfolio/')
@@ -1977,11 +2042,18 @@ export default function AdminPage() {
     localStorage.removeItem('ug_admin_token')
     localStorage.removeItem('ug_admin_user')
     localStorage.removeItem('ug_admin_logged_in')
+    localStorage.removeItem('ug_admin_active_tab')
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('tab')
+      window.history.replaceState({}, '', url.toString())
+    } catch {}
     setToken('')
     setAdminUser(null)
     setIsAuthenticated(false)
     setPassword('')
     setErrorMessage('')
+    setActiveTab('overview')
     showToast('Signed out from executive dashboard.')
   }
 
@@ -2333,6 +2405,23 @@ export default function AdminPage() {
               </button>
 
               {/* Tab: Contact Page Customizer */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('contact_page')
+                  setSidebarOpen(false)
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[12px] font-semibold tracking-wider uppercase whitespace-nowrap transition-all duration-200 cursor-pointer ${activeTab === 'contact_page'
+                  ? 'bg-[#e3943f] text-black shadow-md shadow-[#e3943f]/25 font-bold'
+                  : 'text-white/70 hover:bg-white/[0.04] hover:text-white'
+                  }`}
+              >
+                <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span className="whitespace-nowrap">Contact Page</span>
+              </button>
 
 
               {/* Tab 3: Client Inquiries */}
@@ -4909,52 +4998,49 @@ export default function AdminPage() {
                                 type="text"
                                 value={brandSectionsConfig.recognition?.socials?.instagram || ''}
                                 onChange={(e) => updateRecognitionSocial('instagram', e.target.value)}
-                                placeholder="https://instagram.com/..."
+                                placeholder="https://www.instagram.com/uniquegraphics.interior/"
                                 className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12px] text-white outline-none focus:border-[#e3943f]"
                               />
                             </div>
 
                             <div>
                               <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                <FaPinterest className="text-red-400" />
-                                <span>Pinterest Profile:</span>
+                                <FaFacebook className="text-blue-400" />
+                                <span>Facebook Profile:</span>
                               </label>
                               <input
                                 type="text"
-                                value={brandSectionsConfig.recognition?.socials?.pinterest || ''}
-                                onChange={(e) => updateRecognitionSocial('pinterest', e.target.value)}
-                                placeholder="https://pinterest.com/..."
+                                value={brandSectionsConfig.recognition?.socials?.facebook || ''}
+                                onChange={(e) => updateRecognitionSocial('facebook', e.target.value)}
+                                placeholder="https://www.facebook.com/UniqueGraphics.Interior"
                                 className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12px] text-white outline-none focus:border-[#e3943f]"
                               />
                             </div>
 
                             <div>
                               <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                <FaLinkedin className="text-blue-400" />
-                                <span>LinkedIn Profile:</span>
+                                <FaXTwitter className="text-white" />
+                                <span>X Profile:</span>
                               </label>
                               <input
                                 type="text"
-                                value={brandSectionsConfig.recognition?.socials?.linkedin || brandSectionsConfig.recognition?.socials?.vk || ''}
-                                onChange={(e) => {
-                                  updateRecognitionSocial('linkedin', e.target.value)
-                                  updateRecognitionSocial('vk', e.target.value)
-                                }}
-                                placeholder="https://linkedin.com/..."
+                                value={brandSectionsConfig.recognition?.socials?.x || ''}
+                                onChange={(e) => updateRecognitionSocial('x', e.target.value)}
+                                placeholder="https://x.com/UniqueGraphicsX"
                                 className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12px] text-white outline-none focus:border-[#e3943f]"
                               />
                             </div>
 
                             <div>
                               <label className="block text-[10.5px] font-bold text-white/50 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                <FaYoutube className="text-red-500" />
-                                <span>YouTube Channel:</span>
+                                <FaBehance className="text-blue-300" />
+                                <span>Behance Profile:</span>
                               </label>
                               <input
                                 type="text"
-                                value={brandSectionsConfig.recognition?.socials?.youtube || ''}
-                                onChange={(e) => updateRecognitionSocial('youtube', e.target.value)}
-                                placeholder="https://youtube.com/..."
+                                value={brandSectionsConfig.recognition?.socials?.behance || ''}
+                                onChange={(e) => updateRecognitionSocial('behance', e.target.value)}
+                                placeholder="https://www.behance.net/uniquegraphics02"
                                 className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12px] text-white outline-none focus:border-[#e3943f]"
                               />
                             </div>
@@ -5590,31 +5676,31 @@ export default function AdminPage() {
                                 <FaInstagram />
                               </a>
                               <a
-                                href={brandSectionsConfig.recognition?.socials?.pinterest || '#'}
+                                href={brandSectionsConfig.recognition?.socials?.facebook || '#'}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="h-8 w-8 rounded-full bg-white text-black flex items-center justify-center text-[13px] hover:scale-110 transition-transform"
-                                title="Pinterest"
+                                title="Facebook"
                               >
-                                <FaPinterest />
+                                <FaFacebook />
                               </a>
                               <a
-                                href={brandSectionsConfig.recognition?.socials?.linkedin || brandSectionsConfig.recognition?.socials?.vk || '#'}
+                                href={brandSectionsConfig.recognition?.socials?.x || '#'}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="h-8 w-8 rounded-full bg-white text-black flex items-center justify-center text-[13px] hover:scale-110 transition-transform"
-                                title="LinkedIn"
+                                title="X"
                               >
-                                <FaLinkedin />
+                                <FaXTwitter />
                               </a>
                               <a
-                                href={brandSectionsConfig.recognition?.socials?.youtube || '#'}
+                                href={brandSectionsConfig.recognition?.socials?.behance || '#'}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="h-8 w-8 rounded-full bg-white text-black flex items-center justify-center text-[13px] hover:scale-110 transition-transform"
-                                title="YouTube"
+                                title="Behance"
                               >
-                                <FaYoutube />
+                                <FaBehance />
                               </a>
                             </div>
                           </div>

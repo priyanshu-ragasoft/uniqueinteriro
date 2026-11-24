@@ -1236,14 +1236,9 @@ export const setFeaturedCoverBlog = async (req, res) => {
 export const seedDefaultBlogs = async () => {
   try {
     const count = await Blog.countDocuments()
-    if (count < 8) {
-      for (const post of INITIAL_BLOG_POSTS) {
-        const exists = await Blog.findOne({ slug: post.slug })
-        if (!exists) {
-          await Blog.create(post)
-        }
-      }
-      console.log('[Blog Seeder]: Seeded missing luxury architectural essays into MongoDB.')
+    if (count === 0) {
+      await Blog.insertMany(INITIAL_BLOG_POSTS)
+      console.log('[Blog Seeder]: Seeded initial 8 luxury architectural essays into MongoDB.')
     }
   } catch (error) {
     console.error('[Blog Seeder Error]:', error.message)

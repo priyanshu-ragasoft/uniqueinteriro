@@ -8,6 +8,48 @@ import {
   serviceGalleryPath,
   setStoredServiceTree,
 } from '../../data/serviceTree'
+import { getMediaDetailsInfo } from '../../utils/mediaProjectMatcher'
+
+function ImageDetailModal({ open, item, onClose }) {
+  if (!open || !item) return null
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-4xl overflow-hidden rounded-2xl bg-[#161616] border border-white/10 p-6 sm:p-8 text-white shadow-2xl">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors cursor-pointer"
+        >
+          ✕
+        </button>
+        {item.image ? (
+          <div className="relative overflow-hidden rounded-xl bg-black max-h-[60vh] flex items-center justify-center mb-6">
+            <Media src={item.image} className="max-h-[60vh] w-auto max-w-full object-contain" />
+          </div>
+        ) : null}
+        <h3 className="text-xl sm:text-2xl font-light tracking-tight">{item.title || 'Project Details'}</h3>
+        {item.subtitle ? <p className="mt-3 text-sm sm:text-base text-white/70 leading-relaxed">{item.subtitle}</p> : null}
+        <div className="mt-6 flex flex-wrap items-center gap-4">
+          <a
+            href="/contacts"
+            className="inline-flex rounded-full bg-[#e3943f] px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-black hover:bg-white transition-colors"
+          >
+            Discuss a project
+          </a>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-white/20 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white/70 hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function visibleImages(images) {
   return (images || []).map((src) => String(src || '').trim()).filter(Boolean).slice(0, 3)
@@ -109,6 +151,7 @@ export default function ServiceHubPage({
   eventName = 'services-pages-config-changed',
 }) {
   const [tree, setTree] = useState(() => readTree())
+  const [fallbackModal, setFallbackModal] = useState({ open: false, image: '', title: '', subtitle: '' })
 
   useEffect(() => {
     const apply = (next) => setTree(next?.categories ? next : readTree())
@@ -139,6 +182,7 @@ export default function ServiceHubPage({
   const showClosing = closing.show !== false && (closing.heading || closing.buttonLabel)
   const title = banner.title || ''
   const heroImage = images[0] || ''
+  const heroDetails = getMediaDetailsInfo(heroImage, title, banner.link || banner.href)
   const widePhotos = (gallery.length ? gallery : images.slice(1).map((src, index) => photoItem(src, `banner-${index + 2}`)))
   const villaPhoto = widePhotos[0]
   const secondHouse = widePhotos[2]
@@ -147,12 +191,45 @@ export default function ServiceHubPage({
   return (
     <main className="min-h-screen bg-[#111111] text-white">
       {banner.show !== false ? (
-        <section className="relative h-[100dvh] w-full overflow-hidden bg-black">
+        <section className="relative h-[100dvh] w-full overflow-hidden bg-black group">
           {heroImage ? (
-            <Media
-              src={heroImage}
-              className="absolute inset-0 h-full w-full max-w-none origin-center scale-[1.38] object-cover object-center"
-            />
+            <a
+              href={heroDetails.href || '#'}
+              onClick={(e) => {
+                if (!heroDetails.href) {
+                  e.preventDefault()
+                  setFallbackModal({
+                    open: true,
+                    image: heroImage,
+                    title: title || 'Project Details',
+                    subtitle: banner.subtitle || '',
+                  })
+                }
+              }}
+              className="group/hero block absolute inset-0 h-full w-full cursor-pointer z-10"
+              aria-label={heroDetails.title || 'View project details'}
+              title={heroDetails.title ? `View details: ${heroDetails.title}` : 'View project details'}
+            >
+              <Media
+                src={heroImage}
+                className="absolute inset-0 h-full w-full max-w-none origin-center scale-[1.38] object-cover object-center transition-transform duration-700 ease-out group-hover/hero:scale-[1.42]"
+              />
+
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30 pointer-events-none" />
+
+              {/* Floating Pill Badge */}
+              <div className="absolute bottom-8 left-6 sm:bottom-12 sm:left-12 z-20 pointer-events-none">
+                <div className="inline-flex items-center gap-3 rounded-full border border-white/25 bg-black/65 px-5 py-2.5 text-[12px] sm:text-[13px] font-medium tracking-[0.14em] text-white uppercase backdrop-blur-md shadow-2xl transition-all duration-300 group-hover/hero:border-[#e3943f] group-hover/hero:bg-black/90 group-hover/hero:text-[#e3943f]">
+                  <span className="max-w-[260px] sm:max-w-[420px] truncate">
+                    {heroDetails.title || 'View Project Details'}
+                  </span>
+                  <span className="text-[14px] text-[#e3943f] transition-transform duration-300 group-hover/hero:translate-x-1">
+                    ↗
+                  </span>
+                </div>
+              </div>
+            </a>
           ) : null}
           {title ? <h1 className="sr-only">{title}{banner.accent ? ` ${banner.accent}` : ''}</h1> : null}
         </section>
@@ -194,13 +271,23 @@ export default function ServiceHubPage({
 
       {villaPhoto ? (
         <section>
-          <a href={villaPhoto.slug ? serviceGalleryPath(hub, null, villaPhoto) : '/services'} className="block">
-            <Media
-              src={villaPhoto.image}
-              alt={villaPhoto.caption || villaPhoto.title || ''}
-              className="h-[48vw] min-h-[280px] max-h-[640px] w-full object-cover"
-            />
-          </a>
+          {(() => {
+            const details = getMediaDetailsInfo(villaPhoto.image, villaPhoto.caption || villaPhoto.title)
+            const targetHref = villaPhoto.slug ? serviceGalleryPath(hub, null, villaPhoto) : (details.href || '/services')
+            return (
+              <a
+                href={targetHref}
+                className="group block relative overflow-hidden"
+                title={details.title ? `View details: ${details.title}` : 'View project details'}
+              >
+                <Media
+                  src={villaPhoto.image}
+                  alt={villaPhoto.caption || villaPhoto.title || ''}
+                  className="h-[48vw] min-h-[280px] max-h-[640px] w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+              </a>
+            )
+          })()}
         </section>
       ) : null}
 
@@ -214,13 +301,23 @@ export default function ServiceHubPage({
 
       {secondHouse ? (
         <section>
-          <a href={secondHouse.slug ? serviceGalleryPath(hub, null, secondHouse) : '/services'} className="block">
-            <Media
-              src={secondHouse.image}
-              alt={secondHouse.caption || secondHouse.title || ''}
-              className="h-[46vw] min-h-[260px] max-h-[600px] w-full object-cover"
-            />
-          </a>
+          {(() => {
+            const details = getMediaDetailsInfo(secondHouse.image, secondHouse.caption || secondHouse.title)
+            const targetHref = secondHouse.slug ? serviceGalleryPath(hub, null, secondHouse) : (details.href || '/services')
+            return (
+              <a
+                href={targetHref}
+                className="group block relative overflow-hidden"
+                title={details.title ? `View details: ${details.title}` : 'View project details'}
+              >
+                <Media
+                  src={secondHouse.image}
+                  alt={secondHouse.caption || secondHouse.title || ''}
+                  className="h-[46vw] min-h-[260px] max-h-[600px] w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+              </a>
+            )
+          })()}
         </section>
       ) : null}
 
@@ -273,14 +370,32 @@ export default function ServiceHubPage({
             </a>
           </div>
           <div className="overflow-hidden rounded-[24px]">
-            <img
-              src="/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg"
-              alt="Unique Graphics project"
-              className="h-[320px] w-full object-cover sm:h-[420px] lg:h-[460px]"
-            />
+            {(() => {
+              const gwUrl = '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg'
+              const details = getMediaDetailsInfo(gwUrl, 'Greenwood Avenue Mullanpur')
+              return (
+                <a
+                  href={details.href || '/all-projects'}
+                  className="group block overflow-hidden rounded-[24px]"
+                  title={details.title ? `View details: ${details.title}` : 'View project details'}
+                >
+                  <img
+                    src={gwUrl}
+                    alt="Unique Graphics project"
+                    className="h-[320px] w-full object-cover sm:h-[420px] lg:h-[460px] transition-transform duration-700 group-hover:scale-105"
+                  />
+                </a>
+              )
+            })()}
           </div>
         </div>
       </section>
+
+      <ImageDetailModal
+        open={fallbackModal.open}
+        item={fallbackModal}
+        onClose={() => setFallbackModal({ open: false, image: '', title: '', subtitle: '' })}
+      />
     </main>
   )
 }

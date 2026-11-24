@@ -3,7 +3,8 @@ import { menuPages } from '../data/menuPages'
 import { portfolioCategoryPath, portfolioSubcategoryPath } from '../data/portfolioTree'
 import { reelForPage } from '../data/reels'
 import LoopVideo from './LoopVideo'
-import { FaInstagram, FaPinterest, FaLinkedin, FaYoutube } from 'react-icons/fa'
+import { FaInstagram, FaFacebook, FaBehance } from 'react-icons/fa'
+import { FaXTwitter } from 'react-icons/fa6'
 
 function clearEnquireProjectMedia() {
   try {
@@ -705,7 +706,7 @@ export default function Navbar() {
             <p className="text-[11.5px] tracking-[0.18em] text-white/50 uppercase">We're on social media</p>
             <div className="mt-4 flex items-center gap-3">
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/uniquegraphics.interior/"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Instagram"
@@ -714,31 +715,31 @@ export default function Navbar() {
                 <FaInstagram className="h-5 w-5" />
               </a>
               <a
-                href="https://pinterest.com"
+                href="https://www.facebook.com/UniqueGraphics.Interior"
                 target="_blank"
                 rel="noreferrer"
-                aria-label="Pinterest"
+                aria-label="Facebook"
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white/80 transition-all duration-300 hover:scale-110 hover:border-[#e3943f] hover:bg-[#e3943f] hover:text-black"
               >
-                <FaPinterest className="h-5 w-5" />
+                <FaFacebook className="h-5 w-5" />
               </a>
               <a
-                href="https://linkedin.com"
+                href="https://x.com/UniqueGraphicsX"
                 target="_blank"
                 rel="noreferrer"
-                aria-label="LinkedIn"
+                aria-label="X"
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white/80 transition-all duration-300 hover:scale-110 hover:border-[#e3943f] hover:bg-[#e3943f] hover:text-black"
               >
-                <FaLinkedin className="h-5 w-5" />
+                <FaXTwitter className="h-5 w-5" />
               </a>
               <a
-                href="https://youtube.com"
+                href="https://www.behance.net/uniquegraphics02"
                 target="_blank"
                 rel="noreferrer"
-                aria-label="YouTube"
+                aria-label="Behance"
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] text-white/80 transition-all duration-300 hover:scale-110 hover:border-[#e3943f] hover:bg-[#e3943f] hover:text-black"
               >
-                <FaYoutube className="h-5 w-5" />
+                <FaBehance className="h-5 w-5" />
               </a>
             </div>
           </div>

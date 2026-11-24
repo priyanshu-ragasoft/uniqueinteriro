@@ -39,7 +39,7 @@ function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result || ''))
-    reader.onerror = () => reject(new Error('Could not read that file'))
+    reader.onerror = () => reject(new Error('Could not read file'))
     reader.readAsDataURL(file)
   })
 }
@@ -55,26 +55,28 @@ async function uploadMedia(file, token) {
     body: JSON.stringify({ filename: file.name, dataUrl }),
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok || !data.url) throw new Error(data.message || 'Upload failed. Try a smaller file.')
+  if (!res.ok || !data.url) throw new Error(data.message || 'Upload failed')
   return data.url
 }
 
 const inputClass =
-  'w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-[13px] text-white outline-none transition-colors placeholder:text-white/25 focus:border-[#e3943f]'
+  'w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-[13px] text-white/90 placeholder:text-white/20 outline-none transition focus:border-[#e3943f] focus:bg-black/70'
 const fileClass =
-  'block w-full text-[12px] text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-[#e3943f] file:px-3 file:py-1.5 file:text-[12px] file:font-semibold file:text-black'
+  'block w-full text-[12px] text-white/50 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-2.5 file:py-1 file:text-[11px] file:font-medium file:text-white hover:file:bg-white/15 cursor-pointer'
 const btnGhost =
-  'rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-[12px] font-semibold text-white/80 hover:bg-white/[0.08] hover:text-white disabled:opacity-40'
+  'inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[12px] font-medium text-white/70 hover:bg-white/[0.08] hover:text-white transition disabled:opacity-40 cursor-pointer'
 const btnPrimary =
-  'rounded-xl bg-gradient-to-r from-[#e3943f] to-[#d68532] px-5 py-2.5 text-[13px] font-semibold text-black shadow-md shadow-[#e3943f]/25 disabled:opacity-50'
+  'inline-flex items-center gap-2 rounded-lg bg-[#e3943f] px-4 py-2 text-[12px] font-semibold text-black hover:bg-[#d68532] transition disabled:opacity-50 cursor-pointer shadow-sm'
 
 function Field({ label, hint, children }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-[13px] font-semibold text-white/70">{label}</span>
-      {hint ? <p className="mb-2 text-[12px] leading-relaxed text-white/40">{hint}</p> : null}
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className="text-[12px] font-medium text-white/70">{label}</label>
+        {hint ? <span className="text-[11px] text-white/35">{hint}</span> : null}
+      </div>
       {children}
-    </label>
+    </div>
   )
 }
 
@@ -98,65 +100,70 @@ function isVideoSource(src) {
   return value.startsWith('data:video') || /\.(mp4|webm|ogg|mov)(\?|#|$)/.test(value)
 }
 
-function MediaPicker({ src, onChange, onFile, label = 'Photo or video' }) {
-  return (
-    <div className="block">
-      <span className="mb-1.5 block text-[13px] font-semibold text-white/70">{label}</span>
-      <div className="flex items-start gap-3">
-        <MediaThumb src={src} />
-        <div className="min-w-0 flex-1 space-y-2">
-          <input
-            className={inputClass}
-            placeholder="Or paste a photo / video link"
-            value={src || ''}
-            onChange={(event) => onChange(event.target.value)}
-          />
-          <label className="inline-flex cursor-pointer items-center rounded-xl bg-[#e3943f] px-4 py-2 text-[13px] font-semibold text-black">
-            Upload photo or video
-            <input
-              type="file"
-              accept="image/*,video/mp4,video/webm,video/ogg,.mov"
-              className="sr-only"
-              onChange={(event) => {
-                onFile(event.target.files?.[0])
-                event.target.value = ''
-              }}
-            />
-          </label>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function MediaThumb({ src }) {
+function MediaThumb({ src, className = 'h-20 w-24 shrink-0' }) {
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [src])
   if (!src) {
     return (
-      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-dashed border-white/15 bg-black/40 text-center text-[10px] text-white/35">
-        No preview
+      <div className={`flex items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/30 text-[10px] text-white/25 ${className}`}>
+        Empty
       </div>
     )
   }
   return (
-    <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black">
+    <div className={`flex items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black ${className}`}>
       {failed ? (
-        <span className="px-2 text-center text-[10px] text-white/40">Preview unavailable</span>
+        <span className="px-2 text-center text-[10px] text-white/40">Failed</span>
       ) : isVideoSource(src) ? (
-        <video src={src} muted playsInline preload="metadata" className="h-full w-full object-contain" onError={() => setFailed(true)} />
+        <video src={src} muted playsInline preload="metadata" className="h-full w-full object-cover" onError={() => setFailed(true)} />
       ) : (
-        <img src={src} alt="" className="h-full w-full object-contain" onError={() => setFailed(true)} />
+        <img src={src} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
       )}
     </div>
   )
 }
 
-function BlockToggle({ checked, onChange }) {
+function MediaPicker({ src, onChange, onFile, label = 'Media' }) {
   return (
-    <label className="inline-flex items-center gap-2 text-[12px] text-white/70">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-      Show on page
+    <Field label={label}>
+      <div className="flex items-center gap-3">
+        <MediaThumb src={src} />
+        <div className="min-w-0 flex-1 space-y-2">
+          <input
+            className={inputClass}
+            placeholder="Paste URL (image / video)"
+            value={src || ''}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/70 hover:bg-white/10 transition">
+            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Upload file</span>
+            <input
+              type="file"
+              accept="image/*,video/mp4,video/webm,video/ogg,.mov"
+              className="sr-only"
+              onChange={(e) => {
+                onFile(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+          </label>
+        </div>
+      </div>
+    </Field>
+  )
+}
+
+function BlockToggle({ checked, onChange, label = 'Visible' }) {
+  return (
+    <label className="inline-flex items-center gap-2 text-[12px] text-white/60 cursor-pointer select-none">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-3.5 w-3.5 rounded border-white/20 bg-black/40 accent-[#e3943f] cursor-pointer"
+      />
+      <span>{label}</span>
     </label>
   )
 }
@@ -167,57 +174,19 @@ function visualSrc(item) {
   return String(item.image || item.src || item.url || '').trim()
 }
 
-function isPlaceholderTitle(title) {
-  return !String(title || '').trim() || /^visual\s*\d+$/i.test(String(title).trim())
-}
-
-function titleFromFile(src) {
-  const raw = String(src || '').split(/[?#]/)[0]
-  if (!raw) return ''
-  let name = raw.split('/').pop() || ''
-  try {
-    name = decodeURIComponent(name)
-  } catch {
-    /* keep encoded */
-  }
-  name = name.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim()
-  name = name.replace(/\s+\d+$/g, '').trim()
-  if (!name || name.length < 4 || name.length > 72) return ''
-  if (/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(name.replace(/\s+/g, '-'))) return ''
-  if (/^[0-9a-f]{8}\b/i.test(name)) return ''
-  if (/^[a-z]\d{0,2}$/i.test(name)) return ''
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .map((word, index) => {
-      if (index > 0 && /^(and|of|in|to|a|the)$/i.test(word)) return word.toLowerCase()
-      return word.charAt(0).toUpperCase() + word.slice(1)
-    })
-    .join(' ')
-}
-
 function packProjectVisual(visual) {
   const image = visualSrc(visual)
   const title = String(visual?.title || '').trim()
   const text = String(visual?.text || visual?.description || '').trim()
   const caption = String(visual?.caption || '').trim()
-  return {
-    id: visual?.id || '',
-    image,
-    title,
-    text,
-    description: text,
-    caption,
-  }
+  return { id: visual?.id || '', image, title, text, description: text, caption }
 }
 
 function normalizeProjectVisuals(gallery, { keepEmpty = true } = {}) {
   const list = (Array.isArray(gallery) ? gallery : []).map((item, index) => {
     const image = visualSrc(item)
     const raw = item && typeof item === 'object' ? item : {}
-    const rawTitle = String(raw.title || raw.tocTitle || raw.label || '').trim()
-    const fromFile = titleFromFile(image)
-    const title = !isPlaceholderTitle(rawTitle) ? rawTitle : fromFile || (image ? `Visual ${index + 1}` : '')
+    const title = String(raw.title || raw.tocTitle || raw.label || '').trim() || (image ? `Photo ${index + 1}` : '')
     const text = String(raw.text || raw.description || '').trim()
     return {
       id: raw.id || `vis-${index + 1}`,
@@ -291,16 +260,43 @@ export default function ServicesManager({
         ? '/services'
         : `/services/${categoryItem.slug}`,
   packTree = (value) => value,
-  hoverNote = 'Small picture shown in the website menu. Page banner is set in Page content.',
-  intro = 'Pick a page on the left. Edit only that page, then Save.',
+  intro = 'Select a page from the sidebar to edit its content and projects.',
   onEditingChange,
 }) {
+  const storagePrefix = String(endpoint || '').replace(/[^a-zA-Z0-9]/g, '_')
+
   const [tree, setTree] = useState(() => readTree())
-  const [tab, setTab] = useState(() => (String(endpoint || '').includes('portfolio-pages') ? 'page' : 'menu'))
-  const [categoryId, setCategoryId] = useState(
-    () => firstUsefulCategory(readTree().categories, String(endpoint || '').includes('portfolio-pages'))?.id || ''
-  )
-  const [subId, setSubId] = useState('')
+  const [tab, setTab] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`ug_mgr_tab_${storagePrefix}`)
+      if (saved && ['menu', 'page', 'projects'].includes(saved)) return saved
+    } catch {}
+    return String(endpoint || '').includes('portfolio-pages') ? 'page' : 'menu'
+  })
+  const [categoryId, setCategoryId] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`ug_mgr_cat_${storagePrefix}`)
+      const cats = readTree().categories || []
+      if (saved && cats.some((c) => c.id === saved)) return saved
+    } catch {}
+    return firstUsefulCategory(readTree().categories, String(endpoint || '').includes('portfolio-pages'))?.id || ''
+  })
+  const [subId, setSubId] = useState(() => {
+    try {
+      return localStorage.getItem(`ug_mgr_sub_${storagePrefix}`) || ''
+    } catch {
+      return ''
+    }
+  })
+
+  useEffect(() => {
+    try {
+      if (tab) localStorage.setItem(`ug_mgr_tab_${storagePrefix}`, tab)
+      if (categoryId) localStorage.setItem(`ug_mgr_cat_${storagePrefix}`, categoryId)
+      localStorage.setItem(`ug_mgr_sub_${storagePrefix}`, subId || '')
+    } catch {}
+  }, [tab, categoryId, subId, storagePrefix])
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState(null)
   const [error, setError] = useState('')
@@ -326,7 +322,7 @@ export default function ServicesManager({
       apply(url)
       setStatus('uploaded')
     } catch (err) {
-      setError(err.message || 'Upload failed. Try again with a smaller photo or video.')
+      setError(err.message || 'Upload failed')
       setStatus('error')
     } finally {
       setUploading(false)
@@ -353,7 +349,7 @@ export default function ServicesManager({
 
   useEffect(() => {
     if (!status) return undefined
-    const timer = setTimeout(() => setStatus(null), 3500)
+    const timer = setTimeout(() => setStatus(null), 3000)
     return () => clearTimeout(timer)
   }, [status])
 
@@ -367,6 +363,16 @@ export default function ServicesManager({
   const livePath = category ? urlFor(category, subcategory) : ''
   const isAllProjects = isPortfolio && !subcategory && category?.slug === 'all-projects'
   const collectedProjectCount = isAllProjects ? countProjectsInTree(categories) : projects.length
+
+  const filteredCategories = categories.filter((c) => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return (
+      c.name?.toLowerCase().includes(q) ||
+      c.slug?.toLowerCase().includes(q) ||
+      (c.subcategories || []).some((s) => s.name?.toLowerCase().includes(q))
+    )
+  })
 
   const patchCategory = (id, patch) => {
     setTree((current) => ({
@@ -397,11 +403,6 @@ export default function ServicesManager({
       setStatus('error')
       return false
     }
-    if (JSON.stringify(nextTree).includes('data:')) {
-      setError('A photo or video is still waiting to upload. Choose the file again, wait for upload, then Save.')
-      setStatus('error')
-      return false
-    }
     setLoading(true)
     setError('')
     writeTree(nextTree)
@@ -412,14 +413,8 @@ export default function ServicesManager({
           ...payload,
           categories: payload.categories.map((cat) => ({
             ...cat,
-            page: normalizeServicePage(
-              cat.page,
-              (cat.subcategories || []).map((sub) => sub.slug || sub.id)
-            ),
-            subcategories: (cat.subcategories || []).map((sub) => ({
-              ...sub,
-              page: normalizeServicePage(sub.page),
-            })),
+            page: normalizeServicePage(cat.page, (cat.subcategories || []).map((sub) => sub.slug || sub.id)),
+            subcategories: (cat.subcategories || []).map((sub) => ({ ...sub, page: normalizeServicePage(sub.page) })),
           })),
         }
       }
@@ -428,8 +423,7 @@ export default function ServicesManager({
         const remoteRes = await fetch(endpoint)
         const remoteData = await remoteRes.json().catch(() => ({}))
         const extras = (remoteData?.data?.categories || []).filter(
-          (item) =>
-            ['residences', 'hospitality', 'nightlife'].includes(item.slug) && !slugs.includes(item.slug)
+          (item) => ['residences', 'hospitality', 'nightlife'].includes(item.slug) && !slugs.includes(item.slug)
         )
         if (extras.length) payload = { ...payload, categories: [...(payload.categories || []), ...extras] }
         if (options.removedSlugs?.length) payload = { ...payload, removedSlugs: options.removedSlugs }
@@ -444,7 +438,7 @@ export default function ServicesManager({
       })
       const data = await res.json()
       if (!res.ok || data.success === false) {
-        setError(data.message || 'Could not save. Check your login and try again.')
+        setError(data.message || 'Save failed')
         setStatus('error')
         return false
       }
@@ -466,10 +460,10 @@ export default function ServicesManager({
     if (!item) return
     const slug = item.slug || item.id
     if (isPortfolio && isBuiltinPortfolioSlug(slug)) {
-      window.alert(`“${item.name}” can be hidden from the website menu, but this section stays in the list.`)
+      window.alert(`"${item.name}" cannot be deleted as it is a core section.`)
       return
     }
-    if (!window.confirm(`Delete “${item.name}” and its sub pages and projects? This saves immediately.`)) return
+    if (!window.confirm(`Delete "${item.name}"?`)) return
     const nextTree = { categories: tree.categories.filter((entry) => entry.id !== item.id) }
     if (isPortfolio) {
       const purged = purgePortfolioCategoryFromConfig(getStoredPortfolioConfig(), slug)
@@ -485,7 +479,7 @@ export default function ServicesManager({
 
   const deleteSubcategory = async (item) => {
     if (!category || !item) return
-    if (!window.confirm(`Delete “${item.name}”? The main section page stays as it is.`)) return
+    if (!window.confirm(`Delete subpage "${item.name}"?`)) return
     const nextTree = {
       categories: tree.categories.map((entry) =>
         entry.id === category.id
@@ -499,10 +493,10 @@ export default function ServicesManager({
   }
 
   const addCategory = () => {
-    const slug = `new-category-${tree.categories.length + 1}`
+    const slug = `section-${tree.categories.length + 1}`
     const item = {
       id: uid('cat'),
-      name: isPortfolio ? 'New section' : 'New category',
+      name: isPortfolio ? 'New Section' : 'New Category',
       slug,
       menuDescription: '',
       menuImage: '',
@@ -510,7 +504,7 @@ export default function ServicesManager({
       published: true,
       showInMenu: true,
       order: tree.categories.length,
-      page: emptyPage({ banner: { title: 'New category' } }),
+      page: emptyPage({ banner: { title: 'New Section' } }),
       projects: [],
       subcategories: [],
       ...(isPortfolio ? { href: portfolioCategoryPath({ slug }) } : {}),
@@ -525,15 +519,15 @@ export default function ServicesManager({
     if (!category) return
     const item = {
       id: uid('sub'),
-      name: isPortfolio ? 'New sub page' : 'New subcategory',
-      slug: `new-page-${(category.subcategories || []).length + 1}`,
+      name: 'New Subpage',
+      slug: `page-${(category.subcategories || []).length + 1}`,
       menuDescription: '',
       menuImage: category.menuImage || '',
       menuVideo: '',
       published: true,
       showInMenu: true,
       order: (category.subcategories || []).length,
-      page: emptyPage({ banner: { title: 'New subcategory' } }),
+      page: emptyPage({ banner: { title: 'New Subpage' } }),
       projects: [],
     }
     patchCategory(category.id, { subcategories: [...(category.subcategories || []), item] })
@@ -543,7 +537,7 @@ export default function ServicesManager({
 
   const selectCategory = (id) => {
     setCategoryId(id)
-      setSubId('')
+    setSubId('')
     setEditingProject(null)
     setEditingHighlight(null)
     setEditingGallery(null)
@@ -567,10 +561,10 @@ export default function ServicesManager({
     const nextTree = {
       categories: tree.categories.map((cat) => {
         if (cat.id !== category?.id) return cat
-        const writePage = (page) => {
-          const items = (page?.highlights?.items || []).map((entry) => (entry.id === nextItem.id ? nextItem : entry))
-          return { ...page, highlights: { ...(page?.highlights || {}), items } }
-        }
+        const writePage = (pg) => ({
+          ...pg,
+          highlights: { ...(pg?.highlights || {}), items: (pg?.highlights?.items || []).map((e) => (e.id === nextItem.id ? nextItem : e)) },
+        })
         if (subcategory) {
           return {
             ...cat,
@@ -595,15 +589,14 @@ export default function ServicesManager({
   }
 
   const applyGalleryToTree = (item) => {
-    const used = new Set((page.gallery?.items || []).filter((entry) => entry.id !== item.id).map((entry) => entry.slug).filter(Boolean))
-    const nextItem = normalizeGalleryItem(item, 0, reservedGallerySlugs, used)
+    const nextItem = normalizeGalleryItem(item, 0, reservedGallerySlugs, new Set())
     const nextTree = {
       categories: tree.categories.map((cat) => {
         if (cat.id !== category?.id) return cat
-        const writePage = (currentPage) => {
-          const items = (currentPage?.gallery?.items || []).map((entry) => (entry.id === nextItem.id ? nextItem : entry))
-          return { ...currentPage, gallery: { ...(currentPage?.gallery || {}), items } }
-        }
+        const writePage = (pg) => ({
+          ...pg,
+          gallery: { ...(pg?.gallery || {}), items: (pg?.gallery?.items || []).map((e) => (e.id === nextItem.id ? nextItem : e)) },
+        })
         if (subcategory) {
           return {
             ...cat,
@@ -656,179 +649,85 @@ export default function ServicesManager({
   if (editingStory) {
     const setStory = storyKind === 'gallery' ? setEditingGallery : setEditingHighlight
     const saveStory = storyKind === 'gallery' ? saveGallery : saveHighlight
-    const liveHref = category
-      ? storyKind === 'gallery'
-        ? isPortfolio
-          ? portfolioGalleryPath(category, subcategory, editingStory)
-          : serviceGalleryPath(category, subcategory, editingStory)
-        : isPortfolio
-          ? portfolioHighlightPath(category, subcategory, editingStory)
-          : serviceHighlightPath(category, subcategory, editingStory)
-      : ''
     const detail = emptyHighlightDetail(editingStory.detail)
-    const patchDetail = (patch) => setStory((current) => ({ ...current, detail: { ...emptyHighlightDetail(current.detail), ...patch } }))
+    const patchDetail = (patch) => setStory((curr) => ({ ...curr, detail: { ...emptyHighlightDetail(curr.detail), ...patch } }))
     return (
-      <div className="space-y-5 pb-24 text-white">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <button type="button" className="mb-2 text-[12px] text-white/50 hover:text-[#e3943f]" onClick={() => setStory(null)}>
-              ‹ Back to {editing?.name || 'page'}
+      <div className="space-y-4 pb-20 text-white max-w-4xl">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="text-[12px] text-white/50 hover:text-white transition cursor-pointer"
+              onClick={() => setStory(null)}
+            >
+              ← Back
             </button>
-            <h1 className="text-[20px] font-semibold">
-              {storyKind === 'gallery' ? 'Add gallery photos & text' : 'Add photos & text'}
+            <h1 className="text-[15px] font-semibold text-white">
+              {storyKind === 'gallery' ? 'Gallery Item Details' : 'Story Card Details'}
             </h1>
-            <p className="mt-1 text-[13px] text-white/50">
-              Fill the banner, text, extra photos, then Save to website. This becomes {liveHref || 'the card page'}.
-            </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button type="button" className={btnGhost} onClick={() => setStory(null)}>Cancel</button>
             <button type="button" className={btnPrimary} onClick={saveStory} disabled={loading || uploading}>
-              {loading ? 'Saving…' : 'Save to website'}
+              {loading ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>
-        {uploading ? <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[13px]">Uploading…</p> : null}
-        <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-          <Field label="Page title">
-            <input className={inputClass} value={detail.banner?.title || ''} onChange={(e) => patchDetail({ banner: { ...detail.banner, title: e.target.value } })} />
-          </Field>
-          <Field label="Accent line">
-            <input className={inputClass} value={detail.banner?.accent || ''} onChange={(e) => patchDetail({ banner: { ...detail.banner, accent: e.target.value } })} />
-          </Field>
-          <Field label="Small label">
-            <input className={inputClass} value={detail.banner?.label || ''} onChange={(e) => patchDetail({ banner: { ...detail.banner, label: e.target.value } })} />
-          </Field>
-          <Field label="Subtitle">
-            <textarea className={inputClass} rows={3} value={detail.banner?.subtitle || ''} onChange={(e) => patchDetail({ banner: { ...detail.banner, subtitle: e.target.value } })} />
-          </Field>
-          {[0, 1, 2].map((index) => {
-            const src = detail.banner?.images?.[index] || ''
-            return (
-              <Field key={index} label={`Banner photo / video ${index + 1}`}>
-                <div className="flex items-center gap-3">
-                  <MediaThumb src={src} />
-                  <div className="min-w-0 flex-1 space-y-2">
-          <input
-            className={inputClass}
+
+        <div className="space-y-4 rounded-xl border border-white/10 bg-[#111] p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Title">
+              <input className={inputClass} value={detail.banner?.title || ''} onChange={(e) => patchDetail({ banner: { ...detail.banner, title: e.target.value } })} />
+            </Field>
+            <Field label="Subtitle / Accent">
+              <input className={inputClass} value={detail.banner?.accent || ''} onChange={(e) => patchDetail({ banner: { ...detail.banner, accent: e.target.value } })} />
+            </Field>
+          </div>
+
+          <Field label="Hero Images (Up to 3)">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[0, 1, 2].map((idx) => {
+                const src = detail.banner?.images?.[idx] || ''
+                return (
+                  <div key={idx} className="space-y-2 rounded-lg border border-white/10 bg-black/40 p-2.5">
+                    <MediaThumb src={src} className="h-24 w-full" />
+                    <input
+                      className={`${inputClass} text-[11px] py-1`}
+                      placeholder={`Image ${idx + 1} URL`}
                       value={src}
                       onChange={(e) => {
                         const images = [...(detail.banner?.images || ['', '', ''])]
-                        images[index] = e.target.value
+                        images[idx] = e.target.value
                         patchDetail({ banner: { ...detail.banner, images } })
                       }}
                     />
-                    <input type="file" accept="image/*,video/*" className={fileClass} onChange={(e) => storeFile(e.target.files?.[0], (url) => {
-                      const images = [...(detail.banner?.images || ['', '', ''])]
-                      images[index] = url
-                      patchDetail({ banner: { ...detail.banner, images } })
-                    })} />
+                    <label className="block text-center rounded border border-white/10 bg-white/5 py-1 text-[11px] text-white/70 hover:bg-white/10 cursor-pointer">
+                      Upload
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        className="sr-only"
+                        onChange={(e) => storeFile(e.target.files?.[0], (url) => {
+                          const images = [...(detail.banner?.images || ['', '', ''])]
+                          images[idx] = url
+                          patchDetail({ banner: { ...detail.banner, images } })
+                        })}
+                      />
+                    </label>
                   </div>
-                </div>
-        </Field>
-            )
-          })}
-        </article>
-        <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-          <h3 className="font-bold">Intro</h3>
-          <Field label="Heading"><input className={inputClass} value={detail.intro?.heading || ''} onChange={(e) => patchDetail({ intro: { ...detail.intro, heading: e.target.value } })} /></Field>
-          <Field label="Paragraph"><textarea className={inputClass} rows={3} value={detail.intro?.paragraph1 || ''} onChange={(e) => patchDetail({ intro: { ...detail.intro, paragraph1: e.target.value } })} /></Field>
-          <Field label="Second paragraph"><textarea className={inputClass} rows={3} value={detail.intro?.paragraph2 || ''} onChange={(e) => patchDetail({ intro: { ...detail.intro, paragraph2: e.target.value } })} /></Field>
-        </article>
-        <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold">Story sections</h3>
-            <button
-              type="button"
-              className="text-[12px] font-bold text-[#e3943f]"
-              onClick={() => patchDetail({ sections: [...(detail.sections || []), { id: uid('sec'), title: 'New section', text: '', media: '', caption: '' }] })}
-            >
-              + Add section
-            </button>
-          </div>
-          {(detail.sections || []).map((section, index) => (
-            <div key={section.id || index} className="space-y-2 rounded-xl border border-white/10 p-3">
-              <input className={inputClass} placeholder="Section title" value={section.title || ''} onChange={(e) => {
-                const sections = [...(detail.sections || [])]
-                sections[index] = { ...sections[index], title: e.target.value }
-                patchDetail({ sections })
-              }} />
-              <textarea className={inputClass} rows={2} placeholder="Text" value={section.text || ''} onChange={(e) => {
-                const sections = [...(detail.sections || [])]
-                sections[index] = { ...sections[index], text: e.target.value }
-                patchDetail({ sections })
-              }} />
-              <MediaPicker
-                src={section.media}
-                onChange={(value) => {
-                  const sections = [...(detail.sections || [])]
-                  sections[index] = { ...sections[index], media: value }
-                  patchDetail({ sections })
-                }}
-                onFile={(file) => storeFile(file, (url) => {
-                  const sections = [...(detail.sections || [])]
-                  sections[index] = { ...sections[index], media: url }
-                  patchDetail({ sections })
-                })}
-              />
-              <input className={inputClass} placeholder="Caption" value={section.caption || ''} onChange={(e) => {
-                const sections = [...(detail.sections || [])]
-                sections[index] = { ...sections[index], caption: e.target.value }
-                patchDetail({ sections })
-              }} />
-              <button type="button" className="text-[11px] text-red-300" onClick={() => patchDetail({ sections: (detail.sections || []).filter((_, i) => i !== index) })}>Remove</button>
+                )
+              })}
             </div>
-          ))}
-        </article>
-        <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold">Gallery</h3>
-            <button
-              type="button"
-              className="text-[12px] font-bold text-[#e3943f]"
-              onClick={() => patchDetail({ gallery: [...(detail.gallery || []), { id: uid('photo'), image: '', caption: '' }] })}
-            >
-              + Add photo
-            </button>
-          </div>
-          {(detail.gallery || []).map((item, index) => (
-            <div key={item.id || index} className="space-y-2 rounded-xl border border-white/10 p-3">
-              <div className="flex items-center gap-3">
-                <MediaThumb src={item.image} />
-                <div className="min-w-0 flex-1 space-y-2">
-                  <input className={inputClass} value={item.image || ''} onChange={(e) => {
-                    const gallery = [...(detail.gallery || [])]
-                    gallery[index] = { ...gallery[index], image: e.target.value }
-                    patchDetail({ gallery })
-                  }} />
-                  <input type="file" accept="image/*,video/*" className={fileClass} onChange={(e) => storeFile(e.target.files?.[0], (url) => {
-                    const gallery = [...(detail.gallery || [])]
-                    gallery[index] = { ...gallery[index], image: url }
-                    patchDetail({ gallery })
-                  })} />
-                </div>
-              </div>
-              <input className={inputClass} placeholder="Caption" value={item.caption || ''} onChange={(e) => {
-                const gallery = [...(detail.gallery || [])]
-                gallery[index] = { ...gallery[index], caption: e.target.value }
-                patchDetail({ gallery })
-              }} />
-              <button type="button" className="text-[11px] text-red-300" onClick={() => patchDetail({ gallery: (detail.gallery || []).filter((_, i) => i !== index) })}>Remove</button>
-            </div>
-          ))}
-        </article>
-        <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-          <h3 className="font-bold">Closing note</h3>
-          <Field label="Heading"><input className={inputClass} value={detail.closing?.heading || ''} onChange={(e) => patchDetail({ closing: { ...detail.closing, heading: e.target.value } })} /></Field>
-          <Field label="Paragraph"><textarea className={inputClass} rows={3} value={detail.closing?.paragraph || ''} onChange={(e) => patchDetail({ closing: { ...detail.closing, paragraph: e.target.value } })} /></Field>
-          <Field label="Button label"><input className={inputClass} value={detail.closing?.buttonLabel || ''} onChange={(e) => patchDetail({ closing: { ...detail.closing, buttonLabel: e.target.value } })} /></Field>
-          <Field label="Button link"><input className={inputClass} value={detail.closing?.buttonLink || ''} onChange={(e) => patchDetail({ closing: { ...detail.closing, buttonLink: e.target.value } })} /></Field>
-        </article>
-        <div className="flex gap-2">
-          <button type="button" className={btnGhost} onClick={() => setStory(null)}>Cancel</button>
-          <button type="button" className={btnPrimary} onClick={saveStory} disabled={loading || uploading}>
-              {loading ? 'Saving…' : 'Save to website'}
-          </button>
+          </Field>
+
+          <Field label="Introduction">
+            <textarea
+              className={inputClass}
+              rows={3}
+              value={detail.intro?.paragraph1 || ''}
+              onChange={(e) => patchDetail({ intro: { ...detail.intro, paragraph1: e.target.value } })}
+            />
+          </Field>
         </div>
       </div>
     )
@@ -836,461 +735,443 @@ export default function ServicesManager({
 
   if (editingProject) {
     return (
-      <div className="space-y-5 pb-24 text-white">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <button type="button" className="mb-2 text-[12px] text-white/50 hover:text-[#e3943f]" onClick={() => setEditingProject(null)}>
-              ‹ Back to {editing?.name || 'page'}
-            </button>
-            <h1 className="text-[20px] font-semibold">{isNewProject ? 'Add project' : 'Edit project'}</h1>
-            <p className="mt-1 text-[13px] text-white/50">This card opens /project/{editingProject.id} on the website.</p>
-          </div>
-          <div className="flex gap-2">
-            <button type="button" className={btnGhost} onClick={() => setEditingProject(null)}>Cancel</button>
-            <button type="button" className={btnPrimary} onClick={saveProject}>Save on this page</button>
-          </div>
-        </div>
-        {uploading ? <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[13px]">Uploading…</p> : null}
-        <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Title">
-              <input className={inputClass} value={editingProject.titlePre || ''} onChange={(e) => setEditingProject((p) => ({ ...p, titlePre: e.target.value }))} />
-        </Field>
-            <Field label="Location">
-              <input className={`${inputClass} text-[#e3943f]`} value={editingProject.location || ''} onChange={(e) => setEditingProject((p) => ({ ...p, location: e.target.value }))} />
-            </Field>
-            <Field label="Title end">
-              <input className={inputClass} value={editingProject.titlePost || ''} onChange={(e) => setEditingProject((p) => ({ ...p, titlePost: e.target.value }))} />
-            </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="City"><input className={inputClass} value={editingProject.city || ''} onChange={(e) => setEditingProject((p) => ({ ...p, city: e.target.value }))} /></Field>
-            <Field label="Country"><input className={inputClass} value={editingProject.country || ''} onChange={(e) => setEditingProject((p) => ({ ...p, country: e.target.value }))} /></Field>
-            <Field label="Type"><input className={inputClass} value={editingProject.type || ''} onChange={(e) => setEditingProject((p) => ({ ...p, type: e.target.value }))} /></Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Area"><input className={inputClass} value={editingProject.area || ''} onChange={(e) => setEditingProject((p) => ({ ...p, area: e.target.value }))} /></Field>
-            <Field label="Materials"><input className={inputClass} value={editingProject.tone || ''} onChange={(e) => setEditingProject((p) => ({ ...p, tone: e.target.value }))} /></Field>
-          </div>
-          <Field label="Short description">
-            <textarea className={inputClass} rows={3} value={editingProject.description || ''} onChange={(e) => setEditingProject((p) => ({ ...p, description: e.target.value }))} />
-          </Field>
-          <Field label="Full detail">
-            <textarea className={inputClass} rows={4} value={editingProject.detail || ''} onChange={(e) => setEditingProject((p) => ({ ...p, detail: e.target.value }))} />
-          </Field>
-          <Field label="Features (one per line)">
-            <textarea
-            className={inputClass}
-              rows={3}
-              value={(editingProject.scope || []).join('\n')}
-              onChange={(e) => setEditingProject((p) => ({ ...p, scope: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) }))}
-          />
-        </Field>
-        </article>
-        <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-          <Field label="Card / cover (image or video)">
-            <div className="flex items-center gap-3">
-              <MediaThumb src={editingProject.image} />
-            <div className="min-w-0 flex-1 space-y-2">
-                <input className={inputClass} value={editingProject.image || ''} onChange={(e) => setEditingProject((p) => ({ ...p, image: e.target.value }))} />
-                <input type="file" accept="image/*,video/*" className={fileClass} onChange={(e) => storeFile(e.target.files?.[0], (url) => setEditingProject((p) => ({ ...p, image: url })))} />
-            </div>
-          </div>
-        </Field>
-          <Field label="Hero media (optional)">
-            <input className={inputClass} value={editingProject.video || ''} onChange={(e) => setEditingProject((p) => ({ ...p, video: e.target.value }))} />
-            <input type="file" accept="image/*,video/*" className={`${fileClass} mt-2`} onChange={(e) => storeFile(e.target.files?.[0], (url) => setEditingProject((p) => ({ ...p, video: url })))} />
-          </Field>
-        </article>
-        <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="font-bold">Page visuals</h3>
-              <p className="mt-1 text-[12px] text-white/45">Table of contents on this project page. Same photos that are live on the website.</p>
-            </div>
+      <div className="space-y-4 pb-20 text-white max-w-4xl">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              className="text-[12px] font-bold text-[#e3943f]"
+              className="text-[12px] text-white/50 hover:text-white transition cursor-pointer"
+              onClick={() => setEditingProject(null)}
+            >
+              ← Back to {editing?.name || 'page'}
+            </button>
+            <h1 className="text-[15px] font-semibold text-white">
+              {isNewProject ? 'New Project' : 'Edit Project'}
+            </h1>
+            <span className="font-mono text-[11px] text-white/40">/project/{editingProject.id}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" className={btnGhost} onClick={() => setEditingProject(null)}>Cancel</button>
+            <button type="button" className={btnPrimary} onClick={saveProject}>Apply Changes</button>
+          </div>
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-white/10 bg-[#111] p-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="Project Name">
+              <input className={inputClass} value={editingProject.titlePre || ''} onChange={(e) => setEditingProject((p) => ({ ...p, titlePre: e.target.value }))} />
+            </Field>
+            <Field label="Location">
+              <input className={inputClass} placeholder="e.g. Kolkata, India" value={editingProject.location || ''} onChange={(e) => setEditingProject((p) => ({ ...p, location: e.target.value }))} />
+            </Field>
+            <Field label="Type / Category">
+              <input className={inputClass} placeholder="e.g. Commercial / Bar" value={editingProject.type || ''} onChange={(e) => setEditingProject((p) => ({ ...p, type: e.target.value }))} />
+            </Field>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="City">
+              <input className={inputClass} value={editingProject.city || ''} onChange={(e) => setEditingProject((p) => ({ ...p, city: e.target.value }))} />
+            </Field>
+            <Field label="Area / Dimensions">
+              <input className={inputClass} placeholder="e.g. 4,500 sq ft" value={editingProject.area || ''} onChange={(e) => setEditingProject((p) => ({ ...p, area: e.target.value }))} />
+            </Field>
+          </div>
+
+          <MediaPicker
+            label="Cover Image"
+            src={editingProject.image}
+            onChange={(url) => setEditingProject((p) => ({ ...p, image: url }))}
+            onFile={(file) => storeFile(file, (url) => setEditingProject((p) => ({ ...p, image: url })))}
+          />
+
+          <Field label="Summary">
+            <textarea
+              className={inputClass}
+              rows={2}
+              value={editingProject.description || ''}
+              onChange={(e) => setEditingProject((p) => ({ ...p, description: e.target.value }))}
+            />
+          </Field>
+
+          <Field label="Full Overview">
+            <textarea
+              className={inputClass}
+              rows={4}
+              value={editingProject.detail || ''}
+              onChange={(e) => setEditingProject((p) => ({ ...p, detail: e.target.value }))}
+            />
+          </Field>
+        </div>
+
+        {/* Project Visuals */}
+        <div className="space-y-3 rounded-xl border border-white/10 bg-[#111] p-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <h3 className="text-[13px] font-semibold text-white">Project Gallery &amp; Visuals</h3>
+            <button
+              type="button"
+              className="text-[12px] font-medium text-[#e3943f] hover:underline cursor-pointer"
               onClick={() => setEditingProject((p) => ({
                 ...p,
                 gallery: [...normalizeProjectVisuals(p.gallery), { id: uid('vis'), image: '', title: '', text: '', caption: '' }],
               }))}
             >
-              + Add visual
+              + Add Visual
             </button>
           </div>
           {normalizeProjectVisuals(editingProject.gallery).length === 0 ? (
-            <p className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-[13px] text-white/40">
-              No visuals yet — Add visual
-            </p>
+            <p className="py-4 text-center text-[12px] text-white/30">No visuals added yet.</p>
           ) : (
-            normalizeProjectVisuals(editingProject.gallery).map((visual, index) => (
-              <div key={visual.id || index} className="space-y-3 rounded-xl border border-white/10 p-3">
-                <Field label="Title">
-                  <input className={inputClass} value={visual.title || ''} onChange={(e) => patchVisual(index, { title: e.target.value })} />
-                </Field>
-                <Field label="Description">
-                  <textarea
-              className={inputClass}
-                    rows={4}
-                    placeholder="Text beside this photo on the live page"
-                    value={visual.text || ''}
-                    onChange={(e) => patchVisual(index, { text: e.target.value, description: e.target.value })}
-            />
-          </Field>
-                <MediaPicker
-                  src={visual.image}
-                  label="Photo"
-                  onChange={(value) => patchVisual(index, { image: value })}
-                  onFile={(file) => storeFile(file, (url) => patchVisual(index, { image: url }))}
-                />
-                <Field label="Caption">
-              <input
-                    className={inputClass}
-                    placeholder="Short line under the photo"
-                    value={visual.caption || ''}
-                    onChange={(e) => patchVisual(index, { caption: e.target.value })}
+            <div className="space-y-3">
+              {normalizeProjectVisuals(editingProject.gallery).map((visual, index) => (
+                <div key={visual.id || index} className="space-y-2 rounded-lg border border-white/10 bg-black/30 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono text-white/40">Visual {index + 1}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="text-[11px] text-white/50 hover:text-white disabled:opacity-20 cursor-pointer"
+                        disabled={index === 0}
+                        onClick={() => {
+                          const next = move(editingProject.gallery || [], index, -1)
+                          setEditingProject((p) => ({ ...p, gallery: next }))
+                        }}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[11px] text-white/50 hover:text-white disabled:opacity-20 cursor-pointer"
+                        disabled={index === (editingProject.gallery || []).length - 1}
+                        onClick={() => {
+                          const next = move(editingProject.gallery || [], index, 1)
+                          setEditingProject((p) => ({ ...p, gallery: next }))
+                        }}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[11px] text-red-400 hover:text-red-300 cursor-pointer"
+                        onClick={() => {
+                          const next = (editingProject.gallery || []).filter((_, i) => i !== index)
+                          setEditingProject((p) => ({ ...p, gallery: next }))
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <input
+                      className={inputClass}
+                      placeholder="Title"
+                      value={visual.title || ''}
+                      onChange={(e) => patchVisual(index, { title: e.target.value })}
+                    />
+                    <input
+                      className={inputClass}
+                      placeholder="Caption"
+                      value={visual.caption || ''}
+                      onChange={(e) => patchVisual(index, { caption: e.target.value })}
+                    />
+                  </div>
+                  <MediaPicker
+                    src={visual.image}
+                    onChange={(url) => patchVisual(index, { image: url })}
+                    onFile={(file) => storeFile(file, (url) => patchVisual(index, { image: url }))}
                   />
-                </Field>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" className={btnGhost} disabled={index === 0} onClick={() => setEditingProject((p) => ({ ...p, gallery: move(normalizeProjectVisuals(p.gallery), index, -1) }))}>Up</button>
-                  <button type="button" className={btnGhost} disabled={index === normalizeProjectVisuals(editingProject.gallery).length - 1} onClick={() => setEditingProject((p) => ({ ...p, gallery: move(normalizeProjectVisuals(p.gallery), index, 1) }))}>Down</button>
-                  <button type="button" className="text-[11px] text-red-300" onClick={() => setEditingProject((p) => ({ ...p, gallery: normalizeProjectVisuals(p.gallery).filter((_, i) => i !== index) }))}>Remove</button>
-        </div>
-              </div>
-            ))
+                </div>
+              ))}
+            </div>
           )}
-        </article>
-        <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold">Story sections</h3>
-            <button
-              type="button"
-              className="text-[12px] font-bold text-[#e3943f]"
-              onClick={() => setEditingProject((p) => ({ ...p, sections: [...(p.sections || []), { id: uid('sec'), title: 'New section', text: '', media: '', caption: '' }] }))}
-            >
-              + Add section
-            </button>
-          </div>
-          {(editingProject.sections || []).map((section, index) => (
-            <div key={section.id || index} className="space-y-2 rounded-xl border border-white/10 p-3">
-              <input className={inputClass} placeholder="Section title" value={section.title || ''} onChange={(e) => {
-                const next = [...(editingProject.sections || [])]
-                next[index] = { ...next[index], title: e.target.value }
-                setEditingProject((p) => ({ ...p, sections: next }))
-              }} />
-              <textarea className={inputClass} rows={2} placeholder="Text" value={section.text || ''} onChange={(e) => {
-                const next = [...(editingProject.sections || [])]
-                next[index] = { ...next[index], text: e.target.value }
-                setEditingProject((p) => ({ ...p, sections: next }))
-              }} />
-              <MediaPicker
-                src={section.media}
-                onChange={(value) => {
-                  const next = [...(editingProject.sections || [])]
-                  next[index] = { ...next[index], media: value }
-                  setEditingProject((p) => ({ ...p, sections: next }))
-                }}
-                onFile={(file) => storeFile(file, (url) => {
-                  const next = [...(editingProject.sections || [])]
-                  next[index] = { ...next[index], media: url }
-                  setEditingProject((p) => ({ ...p, sections: next }))
-                })}
-              />
-              <button type="button" className="text-[11px] text-red-300" onClick={() => setEditingProject((p) => ({ ...p, sections: (p.sections || []).filter((_, i) => i !== index) }))}>Remove</button>
-        </div>
-          ))}
-        </article>
-        <div className="flex gap-2">
-          <button type="button" className={btnGhost} onClick={() => setEditingProject(null)}>Cancel</button>
-          <button type="button" className={btnPrimary} onClick={saveProject}>Apply to this page</button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-5 pb-24 text-white">
-      <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#121212] p-5 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-4 pb-20 text-white">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div>
-          <h1 className="text-[20px] font-semibold">{title}</h1>
-          <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-white/55">{intro}</p>
+          <h1 className="text-[18px] font-semibold text-white tracking-tight">{title}</h1>
+          <p className="text-[12px] text-white/40">{intro}</p>
+        </div>
+        <div className="flex items-center gap-3">
           {livePath ? (
-            <a href={livePath} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[13px] text-[#e3943f]">
-              Open this page on the website
+            <a
+              href={livePath}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-[12px] text-white/60 hover:text-[#e3943f] transition"
+            >
+              <span>View live</span>
+              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
           ) : null}
-        </div>
-        <div className="flex flex-wrap gap-3">
-          {isPortfolio ? null : (
-          <button
-            type="button"
-            onClick={() => {
-                if (window.confirm(`Replace the ${title.toLowerCase()} list with starter pages?`)) {
-                const next = resetTree()
-                setTree(next)
-                  setCategoryId(next.categories[0]?.id || '')
-                setSubId('')
-              }
-            }}
-            className={btnGhost}
-          >
-              Restore examples
-          </button>
-          )}
           <button type="button" onClick={save} disabled={loading || uploading} className={btnPrimary}>
-            {loading ? 'Saving…' : 'Save to website'}
+            {loading ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </div>
 
-      {uploading ? <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[13px]">Uploading file… wait, then press Save.</p> : null}
-      {status === 'uploaded' ? <p className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-[13px]">File uploaded. Press Save to publish it.</p> : null}
-      {status === 'saved' ? <p className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-[13px]">Saved. The live website now uses this content.</p> : null}
-      {status === 'error' ? <p className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-[13px]">{error || 'Could not save.'}</p> : null}
-
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="space-y-3 self-start rounded-2xl border border-white/10 bg-[#121212] p-4 md:sticky md:top-24">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-[13px] font-semibold text-white/60">{isPortfolio ? 'Sections' : 'Pages'}</h2>
-            <button type="button" className="text-[12px] font-semibold text-[#e3943f]" onClick={addCategory}>
-              {isPortfolio ? '+ New section' : '+ Category'}
-            </button>
+      {status === 'saved' ? (
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-300">
+          Changes saved successfully.
         </div>
-          <p className="text-[12px] leading-relaxed text-white/40">
-            {isPortfolio
-              ? 'Click a section to edit that page. All projects is the big website list — add work in Residences, Architecture, and the others.'
-              : 'Click a page on the left, then edit it on the right.'}
-          </p>
-          <div className="max-h-[70vh] space-y-1 overflow-y-auto pr-1" data-lenis-prevent="true">
-            {categories.map((item, index) => (
-              <div key={item.id} className="rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => selectCategory(item.id)}
-                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13px] ${
-                    category?.id === item.id && !subcategory ? 'bg-[#e3943f] text-black' : 'text-white hover:bg-white/5'
-                  }`}
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate font-semibold">{item.name || 'Untitled'}</span>
-                    {isPortfolio && item.slug === 'all-projects' ? (
-                      <span className={`block text-[11px] ${category?.id === item.id && !subcategory ? 'text-black/60' : 'text-white/40'}`}>
-                        Website list
-                      </span>
       ) : null}
-                  </span>
-                  <span className={`text-[11px] ${category?.id === item.id && !subcategory ? 'text-black/60' : 'text-white/35'}`}>
-                    {(item.subcategories || []).length || ''}
-                  </span>
+      {status === 'error' ? (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-300">
+          {error || 'An error occurred while saving.'}
+        </div>
+      ) : null}
+      {uploading ? (
+        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[12px] text-white/60">
+          Uploading file…
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-6">
+        {/* Left Sidebar */}
+        <aside className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">Pages</span>
+            <button
+              type="button"
+              className="text-[11px] font-medium text-[#e3943f] hover:underline cursor-pointer"
+              onClick={addCategory}
+            >
+              + Add
             </button>
-                {category?.id === item.id ? (
-                  <div className="ml-3 mt-1 space-y-1 border-l border-white/10 pl-2">
-                    <button
-                      type="button"
-                      onClick={() => selectSub('')}
-                      className={`block w-full truncate rounded-lg px-2 py-1.5 text-left text-[12px] ${
-                        !subcategory ? 'text-[#e3943f]' : 'text-white/60 hover:text-white'
-                      }`}
-                    >
-                      This page
-              </button>
-                    {subcategories.map((sub) => (
-                      <button
-                        key={sub.id}
-                        type="button"
-                        onClick={() => selectSub(sub.id)}
-                        className={`block w-full truncate rounded-lg px-2 py-1.5 text-left text-[12px] ${
-                          subcategory?.id === sub.id ? 'bg-[#e3943f]/20 text-[#e3943f]' : 'text-white/60 hover:text-white'
-                        }`}
-                      >
-                        {sub.name || 'Untitled'}
-              </button>
-                    ))}
-                    <button type="button" className="px-2 py-1 text-[12px] text-[#e3943f]" onClick={addSubcategory}>
-                      {isPortfolio ? '+ Sub page' : '+ Subcategory'}
-                </button>
-                    <div className="flex flex-wrap gap-2 px-2 pb-2">
-                      <button type="button" className="text-[11px] text-white/45" disabled={index === 0} onClick={() => setTree({ categories: move(categories, index, -1) })}>Move up</button>
-                      <button type="button" className="text-[11px] text-white/45" disabled={index === categories.length - 1} onClick={() => setTree({ categories: move(categories, index, 1) })}>Move down</button>
-                      <button type="button" className="text-[11px] text-red-300" onClick={() => deleteCategory(item)}>Delete</button>
-              </div>
-            </div>
-                ) : null}
-                </div>
-                  ))}
-                </div>
-        </aside>
+          </div>
 
-        <section className="min-w-0 space-y-4">
-          {editing ? (
-            <>
-              <div className="rounded-xl border border-white/10 bg-[#141414] px-4 py-3 text-[13px] text-white/55">
-                You are editing <span className="font-semibold text-white">{category?.name}</span>
-                {subcategory ? (
-                  <>
-                    {' '}→ <span className="font-semibold text-[#e3943f]">{subcategory.name}</span>
-                  </>
-      ) : null}
-                {subcategory ? (
-                  <button type="button" className="ml-3 text-red-300" onClick={() => deleteSubcategory(subcategory)}>
-                    Delete this sub page
-                </button>
-                ) : null}
-              </div>
+          <input
+            type="text"
+            placeholder="Search…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-black/40 px-2.5 py-1.5 text-[12px] text-white placeholder:text-white/25 outline-none focus:border-[#e3943f]"
+          />
 
-              {isAllProjects ? (
-                <div className="rounded-xl border border-[#e3943f]/30 bg-[#e3943f]/10 px-4 py-3 text-[13px] leading-relaxed text-white/80">
-                  This is the big Portfolio page. It collects {collectedProjectCount} project{collectedProjectCount === 1 ? '' : 's'} from Residences, Architecture, Interior, and the other sections. Add new work in those sections — not here. You can still change the banner and text on this page.
-            </div>
-              ) : null}
-
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: 'menu', label: 'Menu' },
-                  { id: 'page', label: 'This page' },
-                  { id: 'projects', label: isPortfolio ? (isAllProjects ? `Projects (${collectedProjectCount})` : `Projects (${projects.length})`) : `Cards (${projects.length})` },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setTab(item.id)}
-                    className={`rounded-xl px-4 py-2.5 text-[13px] font-semibold ${
-                      tab === item.id ? 'bg-[#e3943f] text-black' : 'border border-white/10 bg-[#161616] text-white/70'
+          <div className="space-y-1">
+            {filteredCategories.map((item, index) => {
+              const isSelected = category?.id === item.id
+              const subCount = (item.subcategories || []).length
+              return (
+                <div key={item.id} className="space-y-0.5">
+                  <div
+                    onClick={() => selectCategory(item.id)}
+                    className={`group flex items-center justify-between rounded-lg px-2.5 py-2 text-[12.5px] cursor-pointer transition ${
+                      isSelected && !subcategory
+                        ? 'bg-white/10 font-semibold text-white'
+                        : 'text-white/60 hover:bg-white/5 hover:text-white'
                     }`}
                   >
-                    {item.label}
-                </button>
+                    <span className="truncate">{item.name || 'Untitled'}</span>
+                    <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100">
+                      {subCount ? <span className="text-[10px] text-white/30">{subCount}</span> : null}
+                    </div>
+                  </div>
+
+                  {isSelected ? (
+                    <div className="ml-3 space-y-0.5 border-l border-white/10 pl-2 py-0.5">
+                      <button
+                        type="button"
+                        onClick={() => selectSub('')}
+                        className={`block w-full text-left truncate rounded px-2 py-1 text-[11.5px] cursor-pointer transition ${
+                          !subcategory ? 'font-medium text-[#e3943f]' : 'text-white/40 hover:text-white'
+                        }`}
+                      >
+                        Main Page
+                      </button>
+                      {subcategories.map((sub) => (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => selectSub(sub.id)}
+                          className={`block w-full text-left truncate rounded px-2 py-1 text-[11.5px] cursor-pointer transition ${
+                            subcategory?.id === sub.id ? 'font-medium text-[#e3943f]' : 'text-white/40 hover:text-white'
+                          }`}
+                        >
+                          {sub.name || 'Untitled'}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={addSubcategory}
+                        className="block px-2 py-1 text-[11px] text-[#e3943f] hover:underline cursor-pointer"
+                      >
+                        + Add Subpage
+                      </button>
+
+                      <div className="flex items-center gap-2 pt-1 border-t border-white/5">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => setTree({ categories: move(categories, index, -1) })}
+                          className="text-[10px] text-white/40 hover:text-white disabled:opacity-20 cursor-pointer"
+                        >
+                          Up
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === categories.length - 1}
+                          onClick={() => setTree({ categories: move(categories, index, 1) })}
+                          className="text-[10px] text-white/40 hover:text-white disabled:opacity-20 cursor-pointer"
+                        >
+                          Down
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteCategory(item)}
+                          className="text-[10px] text-red-400 hover:text-red-300 ml-auto cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        </aside>
+
+        {/* Right Content Editor */}
+        <div className="space-y-4">
+          {editing ? (
+            <>
+              {/* Clean Tabs */}
+              <div className="flex items-center gap-1 border-b border-white/10">
+                {[
+                  { id: 'page', label: 'Content & Hero' },
+                  { id: 'menu', label: 'Navigation & URL' },
+                  {
+                    id: 'projects',
+                    label: isAllProjects
+                      ? `Projects (${collectedProjectCount})`
+                      : `Projects (${projects.length})`,
+                  },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTab(t.id)}
+                    className={`border-b-2 px-3 py-2 text-[12.5px] font-medium transition cursor-pointer ${
+                      tab === t.id
+                        ? 'border-[#e3943f] text-[#e3943f]'
+                        : 'border-transparent text-white/50 hover:text-white'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
                 ))}
               </div>
 
-              {tab === 'menu' ? (
-                <article className="space-y-4 rounded-2xl border border-white/10 bg-[#121212] p-5">
-                  <Field label="Name">
-                  <input
-                    className={inputClass}
-                      value={editing.name}
-                      onChange={(event) => {
-                        const name = event.target.value
-                        const nextSlug = editing.slug || slugify(name)
-                        const patch = { name, slug: nextSlug }
-                        if (isPortfolio && !subcategory) patch.href = portfolioCategoryPath({ slug: nextSlug })
-                        patchEditing(patch)
-                      }}
-                  />
-                </Field>
-                  <Field label="Website address" hint="This becomes the page link, for example /residences.">
-                  <input
-                    className={inputClass}
-                      value={editing.slug}
-                      onChange={(event) => {
-                        const nextSlug = slugify(event.target.value)
-                        const patch = { slug: nextSlug }
-                        if (isPortfolio && !subcategory) patch.href = portfolioCategoryPath({ slug: nextSlug })
-                        patchEditing(patch)
-                      }}
-                  />
-                </Field>
-                  <Field label="Short description" hint="Shown when someone hovers the menu.">
-                    <input className={inputClass} value={editing.menuDescription || ''} onChange={(event) => patchEditing({ menuDescription: event.target.value })} />
-                </Field>
-                  <Field label="Menu photo" hint={hoverNote}>
-                    <div className="flex items-center gap-4">
-                      <MediaThumb src={editing.menuImage} />
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <input className={inputClass} value={editing.menuImage || ''} onChange={(event) => patchEditing({ menuImage: event.target.value })} />
-                        <input type="file" accept="image/*" className={fileClass} onChange={(event) => storeFile(event.target.files?.[0], (url) => patchEditing({ menuImage: url }))} />
-                      </div>
-                    </div>
-                </Field>
-                  <Field label="Menu video (optional)">
-                    <input className={inputClass} value={editing.menuVideo || ''} onChange={(event) => patchEditing({ menuVideo: event.target.value })} />
-                    <input type="file" accept="video/*" className={`${fileClass} mt-2`} onChange={(event) => storeFile(event.target.files?.[0], (url) => patchEditing({ menuVideo: url }))} />
-                  </Field>
-                  <div className="flex flex-wrap gap-5 border-t border-white/10 pt-4">
-                    <label className="inline-flex items-center gap-2 text-[13px]">
-                      <input type="checkbox" checked={editing.published !== false} onChange={(event) => patchEditing({ published: event.target.checked })} />
-                      Show on the website
-                    </label>
-                    <label className="inline-flex items-center gap-2 text-[13px]">
-                      <input type="checkbox" checked={editing.showInMenu !== false} onChange={(event) => patchEditing({ showInMenu: event.target.checked })} />
-                      Show in the website menu
-                    </label>
-                  </div>
-                  {livePath ? <p className="text-[13px] text-white/40">Website page: {isPortfolio && subcategory ? portfolioSubcategoryPath(category, subcategory) : livePath}</p> : null}
-                </article>
-              ) : null}
-
+              {/* TAB: CONTENT & HERO */}
               {tab === 'page' ? (
                 <div className="space-y-4">
-                  {isPortfolio ? (
-                    <div className="rounded-xl border border-[#e3943f]/30 bg-[#e3943f]/10 px-4 py-3 text-[13px] leading-relaxed text-white/80">
-                      Add content here, then press <span className="font-semibold text-white">Save to website</span>.
-                      Banner, intro, story cards, and gallery all belong to this page.
-                      A story card needs <span className="font-semibold text-white">Add photos &amp; text</span> — that is the page people open when they click the card.
-                    </div>
-                  ) : null}
-                  <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold">Banner</h3>
+                  {/* Hero Banner */}
+                  <div className="space-y-3 rounded-xl border border-white/10 bg-[#111] p-4">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <h3 className="text-[13px] font-semibold text-white">Hero Banner</h3>
                       <BlockToggle checked={Boolean(page.banner?.show)} onChange={(show) => patchPage('banner', { ...(page.banner || {}), show })} />
                     </div>
-                    <Field label="Small label"><input className={inputClass} value={page.banner?.label || ''} onChange={(event) => patchPage('banner', { ...(page.banner || {}), label: event.target.value })} /></Field>
-                    <Field label="Page title"><input className={inputClass} value={page.banner?.title || ''} onChange={(event) => patchPage('banner', { ...(page.banner || {}), title: event.target.value })} /></Field>
-                    <Field label="Accent line"><input className={inputClass} value={page.banner?.accent || ''} onChange={(event) => patchPage('banner', { ...(page.banner || {}), accent: event.target.value })} /></Field>
-                    <Field label="Description"><textarea className={inputClass} rows={3} value={page.banner?.subtitle || ''} onChange={(event) => patchPage('banner', { ...(page.banner || {}), subtitle: event.target.value })} /></Field>
-                {[0, 1, 2].map((index) => {
-                  const src = page.banner?.images?.[index] || ''
-                  return (
-                    <Field key={index} label={`Banner photo / video ${index + 1}`}>
-                      <div className="flex items-center gap-3">
-                        <MediaThumb src={src} />
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <input
-                            className={inputClass}
-                            value={src}
-                            onChange={(event) => {
-                              const images = [...(page.banner?.images || ['', '', ''])]
-                              images[index] = event.target.value
-                              patchPage('banner', { ...(page.banner || {}), images })
-                            }}
-                          />
-                          <input
-                            type="file"
-                            accept="image/*,video/mp4,video/webm,video/ogg,.mov"
-                            className={fileClass}
-                            onChange={(event) =>
-                              storeFile(event.target.files?.[0], (url) => {
-                                const images = [...(page.banner?.images || ['', '', ''])]
-                                images[index] = url
-                                patchPage('banner', { ...(page.banner || {}), images })
-                              })
-                            }
-                          />
-                        </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field label="Title">
+                        <input className={inputClass} value={page.banner?.title || ''} onChange={(e) => patchPage('banner', { ...(page.banner || {}), title: e.target.value })} />
+                      </Field>
+                      <Field label="Category / Label">
+                        <input className={inputClass} value={page.banner?.label || ''} onChange={(e) => patchPage('banner', { ...(page.banner || {}), label: e.target.value })} />
+                      </Field>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field label="Accent Text">
+                        <input className={inputClass} value={page.banner?.accent || ''} onChange={(e) => patchPage('banner', { ...(page.banner || {}), accent: e.target.value })} />
+                      </Field>
+                      <Field label="Clickable Project URL" hint="Opens project on hero click">
+                        <input
+                          className={inputClass}
+                          placeholder="/project/..."
+                          value={page.banner?.link || ''}
+                          onChange={(e) => patchPage('banner', { ...(page.banner || {}), link: e.target.value })}
+                        />
+                      </Field>
+                    </div>
+
+                    <Field label="Subtitle">
+                      <textarea
+                        className={inputClass}
+                        rows={2}
+                        value={page.banner?.subtitle || ''}
+                        onChange={(e) => patchPage('banner', { ...(page.banner || {}), subtitle: e.target.value })}
+                      />
+                    </Field>
+
+                    {/* 3 Images Grid */}
+                    <Field label="Hero Images (Up to 3)">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {[0, 1, 2].map((idx) => {
+                          const src = page.banner?.images?.[idx] || ''
+                          return (
+                            <div key={idx} className="space-y-2 rounded-lg border border-white/10 bg-black/40 p-2.5">
+                              <MediaThumb src={src} className="h-24 w-full" />
+                              <input
+                                className={`${inputClass} text-[11px] py-1`}
+                                placeholder={`Image ${idx + 1} URL`}
+                                value={src}
+                                onChange={(e) => {
+                                  const images = [...(page.banner?.images || ['', '', ''])]
+                                  images[idx] = e.target.value
+                                  patchPage('banner', { ...(page.banner || {}), images })
+                                }}
+                              />
+                              <label className="block text-center rounded border border-white/10 bg-white/5 py-1 text-[11px] text-white/70 hover:bg-white/10 cursor-pointer">
+                                Upload
+                                <input
+                                  type="file"
+                                  accept="image/*,video/*"
+                                  className="sr-only"
+                                  onChange={(e) =>
+                                    storeFile(e.target.files?.[0], (url) => {
+                                      const images = [...(page.banner?.images || ['', '', ''])]
+                                      images[idx] = url
+                                      patchPage('banner', { ...(page.banner || {}), images })
+                                    })
+                                  }
+                                />
+                              </label>
+                            </div>
+                          )
+                        })}
                       </div>
                     </Field>
-                  )
-                })}
-              </article>
+                  </div>
 
-              <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold">Intro text</h3>
+                  {/* Intro Text */}
+                  <div className="space-y-3 rounded-xl border border-white/10 bg-[#111] p-4">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <h3 className="text-[13px] font-semibold text-white">Introduction</h3>
                       <BlockToggle checked={Boolean(page.intro?.show)} onChange={(show) => patchPage('intro', { ...(page.intro || {}), show })} />
-                </div>
-                    <Field label="Heading"><input className={inputClass} value={page.intro?.heading || ''} onChange={(event) => patchPage('intro', { ...(page.intro || {}), heading: event.target.value })} /></Field>
-                    <Field label="Paragraph"><textarea className={inputClass} rows={3} value={page.intro?.paragraph1 || ''} onChange={(event) => patchPage('intro', { ...(page.intro || {}), paragraph1: event.target.value })} /></Field>
-                    <Field label="Second paragraph"><textarea className={inputClass} rows={3} value={page.intro?.paragraph2 || ''} onChange={(event) => patchPage('intro', { ...(page.intro || {}), paragraph2: event.target.value })} /></Field>
-              </article>
+                    </div>
+                    <Field label="Heading">
+                      <input className={inputClass} value={page.intro?.heading || ''} onChange={(e) => patchPage('intro', { ...(page.intro || {}), heading: e.target.value })} />
+                    </Field>
+                    <Field label="Paragraph">
+                      <textarea className={inputClass} rows={3} value={page.intro?.paragraph1 || ''} onChange={(e) => patchPage('intro', { ...(page.intro || {}), paragraph1: e.target.value })} />
+                    </Field>
+                  </div>
 
-              <RepeatBlock
-                    title={isPortfolio ? 'Story cards' : 'Highlights'}
-                    addLabel={isPortfolio ? '+ Add a story page' : '+ Add'}
-                show={Boolean(page.highlights?.show)}
-                onShow={(show) => patchPage('highlights', { ...(page.highlights || {}), show })}
-                items={page.highlights?.items || []}
-                onItems={(items) => patchPage('highlights', { ...(page.highlights || {}), items })}
+                  {/* Highlights / Story Cards */}
+                  <RepeatBlock
+                    title={isPortfolio ? 'Story Cards' : 'Highlights'}
+                    show={Boolean(page.highlights?.show)}
+                    onShow={(show) => patchPage('highlights', { ...(page.highlights || {}), show })}
+                    items={page.highlights?.items || []}
+                    onItems={(items) => patchPage('highlights', { ...(page.highlights || {}), items })}
                     blank={() => ({
                       id: uid('card'),
                       title: '',
@@ -1300,82 +1181,54 @@ export default function ServicesManager({
                       published: true,
                       detail: emptyHighlightDetail(),
                     })}
-                render={(item, update) => (
-                  <>
-                        <Field label="Title"><input className={inputClass} value={item.title || ''} onChange={(event) => update({ title: event.target.value, slug: item.slug || slugify(event.target.value) })} /></Field>
-                        <Field label="Text"><textarea className={inputClass} rows={2} value={item.text || ''} onChange={(event) => update({ text: event.target.value })} /></Field>
-                        <Field label="Photo or video">
-                      <div className="flex items-center gap-3">
-                        <MediaThumb src={item.image} />
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <input className={inputClass} value={item.image || ''} onChange={(event) => update({ image: event.target.value })} />
-                              <input type="file" accept="image/*,video/*" className={fileClass} onChange={(event) => storeFile(event.target.files?.[0], (url) => update({ image: url }))} />
+                    render={(item, update) => (
+                      <>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <input className={inputClass} placeholder="Card title" value={item.title || ''} onChange={(e) => update({ title: e.target.value, slug: item.slug || slugify(e.target.value) })} />
+                          <input className={inputClass} placeholder="Slug" value={item.slug || ''} onChange={(e) => update({ slug: slugify(e.target.value) })} />
                         </div>
-                      </div>
-                    </Field>
-                        <Field label="Page address" hint="Creates the website page automatically.">
-                          <input
-                            className={inputClass}
-                            value={item.slug || ''}
-                            onChange={(event) => update({ slug: slugify(event.target.value) })}
-                          />
-                        </Field>
-                        {category && item.slug ? (
-                          <p className="text-[12px] text-white/40">
-                            Website page:{' '}
-                            <a
-                              href={
-                                isPortfolio
-                                  ? portfolioHighlightPath(category, subcategory, item)
-                                  : serviceHighlightPath(category, subcategory, item)
-                              }
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[#e3943f]"
-                            >
-                              {isPortfolio
-                                ? portfolioHighlightPath(category, subcategory, item)
-                                : serviceHighlightPath(category, subcategory, item)}
-                            </a>
-                          </p>
-                        ) : null}
-                        <label className="inline-flex items-center gap-2 text-[12px] text-white/70">
-                          <input type="checkbox" checked={item.published !== false} onChange={(event) => update({ published: event.target.checked })} />
-                          Published
-                        </label>
-                        <button
-                          type="button"
-                          className={btnPrimary}
-                          onClick={() => setEditingHighlight(normalizeHighlightItem(item, 0, reservedHighlightSlugs, new Set()))}
-                        >
-                          Add photos & text
-                        </button>
-                  </>
-                )}
-              />
+                        <textarea className={inputClass} rows={2} placeholder="Description" value={item.text || ''} onChange={(e) => update({ text: e.target.value })} />
+                        <MediaPicker src={item.image} onChange={(url) => update({ image: url })} onFile={(file) => storeFile(file, (url) => update({ image: url }))} />
+                        <div className="flex items-center justify-between pt-1">
+                          <BlockToggle checked={item.published !== false} onChange={(published) => update({ published })} label="Published" />
+                          <button
+                            type="button"
+                            className="text-[11.5px] font-medium text-[#e3943f] hover:underline cursor-pointer"
+                            onClick={() => setEditingHighlight(normalizeHighlightItem(item, 0, reservedHighlightSlugs, new Set()))}
+                          >
+                            Edit Page Details →
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  />
 
-              <RepeatBlock
-                title="Process steps"
-                show={Boolean(page.steps?.show)}
-                onShow={(show) => patchPage('steps', { ...(page.steps || {}), show })}
-                items={page.steps?.items || []}
-                onItems={(items) => patchPage('steps', { ...(page.steps || {}), items })}
-                blank={() => ({ id: uid('step'), number: '', title: '', text: '' })}
-                render={(item, update) => (
-                  <>
-                        <Field label="Step number"><input className={inputClass} value={item.number || ''} onChange={(event) => update({ number: event.target.value })} /></Field>
-                        <Field label="Title"><input className={inputClass} value={item.title || ''} onChange={(event) => update({ title: event.target.value })} /></Field>
-                        <Field label="Text"><textarea className={inputClass} rows={2} value={item.text || ''} onChange={(event) => update({ text: event.target.value })} /></Field>
-                  </>
-                )}
-              />
+                  {/* Process Steps */}
+                  <RepeatBlock
+                    title="Process Steps"
+                    show={Boolean(page.steps?.show)}
+                    onShow={(show) => patchPage('steps', { ...(page.steps || {}), show })}
+                    items={page.steps?.items || []}
+                    onItems={(items) => patchPage('steps', { ...(page.steps || {}), items })}
+                    blank={() => ({ id: uid('step'), number: '', title: '', text: '' })}
+                    render={(item, update) => (
+                      <>
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          <input className={inputClass} placeholder="01" value={item.number || ''} onChange={(e) => update({ number: e.target.value })} />
+                          <input className={`${inputClass} sm:col-span-2`} placeholder="Step title" value={item.title || ''} onChange={(e) => update({ title: e.target.value })} />
+                        </div>
+                        <textarea className={inputClass} rows={2} placeholder="Description" value={item.text || ''} onChange={(e) => update({ text: e.target.value })} />
+                      </>
+                    )}
+                  />
 
-              <RepeatBlock
-                title="Gallery"
-                show={Boolean(page.gallery?.show)}
-                onShow={(show) => patchPage('gallery', { ...(page.gallery || {}), show })}
-                items={page.gallery?.items || []}
-                onItems={(items) => patchPage('gallery', { ...(page.gallery || {}), items })}
+                  {/* Gallery */}
+                  <RepeatBlock
+                    title="Gallery"
+                    show={Boolean(page.gallery?.show)}
+                    onShow={(show) => patchPage('gallery', { ...(page.gallery || {}), show })}
+                    items={page.gallery?.items || []}
+                    onItems={(items) => patchPage('gallery', { ...(page.gallery || {}), items })}
                     blank={() => ({
                       id: uid('photo'),
                       image: '',
@@ -1385,174 +1238,259 @@ export default function ServicesManager({
                       published: true,
                       detail: emptyHighlightDetail(),
                     })}
-                render={(item, update) => (
-                  <>
-                    <Field label="Photo or video">
-                      <div className="flex items-center gap-3">
-                        <MediaThumb src={item.image} />
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <input className={inputClass} value={item.image || ''} onChange={(event) => update({ image: event.target.value })} />
-                              <input type="file" accept="image/*,video/*" className={fileClass} onChange={(event) => storeFile(event.target.files?.[0], (url) => update({ image: url }))} />
+                    render={(item, update) => (
+                      <>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <input className={inputClass} placeholder="Title" value={item.title || ''} onChange={(e) => update({ title: e.target.value, slug: item.slug || slugify(e.target.value) })} />
+                          <input className={inputClass} placeholder="Caption" value={item.caption || ''} onChange={(e) => update({ caption: e.target.value, title: item.title || e.target.value, slug: item.slug || slugify(e.target.value) })} />
                         </div>
-                      </div>
-                    </Field>
-                        <Field label="Caption"><input className={inputClass} value={item.caption || ''} onChange={(event) => update({ caption: event.target.value, title: item.title || event.target.value, slug: item.slug || slugify(event.target.value) })} /></Field>
-                        <Field label="Title">
-                          <input className={inputClass} value={item.title || ''} onChange={(event) => update({ title: event.target.value, slug: item.slug || slugify(event.target.value) })} />
-                    </Field>
-                        <Field label="Page address" hint="Creates the website page automatically.">
-                          <input
-                            className={inputClass}
-                            value={item.slug || ''}
-                            onChange={(event) => update({ slug: slugify(event.target.value) })}
-                          />
-                        </Field>
-                        {category && item.slug ? (
-                          <p className="text-[12px] text-white/40">
-                            Website page:{' '}
-                            <a
-                              href={
-                                isPortfolio
-                                  ? portfolioGalleryPath(category, subcategory, item)
-                                  : serviceGalleryPath(category, subcategory, item)
-                              }
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[#e3943f]"
-                            >
-                              {isPortfolio
-                                ? portfolioGalleryPath(category, subcategory, item)
-                                : serviceGalleryPath(category, subcategory, item)}
-                            </a>
-                          </p>
-                        ) : null}
-                        <label className="inline-flex items-center gap-2 text-[12px] text-white/70">
-                          <input type="checkbox" checked={item.published !== false} onChange={(event) => update({ published: event.target.checked })} />
-                          Published
-                        </label>
-                        <button
-                          type="button"
-                          className={btnPrimary}
-                          onClick={() => setEditingGallery(normalizeGalleryItem(item, 0, reservedGallerySlugs, new Set()))}
-                        >
-                          Add photos & text
-                        </button>
-                  </>
-                )}
-              />
+                        <MediaPicker src={item.image} onChange={(url) => update({ image: url })} onFile={(file) => storeFile(file, (url) => update({ image: url }))} />
+                        <div className="flex items-center justify-between pt-1">
+                          <BlockToggle checked={item.published !== false} onChange={(published) => update({ published })} label="Published" />
+                          <button
+                            type="button"
+                            className="text-[11.5px] font-medium text-[#e3943f] hover:underline cursor-pointer"
+                            onClick={() => setEditingGallery(normalizeGalleryItem(item, 0, reservedGallerySlugs, new Set()))}
+                          >
+                            Edit Page Details →
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  />
 
-              <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold">Closing note</h3>
+                  {/* Closing CTA */}
+                  <div className="space-y-3 rounded-xl border border-white/10 bg-[#111] p-4">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <h3 className="text-[13px] font-semibold text-white">Call to Action</h3>
                       <BlockToggle checked={Boolean(page.closing?.show)} onChange={(show) => patchPage('closing', { ...(page.closing || {}), show })} />
-                </div>
-                    <Field label="Heading"><input className={inputClass} value={page.closing?.heading || ''} onChange={(event) => patchPage('closing', { ...(page.closing || {}), heading: event.target.value })} /></Field>
-                    <Field label="Paragraph"><textarea className={inputClass} rows={3} value={page.closing?.paragraph || ''} onChange={(event) => patchPage('closing', { ...(page.closing || {}), paragraph: event.target.value })} /></Field>
-                    <Field label="Button label"><input className={inputClass} value={page.closing?.buttonLabel || ''} onChange={(event) => patchPage('closing', { ...(page.closing || {}), buttonLabel: event.target.value })} /></Field>
-                    <Field label="Button link"><input className={inputClass} value={page.closing?.buttonLink || ''} onChange={(event) => patchPage('closing', { ...(page.closing || {}), buttonLink: event.target.value })} /></Field>
-              </article>
+                    </div>
+                    <Field label="Heading">
+                      <input className={inputClass} value={page.closing?.heading || ''} onChange={(e) => patchPage('closing', { ...(page.closing || {}), heading: e.target.value })} />
+                    </Field>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field label="Button Label">
+                        <input className={inputClass} value={page.closing?.buttonLabel || ''} onChange={(e) => patchPage('closing', { ...(page.closing || {}), buttonLabel: e.target.value })} />
+                      </Field>
+                      <Field label="Button Link">
+                        <input className={inputClass} value={page.closing?.buttonLink || ''} onChange={(e) => patchPage('closing', { ...(page.closing || {}), buttonLink: e.target.value })} />
+                      </Field>
+                    </div>
+                  </div>
                 </div>
               ) : null}
 
+              {/* TAB: NAVIGATION & URL */}
+              {tab === 'menu' ? (
+                <div className="space-y-4 rounded-xl border border-white/10 bg-[#111] p-4">
+                  <Field label="Page Name">
+                    <input
+                      className={inputClass}
+                      value={editing.name}
+                      onChange={(e) => {
+                        const name = e.target.value
+                        const nextSlug = editing.slug || slugify(name)
+                        const patch = { name, slug: nextSlug }
+                        if (isPortfolio && !subcategory) patch.href = portfolioCategoryPath({ slug: nextSlug })
+                        patchEditing(patch)
+                      }}
+                    />
+                  </Field>
+
+                  <Field label="URL Slug" hint="Web path">
+                    <input
+                      className={inputClass}
+                      value={editing.slug}
+                      onChange={(e) => {
+                        const nextSlug = slugify(e.target.value)
+                        const patch = { slug: nextSlug }
+                        if (isPortfolio && !subcategory) patch.href = portfolioCategoryPath({ slug: nextSlug })
+                        patchEditing(patch)
+                      }}
+                    />
+                  </Field>
+
+                  <Field label="Menu Description">
+                    <input className={inputClass} value={editing.menuDescription || ''} onChange={(e) => patchEditing({ menuDescription: e.target.value })} />
+                  </Field>
+
+                  <MediaPicker
+                    label="Menu Thumbnail"
+                    src={editing.menuImage}
+                    onChange={(url) => patchEditing({ menuImage: url })}
+                    onFile={(file) => storeFile(file, (url) => patchEditing({ menuImage: url }))}
+                  />
+
+                  <div className="flex items-center gap-6 pt-3 border-t border-white/10">
+                    <BlockToggle checked={editing.published !== false} onChange={(published) => patchEditing({ published })} label="Published" />
+                    <BlockToggle checked={editing.showInMenu !== false} onChange={(showInMenu) => patchEditing({ showInMenu })} label="Show in header menu" />
+                  </div>
+                </div>
+              ) : null}
+
+              {/* TAB: PROJECTS */}
               {tab === 'projects' ? (
-                <article className="space-y-4 rounded-2xl border border-white/10 bg-[#121212] p-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold">{isPortfolio ? 'Project cards' : 'Cards on this page'}</h3>
-                      <p className="text-[13px] text-white/45">
-                        {isAllProjects
-                          ? 'These cards are collected from the other sections. Open Residences, Architectural design, or Interior design to add or edit a project.'
-                          : isPortfolio
-                            ? 'Only this section. Sub pages keep their own project cards.'
-                            : 'Only this selected page. Parent and subcategory stay separate.'}
+                      <h3 className="text-[13px] font-semibold text-white">Projects</h3>
+                      <p className="text-[11.5px] text-white/40">
+                        {isAllProjects ? 'Aggregated across all sections.' : 'Projects displayed on this page.'}
                       </p>
                     </div>
-                    {isAllProjects ? null : (
-                      <button type="button" className={btnPrimary} onClick={() => { setIsNewProject(true); setEditingProject(hydrateProjectForEdit(blankProject(editing.name))) }}>
-                        {isPortfolio ? 'Add project' : 'Add card'}
-                </button>
-                    )}
+                    {!isAllProjects ? (
+                      <button
+                        type="button"
+                        className={btnPrimary}
+                        onClick={() => {
+                          setIsNewProject(true)
+                          setEditingProject(hydrateProjectForEdit(blankProject(editing.name)))
+                        }}
+                      >
+                        + Add Project
+                      </button>
+                    ) : null}
                   </div>
-                  {isAllProjects ? (
-                    <p className="rounded-xl border border-dashed border-white/15 px-4 py-10 text-center text-[13px] text-white/50">
-                      {collectedProjectCount} project{collectedProjectCount === 1 ? '' : 's'} already appear on this website page from the other sections.
-                    </p>
-                  ) : projects.length === 0 ? (
-                    <p className="rounded-xl border border-dashed border-white/15 px-4 py-10 text-center text-[13px] text-white/40">
-                      {isPortfolio ? 'No projects here yet — add one' : 'No cards yet — Add one'}
-                    </p>
+
+                  {projects.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-[12px] text-white/35">
+                      No projects here yet.
+                    </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {projects.map((project, index) => (
-                        <div key={project.id} className="flex flex-col gap-3 rounded-2xl border border-white/10 p-4 sm:flex-row sm:items-center">
-                          <div className="h-14 w-16 overflow-hidden rounded-xl bg-black">
-                            {project.image ? <img src={project.image} alt="" className="h-full w-full object-cover" /> : null}
-                          </div>
+                        <div
+                          key={project.id || index}
+                          className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#111] p-3 hover:border-white/20 transition"
+                        >
+                          <MediaThumb src={project.image} className="h-14 w-20 shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[13px] font-semibold">{project.titlePre || 'Untitled'} <span className="text-[#e3943f]">{project.location || ''}</span></p>
-                            <p className="text-[12px] text-white/40">/project/{project.id}</p>
+                            <h4 className="text-[13px] font-semibold text-white truncate">
+                              {project.titlePre || 'Untitled'}
+                            </h4>
+                            <div className="flex items-center gap-2 text-[11px] text-white/40 truncate">
+                              {project.location ? <span>{project.location}</span> : null}
+                              {project.type ? <span>• {project.type}</span> : null}
+                              <span className="font-mono text-white/25">/project/{project.id}</span>
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            <button type="button" className={btnGhost} disabled={index === 0} onClick={() => patchEditing({ projects: move(projects, index, -1) })}>Up</button>
-                            <button type="button" className={btnGhost} disabled={index === projects.length - 1} onClick={() => patchEditing({ projects: move(projects, index, 1) })}>Down</button>
-                            <button type="button" className={btnGhost} onClick={() => { setIsNewProject(false); setEditingProject(hydrateProjectForEdit(project)) }}>Edit</button>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <button
                               type="button"
-                              className="rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-2 text-[12px] font-semibold text-red-300"
-                              onClick={() => patchEditing({ projects: projects.filter((item) => item.id !== project.id) })}
+                              disabled={index === 0}
+                              onClick={() => patchEditing({ projects: move(projects, index, -1) })}
+                              className="rounded p-1 text-white/40 hover:text-white disabled:opacity-20 cursor-pointer"
+                              title="Move up"
                             >
-                              Delete
-                </button>
-              </div>
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === projects.length - 1}
+                              onClick={() => patchEditing({ projects: move(projects, index, 1) })}
+                              className="rounded p-1 text-white/40 hover:text-white disabled:opacity-20 cursor-pointer"
+                              title="Move down"
+                            >
+                              ↓
+                            </button>
+                            <button
+                              type="button"
+                              className={btnGhost}
+                              onClick={() => {
+                                setIsNewProject(false)
+                                setEditingProject(hydrateProjectForEdit(project))
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Delete project "${project.titlePre || project.id}"?`)) {
+                                  patchEditing({ projects: projects.filter((item) => item.id !== project.id) })
+                                }
+                              }}
+                              className="rounded p-1.5 text-red-400/70 hover:text-red-300 cursor-pointer"
+                              title="Delete"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
-          )}
-                </article>
-      ) : null}
-
-              <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={save} disabled={loading || uploading} className={btnPrimary}>
-                  {loading ? 'Saving…' : 'Save to website'}
-              </button>
-              </div>
+                  )}
+                </div>
+              ) : null}
             </>
           ) : (
-            <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-[13px] text-white/45">
-              {isPortfolio ? 'Add a section on the left to create a website page.' : 'Add a category on the left to create a live page.'}
+            <div className="rounded-xl border border-dashed border-white/10 p-12 text-center text-[12px] text-white/30">
+              Select a page from the sidebar to view and edit its contents.
             </div>
           )}
-        </section>
+        </div>
       </div>
     </div>
   )
 }
 
-function RepeatBlock({ title, show, onShow, items, onItems, blank, render, addLabel = '+ Add' }) {
+function RepeatBlock({ title, show, onShow, items, onItems, blank, render }) {
   const list = items || []
   const updateAt = (index, patch) => {
     onItems(list.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)))
   }
   return (
-    <article className="space-y-3 rounded-2xl border border-white/10 bg-[#121212] p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold">{title}</h3>
+    <div className="space-y-3 rounded-xl border border-white/10 bg-[#111] p-4">
+      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+        <h3 className="text-[13px] font-semibold text-white">{title}</h3>
         <BlockToggle checked={show} onChange={onShow} />
       </div>
       {list.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-[12px] text-white/40">Nothing here yet — Add one</p>
+        <p className="py-2 text-[12px] text-white/30">None added yet.</p>
       ) : null}
-      {list.map((item, index) => (
-        <div key={item.id || index} className="space-y-3 rounded-xl border border-white/10 p-3">
-          {render(item, (patch) => updateAt(index, patch))}
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={btnGhost} onClick={() => onItems(move(list, index, -1))} disabled={index === 0}>Up</button>
-            <button type="button" className={btnGhost} onClick={() => onItems(move(list, index, 1))} disabled={index === list.length - 1}>Down</button>
-            <button type="button" className="rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-2 text-[12px] font-semibold text-red-300" onClick={() => onItems(list.filter((_, itemIndex) => itemIndex !== index))}>Remove</button>
+      <div className="space-y-2">
+        {list.map((item, index) => (
+          <div key={item.id || index} className="space-y-2 rounded-lg border border-white/10 bg-black/30 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono text-white/40">#{index + 1}</span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  className="text-[11px] text-white/40 hover:text-white disabled:opacity-20 cursor-pointer"
+                  onClick={() => onItems(move(list, index, -1))}
+                  disabled={index === 0}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="text-[11px] text-white/40 hover:text-white disabled:opacity-20 cursor-pointer"
+                  onClick={() => onItems(move(list, index, 1))}
+                  disabled={index === list.length - 1}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="text-[11px] text-red-400 hover:text-red-300 ml-1 cursor-pointer"
+                  onClick={() => onItems(list.filter((_, itemIndex) => itemIndex !== index))}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+            {render(item, (patch) => updateAt(index, patch))}
           </div>
-        </div>
-      ))}
-      <button type="button" onClick={() => onItems([...list, blank()])} className="text-[13px] font-semibold text-[#e3943f]">{addLabel}</button>
-    </article>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => onItems([...list, blank()])}
+        className="text-[12px] font-medium text-[#e3943f] hover:underline cursor-pointer"
+      >
+        + Add Item
+      </button>
+    </div>
   )
 }

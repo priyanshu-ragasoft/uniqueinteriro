@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { FaInstagram, FaPinterest, FaLinkedin, FaYoutube } from 'react-icons/fa'
+import { FaInstagram, FaFacebook, FaBehance } from 'react-icons/fa'
+import { FaXTwitter } from 'react-icons/fa6'
 import { DEPLOYED_VIDEOS, normalizeProjectVideoUrl } from '../utils/videoUrl'
 const DEFAULT_REEL = DEPLOYED_VIDEOS.victerrace
 
@@ -11,10 +12,10 @@ export const DEFAULT_RECOGNITION_CONFIG = {
   },
   mediaUrl: DEFAULT_REEL,
   socials: {
-    instagram: 'https://instagram.com',
-    pinterest: 'https://pinterest.com',
-    linkedin: 'https://linkedin.com',
-    youtube: 'https://youtube.com',
+    instagram: 'https://www.instagram.com/uniquegraphics.interior/',
+    facebook: 'https://www.facebook.com/UniqueGraphics.Interior',
+    x: 'https://x.com/UniqueGraphicsX',
+    behance: 'https://www.behance.net/uniquegraphics02',
   },
 }
 
@@ -80,10 +81,10 @@ export default function Recognition({ lang = 'en', src }) {
   const backgroundMedia = normalizeProjectVideoUrl(rawBackgroundMedia)
 
   const socialLinks = [
-    { name: 'Instagram', Icon: FaInstagram, url: config?.socials?.instagram || 'https://instagram.com' },
-    { name: 'Pinterest', Icon: FaPinterest, url: config?.socials?.pinterest || 'https://pinterest.com' },
-    { name: 'LinkedIn', Icon: FaLinkedin, url: config?.socials?.linkedin || 'https://linkedin.com' },
-    { name: 'YouTube', Icon: FaYoutube, url: config?.socials?.youtube || 'https://youtube.com' },
+    { name: 'Instagram', Icon: FaInstagram, url: config?.socials?.instagram || DEFAULT_RECOGNITION_CONFIG.socials.instagram },
+    { name: 'Facebook', Icon: FaFacebook, url: config?.socials?.facebook || DEFAULT_RECOGNITION_CONFIG.socials.facebook },
+    { name: 'X', Icon: FaXTwitter, url: config?.socials?.x || DEFAULT_RECOGNITION_CONFIG.socials.x },
+    { name: 'Behance', Icon: FaBehance, url: config?.socials?.behance || DEFAULT_RECOGNITION_CONFIG.socials.behance },
   ]
 
   return (
