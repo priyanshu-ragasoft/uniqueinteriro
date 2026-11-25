@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 
 export const DEFAULT_CLOSING_CONFIG = {
-  logoUrl: '/closing_logo.png',
+  logoUrl: '/logonew.png',
   showLogo: true,
   en: {
     mark: 'Unique Graphics',
@@ -58,7 +58,11 @@ export default function Closing({ lang }) {
   }, [])
 
   const text = config?.en || DEFAULT_CLOSING_CONFIG.en
-  const logoUrl = config?.logoUrl || DEFAULT_CLOSING_CONFIG.logoUrl || '/closing_logo.png'
+  const rawLogo = config?.logoUrl || DEFAULT_CLOSING_CONFIG.logoUrl || '/logonew.png'
+  const logoUrl =
+    !rawLogo || rawLogo === '/closing_logo.png' || rawLogo === '/logouniqe.png' || rawLogo === '/int_logo.png'
+      ? '/logonew.png'
+      : rawLogo
   const showLogo = config?.showLogo !== undefined ? config.showLogo : true
 
   return (

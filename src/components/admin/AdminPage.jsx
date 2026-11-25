@@ -2220,7 +2220,7 @@ export default function AdminPage() {
         >
           {/* Sidebar Brand Header */}
           <div className="shrink-0 pb-4 border-b border-white/[0.08]">
-            <img src="/logouniqe.png" alt="Unique Graphics" className="h-12 w-auto max-w-[160px] object-contain" />
+            <img src="/logonew.png" alt="Unique Graphics" className="h-12 w-auto max-w-[160px] object-contain" />
           </div>
 
           {/* Navigation Menu Links (Scrollable Container for all screen heights) */}
@@ -5429,10 +5429,10 @@ export default function AdminPage() {
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
                             {/* Logo Thumbnail Preview */}
                             <div className="relative group rounded-xl border border-white/10 bg-[#0d0d0d] p-3 flex flex-col items-center justify-center min-h-[140px] text-center">
-                              {brandSectionsConfig.closing?.logoUrl || '/closing_logo.png' ? (
+                              {brandSectionsConfig.closing?.logoUrl || '/logonew.png' ? (
                                 <>
                                   <img
-                                    src={brandSectionsConfig.closing?.logoUrl || '/closing_logo.png'}
+                                    src={brandSectionsConfig.closing?.logoUrl || '/logonew.png'}
                                     alt="Closing Section Logo"
                                     className="max-h-24 max-w-full object-contain drop-shadow-md"
                                   />
@@ -5451,9 +5451,9 @@ export default function AdminPage() {
                                 </label>
                                 <input
                                   type="text"
-                                  value={brandSectionsConfig.closing?.logoUrl || '/closing_logo.png'}
+                                  value={brandSectionsConfig.closing?.logoUrl || '/logonew.png'}
                                   onChange={(e) => updateClosingSetting('logoUrl', e.target.value)}
-                                  placeholder="/closing_logo.png"
+                                  placeholder="/logonew.png"
                                   className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] font-mono text-white outline-none focus:border-[#e3943f]"
                                 />
                               </div>
@@ -5476,18 +5476,10 @@ export default function AdminPage() {
 
                                 <button
                                   type="button"
-                                  onClick={() => updateClosingSetting('logoUrl', '/closing_logo.png')}
+                                  onClick={() => updateClosingSetting('logoUrl', '/logonew.png')}
                                   className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11.5px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                                 >
-                                  Use 3D UG Emblem
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => updateClosingSetting('logoUrl', '/logouniqe.png')}
-                                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11.5px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                                >
-                                  Use Header Logo
+                                   Use 3D UG Emblem
                                 </button>
                               </div>
                             </div>
@@ -5832,7 +5824,7 @@ export default function AdminPage() {
                               <div className="w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 flex items-center justify-center rounded-xl bg-black/40 border border-[#e3943f]/20 p-2 relative group">
                                 <div className="pointer-events-none absolute -inset-2 rounded-xl bg-gradient-to-tr from-[#e3943f]/20 to-transparent blur-md opacity-50" />
                                 <img
-                                  src={brandSectionsConfig.closing?.logoUrl || '/closing_logo.png'}
+                                  src={brandSectionsConfig.closing?.logoUrl || '/logonew.png'}
                                   alt="Preview Logo"
                                   className="max-h-full max-w-full object-contain drop-shadow relative z-10"
                                 />
@@ -8217,7 +8209,7 @@ export default function AdminPage() {
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/logouniqe.png"
+              src="/logonew.png"
               alt="Unique Graphics"
               className="h-12 w-auto max-w-[180px] object-contain"
             />
