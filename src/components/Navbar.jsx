@@ -488,9 +488,12 @@ export default function Navbar() {
                 className="pointer-events-none absolute top-1/2 left-1/2 h-10 w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/45 blur-lg"
               />
               <img
-                src="/logonew.png"
+                src="/unique-gold-logo.png"
                 alt="Unique Graphics"
                 className="relative h-11 w-auto max-w-[140px] object-contain md:h-14 md:max-w-[200px]"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
               />
             </a>
 

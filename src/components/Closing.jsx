@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
+import { BRAND_LOGO_URL, resolveBrandLogo } from '../utils/brandLogo'
 
 export const DEFAULT_CLOSING_CONFIG = {
-  logoUrl: '/logonew.png',
+  logoUrl: BRAND_LOGO_URL,
   showLogo: true,
   en: {
     mark: 'Unique Graphics',
@@ -10,13 +11,22 @@ export const DEFAULT_CLOSING_CONFIG = {
   },
 }
 
+function sanitizeClosing(closing) {
+  if (!closing || typeof closing !== 'object') return DEFAULT_CLOSING_CONFIG
+  return {
+    ...DEFAULT_CLOSING_CONFIG,
+    ...closing,
+    logoUrl: resolveBrandLogo(closing.logoUrl || DEFAULT_CLOSING_CONFIG.logoUrl),
+  }
+}
+
 export default function Closing({ lang }) {
   const [config, setConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('ug_brand_sections_config')
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (parsed.closing) return { ...DEFAULT_CLOSING_CONFIG, ...parsed.closing }
+        if (parsed.closing) return sanitizeClosing(parsed.closing)
       }
     } catch {}
     return DEFAULT_CLOSING_CONFIG
@@ -29,7 +39,7 @@ export default function Closing({ lang }) {
         const res = await fetch('/api/blogs/settings/brand-sections')
         const data = await res.json()
         if (data.success && data.data?.closing) {
-          const merged = { ...DEFAULT_CLOSING_CONFIG, ...data.data.closing }
+          const merged = sanitizeClosing(data.data.closing)
           setConfig(merged)
           const saved = localStorage.getItem('ug_brand_sections_config')
           const full = saved ? JSON.parse(saved) : {}
@@ -44,7 +54,7 @@ export default function Closing({ lang }) {
         const saved = localStorage.getItem('ug_brand_sections_config')
         if (saved) {
           const parsed = JSON.parse(saved)
-          if (parsed.closing) setConfig({ ...DEFAULT_CLOSING_CONFIG, ...parsed.closing })
+          if (parsed.closing) setConfig(sanitizeClosing(parsed.closing))
         }
       } catch {}
     }
@@ -58,11 +68,7 @@ export default function Closing({ lang }) {
   }, [])
 
   const text = config?.en || DEFAULT_CLOSING_CONFIG.en
-  const rawLogo = config?.logoUrl || DEFAULT_CLOSING_CONFIG.logoUrl || '/logonew.png'
-  const logoUrl =
-    !rawLogo || rawLogo === '/closing_logo.png' || rawLogo === '/logouniqe.png' || rawLogo === '/int_logo.png'
-      ? '/logonew.png'
-      : rawLogo
+  const logoUrl = resolveBrandLogo(config?.logoUrl || DEFAULT_CLOSING_CONFIG.logoUrl)
   const showLogo = config?.showLogo !== undefined ? config.showLogo : true
 
   return (
@@ -90,7 +96,8 @@ export default function Closing({ lang }) {
                 src={logoUrl}
                 alt="Unique Graphics Studio Emblem"
                 className="relative z-10 w-full max-w-[280px] sm:max-w-[340px] md:max-w-[390px] lg:max-w-[440px] object-contain drop-shadow-[0_20px_45px_rgba(0,0,0,0.9)] filter transition-all duration-500 hover:scale-[1.03] select-none"
-                loading="lazy"
+                loading="eager"
+                fetchPriority="high"
               />
             </div>
           </div>

@@ -8,6 +8,7 @@ import { DEFAULT_RECOGNITION_CONFIG } from '../Recognition'
 import { DEFAULT_EXPERT_STEPS_CONFIG } from '../ExpertSteps'
 import { DEFAULT_DREAM_HOME_CONFIG } from '../DreamHome'
 import { DEFAULT_CLOSING_CONFIG } from '../Closing'
+import { BRAND_LOGO_URL, resolveBrandLogo } from '../../utils/brandLogo'
 import { FaInstagram, FaFacebook, FaBehance } from 'react-icons/fa'
 import { FaXTwitter } from 'react-icons/fa6'
 import AboutPageManager from './AboutPageManager'
@@ -890,6 +891,7 @@ export default function AdminPage() {
             ...(parsed.closing || {}),
             en: { ...DEFAULT_CLOSING_CONFIG.en, ...(parsed.closing?.en || {}) },
             ru: { ...DEFAULT_CLOSING_CONFIG.ru, ...(parsed.closing?.ru || {}) },
+            logoUrl: resolveBrandLogo(parsed.closing?.logoUrl || DEFAULT_CLOSING_CONFIG.logoUrl),
           },
         }
       }
@@ -959,10 +961,11 @@ export default function AdminPage() {
             ...(result.data.closing || {}),
             en: { ...DEFAULT_CLOSING_CONFIG.en, ...(result.data.closing?.en || {}) },
             ru: { ...DEFAULT_CLOSING_CONFIG.ru, ...(result.data.closing?.ru || {}) },
+            logoUrl: resolveBrandLogo(result.data.closing?.logoUrl || DEFAULT_CLOSING_CONFIG.logoUrl),
           },
         }
         setBrandSectionsConfig(merged)
-        localStorage.setItem('ug_brand_sections_config', JSON.stringify(result.data))
+        localStorage.setItem('ug_brand_sections_config', JSON.stringify(merged))
       }
     } catch { }
   }
@@ -973,6 +976,13 @@ export default function AdminPage() {
     setBrandSaving(true)
 
     try {
+      const payload = {
+        ...brandSectionsConfig,
+        closing: {
+          ...brandSectionsConfig.closing,
+          logoUrl: resolveBrandLogo(brandSectionsConfig.closing?.logoUrl || BRAND_LOGO_URL),
+        },
+      }
       if (serverOnline && token) {
         const res = await fetch(`${API_BASE_URL}/blogs/settings/brand-sections`, {
           method: 'PUT',
@@ -980,7 +990,7 @@ export default function AdminPage() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(brandSectionsConfig),
+          body: JSON.stringify(payload),
         })
         const data = await res.json()
         if (data.success && data.data) {
@@ -1021,10 +1031,11 @@ export default function AdminPage() {
               ...(data.data.closing || {}),
               en: { ...DEFAULT_CLOSING_CONFIG.en, ...(data.data.closing?.en || {}) },
               ru: { ...DEFAULT_CLOSING_CONFIG.ru, ...(data.data.closing?.ru || {}) },
+              logoUrl: resolveBrandLogo(data.data.closing?.logoUrl || DEFAULT_CLOSING_CONFIG.logoUrl),
             },
           }
           setBrandSectionsConfig(merged)
-          localStorage.setItem('ug_brand_sections_config', JSON.stringify(data.data))
+          localStorage.setItem('ug_brand_sections_config', JSON.stringify(merged))
           window.dispatchEvent(new Event('ug_brand_updated'))
           showToast('Brand & Showcase sections published live on website!')
           setBrandSaving(false)
@@ -2220,7 +2231,7 @@ export default function AdminPage() {
         >
           {/* Sidebar Brand Header */}
           <div className="shrink-0 pb-4 border-b border-white/[0.08]">
-            <img src="/logonew.png" alt="Unique Graphics" className="h-12 w-auto max-w-[160px] object-contain" />
+            <img src="/unique-gold-logo.png" alt="Unique Graphics" className="h-12 w-auto max-w-[160px] object-contain" />
           </div>
 
           {/* Navigation Menu Links (Scrollable Container for all screen heights) */}
@@ -5429,10 +5440,10 @@ export default function AdminPage() {
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
                             {/* Logo Thumbnail Preview */}
                             <div className="relative group rounded-xl border border-white/10 bg-[#0d0d0d] p-3 flex flex-col items-center justify-center min-h-[140px] text-center">
-                              {brandSectionsConfig.closing?.logoUrl || '/logonew.png' ? (
+                              {brandSectionsConfig.closing?.logoUrl || '/unique-gold-logo.png' ? (
                                 <>
                                   <img
-                                    src={brandSectionsConfig.closing?.logoUrl || '/logonew.png'}
+                                    src={brandSectionsConfig.closing?.logoUrl || '/unique-gold-logo.png'}
                                     alt="Closing Section Logo"
                                     className="max-h-24 max-w-full object-contain drop-shadow-md"
                                   />
@@ -5451,9 +5462,9 @@ export default function AdminPage() {
                                 </label>
                                 <input
                                   type="text"
-                                  value={brandSectionsConfig.closing?.logoUrl || '/logonew.png'}
+                                  value={brandSectionsConfig.closing?.logoUrl || '/unique-gold-logo.png'}
                                   onChange={(e) => updateClosingSetting('logoUrl', e.target.value)}
-                                  placeholder="/logonew.png"
+                                  placeholder="/unique-gold-logo.png"
                                   className="w-full rounded-xl border border-white/10 bg-[#181818] px-3.5 py-2.5 text-[12.5px] font-mono text-white outline-none focus:border-[#e3943f]"
                                 />
                               </div>
@@ -5476,7 +5487,7 @@ export default function AdminPage() {
 
                                 <button
                                   type="button"
-                                  onClick={() => updateClosingSetting('logoUrl', '/logonew.png')}
+                                  onClick={() => updateClosingSetting('logoUrl', '/unique-gold-logo.png')}
                                   className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11.5px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                                 >
                                    Use 3D UG Emblem
@@ -5824,7 +5835,7 @@ export default function AdminPage() {
                               <div className="w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 flex items-center justify-center rounded-xl bg-black/40 border border-[#e3943f]/20 p-2 relative group">
                                 <div className="pointer-events-none absolute -inset-2 rounded-xl bg-gradient-to-tr from-[#e3943f]/20 to-transparent blur-md opacity-50" />
                                 <img
-                                  src={brandSectionsConfig.closing?.logoUrl || '/logonew.png'}
+                                  src={brandSectionsConfig.closing?.logoUrl || '/unique-gold-logo.png'}
                                   alt="Preview Logo"
                                   className="max-h-full max-w-full object-contain drop-shadow relative z-10"
                                 />
@@ -8209,7 +8220,7 @@ export default function AdminPage() {
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/logonew.png"
+              src="/unique-gold-logo.png"
               alt="Unique Graphics"
               className="h-12 w-auto max-w-[180px] object-contain"
             />

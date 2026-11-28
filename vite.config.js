@@ -90,6 +90,8 @@ export default defineConfig({
     },
   ],
   server: {
+    host: true,
+    allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app', '.ngrok.io'],
     fs: {
       allow: ['.', './website', './public'],
     },
