@@ -4,6 +4,8 @@ import { DEPLOYED_VIDEOS, normalizeProjectVideoUrl } from '../utils/videoUrl'
 
 /** Same fallback video admin preview uses for cycle:default */
 const DEFAULT_REAL_HERO_VIDEO = DEPLOYED_VIDEOS.rydhum
+/** First-paint still — Unique Graphics project (not the old stock lifestyle photo) */
+const DEFAULT_HERO_POSTER = '/hero.jpg'
 
 const DEFAULT_VIDEO_PRESETS = [
   {
@@ -26,11 +28,11 @@ const DEFAULT_VIDEO_PRESETS = [
 
 const DEFAULT_IMAGE_PRESETS = [
   {
-    name: 'Greenwood Avenue Mullanpur',
-    url: '/website-assets/architecture/Greenwood%20Avenue%20Ferozepur%20Road%20Mullanpur/v1.jpg',
+    name: 'Neo Classic Villa Bijnor',
+    url: DEFAULT_HERO_POSTER,
   },
   {
-    name: 'Neo Classic Villa Bijnor',
+    name: 'Neo Classic Interior',
     url: '/website-assets/INTERIOR/NEO%20CLASSIC%20VILLA%20INTERIOR%20BIJNOR/V.png',
   },
 ]
@@ -147,7 +149,7 @@ function buildHeroSlides(config) {
 
   return [
     {
-      url: mediaType === 'image' ? '/hero.jpg' : DEFAULT_REAL_HERO_VIDEO,
+      url: mediaType === 'image' ? DEFAULT_HERO_POSTER : DEFAULT_REAL_HERO_VIDEO,
       kind: mediaType === 'image' ? 'image' : 'video',
       title: config?.title || DEFAULT_HERO_CONFIG.title,
       subtitle: config?.subtitle || DEFAULT_HERO_CONFIG.subtitle,
@@ -159,6 +161,11 @@ function buildHeroSlides(config) {
 
 function HeroMedia({ slide, onEnded }) {
   const video = useRef(null)
+  const [mediaReady, setMediaReady] = useState(false)
+
+  useEffect(() => {
+    setMediaReady(false)
+  }, [slide?.url, slide?.kind])
 
   useEffect(() => {
     const node = video.current
@@ -168,36 +175,48 @@ function HeroMedia({ slide, onEnded }) {
   }, [slide?.url, slide?.kind])
 
   if (!slide?.url) {
-    return <div className="absolute inset-0 bg-black" />
+    return <div className="absolute inset-0 bg-[#141414]" />
   }
 
   if (slide.kind === 'image' || prefersReducedMotion()) {
     return (
       <img
         key={slide.url}
-        src={slide.kind === 'image' ? slide.url : '/hero.jpg'}
+        src={slide.kind === 'image' ? slide.url : DEFAULT_HERO_POSTER}
         alt=""
-        className="absolute inset-0 h-full w-full object-cover"
+        onLoad={() => setMediaReady(true)}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${mediaReady ? 'opacity-100' : 'opacity-0'}`}
       />
     )
   }
 
   return (
-    <video
-      key={slide.url}
-      ref={video}
-      src={slide.url}
-      poster="/hero.jpg"
-      autoPlay
-      muted
-      loop={false}
-      playsInline
-      preload="auto"
-      aria-hidden="true"
-      onEnded={onEnded}
-      onError={onEnded}
-      className="hero-clip absolute inset-0 h-full w-full object-cover is-front"
-    />
+    <>
+      {/* Brand still while video buffers — avoids old stock poster flash */}
+      <img
+        src={DEFAULT_HERO_POSTER}
+        alt=""
+        aria-hidden="true"
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${mediaReady ? 'opacity-0' : 'opacity-100'}`}
+      />
+      <video
+        key={slide.url}
+        ref={video}
+        src={slide.url}
+        poster={DEFAULT_HERO_POSTER}
+        autoPlay
+        muted
+        loop={false}
+        playsInline
+        preload="auto"
+        aria-hidden="true"
+        onLoadedData={() => setMediaReady(true)}
+        onPlaying={() => setMediaReady(true)}
+        onEnded={onEnded}
+        onError={onEnded}
+        className={`hero-clip absolute inset-0 h-full w-full object-cover is-front transition-opacity duration-500 ${mediaReady ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </>
   )
 }
 
@@ -208,7 +227,20 @@ export default function Hero({ lang }) {
   const [config, setConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('ug_homepage_hero_config')
-      if (saved) return JSON.parse(saved)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        // Drop stale first-visit configs that still point at old stock/legacy media
+        const media = String(parsed?.mediaUrl || '')
+        if (
+          media.includes('GREEN WOOD') ||
+          media.includes('GREEN%20WOOD') ||
+          media.includes('/video/4.mp4') ||
+          media.includes('dubai_villa')
+        ) {
+          return DEFAULT_HERO_CONFIG
+        }
+        return { ...DEFAULT_HERO_CONFIG, ...parsed }
+      }
     } catch {}
     return DEFAULT_HERO_CONFIG
   })
